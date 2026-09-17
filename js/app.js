@@ -353,6 +353,7 @@ function refreshMindMapChrome() {
   if (!doc) return;
   document.getElementById("mmDocTitle").textContent = doc.title;
   document.getElementById("mmLayoutSelect").value = doc.layout;
+  document.getElementById("mmCurveSelect").value = mashCurveStyleId(doc);
   document.getElementById("mmThemeSelect").value = doc.themeId;
   document.getElementById("mmUndoBtn").disabled = !mashStore.canUndo(doc.id);
   document.getElementById("mmRedoBtn").disabled = !mashStore.canRedo(doc.id);
@@ -368,6 +369,8 @@ function initMindMap() {
 
   const layoutSel = document.getElementById("mmLayoutSelect");
   layoutSel.innerHTML = MASH_LAYOUTS.map((l) => `<option value="${l.id}">${l.name}</option>`).join("");
+  const curveSel = document.getElementById("mmCurveSelect");
+  curveSel.innerHTML = MASH_CURVE_STYLES.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
   const themeSel = document.getElementById("mmThemeSelect");
   themeSel.innerHTML = MASH_THEMES.map((t) => `<option value="${t.id}">${t.name}</option>`).join("");
 
@@ -403,6 +406,16 @@ function initMindMap() {
     const doc = mashStore.activeDoc;
     mashStore.pushHistory(doc);
     doc.themeId = themeSel.value;
+    mashStore.updateDocument(doc);
+    mashCanvas.render();
+  });
+  curveSel.addEventListener("change", () => {
+    const doc = mashStore.activeDoc;
+    mashStore.pushHistory(doc);
+    // Independent of theme and layout — switching this never touches
+    // node positions or colors, and switching back later restores
+    // exactly what was there before with nothing to "rebuild".
+    doc.curveStyle = curveSel.value;
     mashStore.updateDocument(doc);
     mashCanvas.render();
   });

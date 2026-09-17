@@ -149,8 +149,26 @@ function newMashDocument(title) {
     connections: [],
     canvasOffset: { x: 0, y: 0 },
     canvasScale: 1.0,
-    layout: "radial"
+    layout: "radial",
+    curveStyle: null   // null = inherit from color theme; otherwise an explicit override
   };
+}
+
+// ── Curve/connection styles — independent of both color theme and
+// layout. A user can mix e.g. Blueprint colors with Circuit curves,
+// or Tree layout with Organic curves, in any combination, and switch
+// any one of the three axes without touching the other two. ──
+const MASH_CURVE_STYLES = [
+  { id: "curved", name: "Curved", render: "curved" },
+  { id: "straight", name: "Straight", render: "straight" },
+  { id: "organic", name: "Organic", render: "organic" },
+  { id: "circuit", name: "Circuit", render: "circuit" }
+];
+
+function mashCurveStyleId(doc) {
+  if (doc.curveStyle) return doc.curveStyle;
+  const theme = mashThemeById(doc.themeId);
+  return theme.connectionStyle || "curved";
 }
 
 // ── Mash store: persistence + undo/redo (mirrors MashStore) ──

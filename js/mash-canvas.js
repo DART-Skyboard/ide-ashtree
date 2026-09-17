@@ -669,6 +669,7 @@ class MashCanvas {
     const toScreen = (x, y) => ({ x: cx + x * this.scale, y: cy + y * this.scale });
 
     let svg = "";
+    const curveStyle = mashCurveStyleId(doc);
     // Parent → child tree edges (solid)
     for (const node of Object.values(doc.nodes)) {
       for (const cid of node.children) {
@@ -676,10 +677,12 @@ class MashCanvas {
         if (!child) continue;
         const a = toScreen(node.x, node.y);
         const b = toScreen(child.x, child.y);
-        svg += this._edgePath(a, b, theme.connectionColor, theme.connectionStyle, false, "parent", "", cid);
+        svg += this._edgePath(a, b, theme.connectionColor, curveStyle, false, "parent", "", cid);
       }
     }
-    // Free-form reference connections (dashed)
+    // Free-form reference connections (dashed) — always drawn as a
+    // simple curve regardless of the document's curve style, so a
+    // manual cross-link stays visually distinct from the tree edges.
     for (const conn of doc.connections) {
       const from = doc.nodes[conn.fromId], to = doc.nodes[conn.toId];
       if (!from || !to) continue;
@@ -694,9 +697,25 @@ class MashCanvas {
   _edgePath(a, b, color, style, dashed, kind, ref, nodeId) {
     let d;
     if (style === "straight") {
+      // Single elbow: one bend, midpoint break.
       const mx = (a.x + b.x) / 2;
       d = `M${a.x},${a.y} L${mx},${a.y} L${mx},${b.y} L${b.x},${b.y}`;
+    } else if (style === "circuit") {
+      // PCB-trace routing: horizontal run, then vertical, then
+      // horizontal — three straight segments with sharp right-angle
+      // corners, no diagonals, the way real circuit traces route.
+      // This is what "Blueprint" curves are for — schematic-style
+      // diagrams — independent of which color theme is active.
+      const midX = a.x + (b.x - a.x) * 0.6;
+      d = `M${a.x},${a.y} L${midX},${a.y} L${midX},${b.y} L${b.x},${b.y}`;
+    } else if (style === "organic") {
+      // Gentle asymmetric wobble so branches feel hand-drawn rather
+      // than mechanically curved.
+      const dx = (b.x - a.x) * 0.5;
+      const dy = (b.y - a.y) * 0.15;
+      d = `M${a.x},${a.y} C${a.x + dx * 0.7},${a.y + dy} ${b.x - dx * 1.2},${b.y - dy} ${b.x},${b.y}`;
     } else {
+      // "curved" (default) — smooth symmetric bezier.
       const dx = (b.x - a.x) * 0.5;
       d = `M${a.x},${a.y} C${a.x + dx},${a.y} ${b.x - dx},${b.y} ${b.x},${b.y}`;
     }
