@@ -51,6 +51,97 @@ class MashCanvas {
     this._hintTimer = setTimeout(() => this.hintEl.classList.remove("show"), 2200);
   }
 
+  /// Does this document's layout mode call for rigid auto-placement
+  /// (as opposed to freeform manual dragging)?
+  isStrictLayout(layout) {
+    return ["tree", "fishbone", "flowchart", "orgchart", "timeline"].includes(layout);
+  }
+
+  /// Recompute every node's x/y for the document's current layout.
+  /// Direct port of applyAutoLayout in IDEMindMapView.swift — same
+  /// spacing constants, same recursive placement, so a layout looks
+  /// the same shape here as it does in the iOS app.
+  applyAutoLayout(doc) {
+    switch (doc.layout) {
+      case "radial":
+        this._layoutRadial(doc, doc.rootId, 0, 0, 0, 2 * Math.PI, 0);
+        break;
+      case "tree":
+        this._layoutTree(doc, doc.rootId, 0, 0);
+        break;
+      case "fishbone":
+        this._layoutFishbone(doc);
+        break;
+      case "flowchart":
+      case "orgchart":
+        this._layoutOrg(doc, doc.rootId, 0, 0);
+        break;
+      case "timeline":
+        this._layoutTimeline(doc);
+        break;
+    }
+  }
+
+  _layoutRadial(doc, id, cx, cy, sa, ea, depth) {
+    const node = doc.nodes[id];
+    if (!node) return;
+    node.x = cx; node.y = cy;
+    const children = node.children || [];
+    if (children.length === 0) return;
+    const span = (ea - sa) / children.length;
+    const r = depth === 0 ? 220 : 160;
+    children.forEach((cid, i) => {
+      const a = sa + span * (i + 0.5);
+      this._layoutRadial(doc, cid, cx + Math.cos(a) * r, cy + Math.sin(a) * r, a - span / 2, a + span / 2, depth + 1);
+    });
+  }
+
+  _layoutTree(doc, id, x, y) {
+    const node = doc.nodes[id];
+    if (!node) return;
+    node.x = x; node.y = y;
+    const children = node.children || [];
+    const sp = 160;
+    const sx = x - ((children.length - 1) * sp) / 2;
+    children.forEach((cid, i) => this._layoutTree(doc, cid, sx + i * sp, y + 180));
+  }
+
+  _layoutFishbone(doc) {
+    const root = doc.nodes[doc.rootId];
+    if (!root) return;
+    root.x = 0; root.y = 0;
+    const children = root.children || [];
+    children.forEach((cid, i) => {
+      const node = doc.nodes[cid];
+      if (!node) return;
+      node.x = i * 180 - ((children.length - 1) * 180) / 2;
+      node.y = i % 2 === 0 ? -150 : 150;
+    });
+  }
+
+  _layoutOrg(doc, id, x, y) {
+    const node = doc.nodes[id];
+    if (!node) return;
+    node.x = x; node.y = y;
+    const children = node.children || [];
+    const sp = 160;
+    const sx = x - ((children.length - 1) * sp) / 2;
+    children.forEach((cid, i) => this._layoutOrg(doc, cid, sx + i * sp, y + 140));
+  }
+
+  _layoutTimeline(doc) {
+    const root = doc.nodes[doc.rootId];
+    if (!root) return;
+    root.x = 0; root.y = 0;
+    const children = root.children || [];
+    children.forEach((cid, i) => {
+      const node = doc.nodes[cid];
+      if (!node) return;
+      node.x = i * 200 - ((children.length - 1) * 200) / 2;
+      node.y = 0;
+    });
+  }
+
   screenToWorld(sx, sy) {
     const r = this.wrap.getBoundingClientRect();
     const cx = r.width / 2 + this.offset.x;
@@ -248,6 +339,10 @@ class MashCanvas {
       if (nodeEl) nodeEl.classList.remove("dragging");
       if (d.moved) {
         this._handleNodeDrop(d.id, e.clientX, e.clientY);
+        // Strict template layouts snap back to their computed positions
+        // after any manual drag, same as the iOS app — dragging can
+        // still reparent/splice, but position itself isn't freeform.
+        if (this.isStrictLayout(this.doc.layout)) this.applyAutoLayout(this.doc);
         this.store.updateDocument(this.doc);
         needsFullRender = true; // drop may have reparented / spliced structure
       }
@@ -397,6 +492,7 @@ class MashCanvas {
     const node = newMashNode(type === "main" ? "main" : type, "New Node", x, y, parentId);
     doc.nodes[node.id] = node;
     parent.children.push(node.id);
+    if (this.isStrictLayout(doc.layout)) this.applyAutoLayout(doc);
     this.store.updateDocument(doc);
     this.selectedId = node.id;
     this.render();
@@ -438,6 +534,7 @@ class MashCanvas {
     const node = newMashNode(type, defaultText, parent.x + 170, parent.y, parentId);
     doc.nodes[node.id] = node;
     parent.children.push(node.id);
+    if (this.isStrictLayout(doc.layout)) this.applyAutoLayout(doc);
     this.store.updateDocument(doc);
     this.selectedId = node.id;
     this.render();

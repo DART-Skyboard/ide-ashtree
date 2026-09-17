@@ -79,6 +79,14 @@ const MazeUI = {
   _setCollapsed(collapsed) {
     document.getElementById("mazePanel").style.display = collapsed ? "none" : "flex";
     document.getElementById("mazeExpandBtn").hidden = !collapsed;
+    // Don't rely solely on ResizeObserver here: toggling display:none/flex
+    // changes layout synchronously, but the observer's callback can still
+    // land a frame late relative to Three.js reading clientWidth/Height,
+    // which was leaving the canvas sized to whatever it was before the
+    // panel collapsed. Force it explicitly, after layout has settled.
+    if (this.renderer3d) {
+      requestAnimationFrame(() => this.renderer3d.resize());
+    }
   },
 
   _ensureRenderer() {

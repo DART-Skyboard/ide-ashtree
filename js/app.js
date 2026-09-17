@@ -393,7 +393,11 @@ function initMindMap() {
     const doc = mashStore.activeDoc;
     mashStore.pushHistory(doc);
     doc.layout = layoutSel.value;
+    // Radial is the freeform default; every other layout rearranges
+    // nodes immediately when selected, same as the iOS app.
+    if (doc.layout !== "radial") mashCanvas.applyAutoLayout(doc);
     mashStore.updateDocument(doc);
+    mashCanvas.render();
   });
   themeSel.addEventListener("change", () => {
     const doc = mashStore.activeDoc;
