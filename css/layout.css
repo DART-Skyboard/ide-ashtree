@@ -10,7 +10,7 @@
   border-bottom:1px solid var(--line);
 }
 .topbar-brand{ display:flex; align-items:center; gap:9px; }
-.brand-mark{ font-size:20px; line-height:1; filter:drop-shadow(0 0 6px rgba(0,255,204,.35)); }
+.brand-mark{ width:22px; height:22px; display:block; filter:drop-shadow(0 0 6px rgba(0,255,204,.35)); border-radius:5px; }
 .brand-text{ display:flex; flex-direction:column; line-height:1.15; }
 .brand-name{ font:800 13px var(--font-mono); letter-spacing:.09em; color:var(--text-hi); }
 .brand-sub{ font:600 9.5px var(--font-mono); letter-spacing:.12em; color:var(--accent); }
