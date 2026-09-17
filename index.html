@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ash Tree IDE — LEATR v2</title>
+<meta name="description" content="Ash Tree IDE — a browser-based coding environment for the Ash Edge Language, with a LEATR v2 compiler and the Ash Map visual mind-mapping tool. Built by DART Meadow.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌳</text></svg>">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/editor.css">
+<link rel="stylesheet" href="css/mindmap.css">
+<link rel="stylesheet" href="css/help.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ═══════════════ Top bar ═══════════════ -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <span class="brand-mark">🌳</span>
+      <div class="brand-text">
+        <span class="brand-name">ASH TREE IDE</span>
+        <span class="brand-sub">LEATR v2</span>
+      </div>
+    </div>
+    <div class="topbar-status" id="statusLine">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">ready</span>
+    </div>
+    <button class="btn-run" id="runBtn" title="Build &amp; Run (Ctrl+Enter)">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M2 1.5v9l8-4.5-8-4.5z"/></svg>
+      RUN
+    </button>
+  </header>
+
+  <!-- ═══════════════ Tab bar ═══════════════ -->
+  <nav class="tabbar" id="tabbar">
+    <button class="tab active" data-tab="editor">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      Editor
+    </button>
+    <button class="tab" data-tab="output">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
+      Output
+    </button>
+    <button class="tab" data-tab="terminal">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      Terminal
+    </button>
+    <button class="tab" data-tab="files">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      Files
+    </button>
+    <button class="tab" data-tab="mindmap">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="19" r="2.4"/><circle cx="19" cy="19" r="2.4"/><line x1="12" y1="7.4" x2="6.4" y2="17"/><line x1="12" y1="7.4" x2="17.6" y2="17"/></svg>
+      Ash Map
+    </button>
+    <button class="tab" data-tab="help">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><line x1="12" y1="17.5" x2="12" y2="17.5"/></svg>
+      Help
+    </button>
+  </nav>
+
+  <!-- ═══════════════ Panels ═══════════════ -->
+  <main class="panels">
+
+    <!-- ---------- EDITOR ---------- -->
+    <section class="panel active" id="panel-editor">
+      <div class="editor-toolbar">
+        <div class="file-chip" id="currentFileChip">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span id="currentFileName">untitled.ash</span>
+          <span class="dirty-dot" id="dirtyDot" hidden>●</span>
+        </div>
+        <div class="editor-toolbar-spacer"></div>
+        <select class="example-select" id="exampleSelect" title="Load an example">
+          <option value="">Examples…</option>
+        </select>
+        <button class="icon-btn" id="newFileBtn" title="New file">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <button class="icon-btn" id="downloadBtn" title="Download .ash file">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+        <label class="icon-btn" for="uploadInput" title="Open .ash file">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </label>
+        <input type="file" id="uploadInput" accept=".ash,.txt" hidden>
+      </div>
+
+      <div class="editor-wrap">
+        <div class="editor-gutter" id="editorGutter"></div>
+        <textarea id="editorTextarea" class="editor-textarea" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea>
+        <pre class="editor-highlight" id="editorHighlight" aria-hidden="true"></pre>
+      </div>
+
+      <div class="editor-footer">
+        <span id="cursorInfo">Ln 1, Col 1</span>
+        <span class="footer-sep">·</span>
+        <span id="charCount">0 chars</span>
+        <span class="footer-sep">·</span>
+        <span id="shellInfo">SHELL: —</span>
+        <span class="footer-sep">·</span>
+        <span id="buoyInfo">BUOY: 0.0000</span>
+      </div>
+    </section>
+
+    <!-- ---------- OUTPUT ---------- -->
+    <section class="panel" id="panel-output">
+      <div class="output-toolbar">
+        <span class="output-title">Compiler Output</span>
+        <div class="output-toolbar-spacer"></div>
+        <label class="net-toggle">
+          <input type="checkbox" id="netModeToggle">
+          <span>NET mode</span>
+        </label>
+        <button class="icon-btn" id="clearOutputBtn" title="Clear output">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>
+      <div class="output-log" id="outputLog">
+        <div class="output-empty">Press <strong>RUN</strong> to compile your Ash script.</div>
+      </div>
+    </section>
+
+    <!-- ---------- TERMINAL ---------- -->
+    <section class="panel" id="panel-terminal">
+      <div class="terminal-log" id="terminalLog"></div>
+      <div class="terminal-input-row">
+        <span class="terminal-prompt">ash&nbsp;▸</span>
+        <input type="text" id="terminalInput" class="terminal-input" placeholder="run · info · clear · help" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false">
+      </div>
+    </section>
+
+    <!-- ---------- FILES ---------- -->
+    <section class="panel" id="panel-files">
+      <div class="files-toolbar">
+        <span class="output-title">Local Files</span>
+        <div class="output-toolbar-spacer"></div>
+        <button class="icon-btn" id="filesNewBtn" title="New file">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+      <div class="files-list" id="filesList"></div>
+      <div class="files-hint">Files are saved in this browser's local storage. Download a copy before clearing site data.</div>
+    </section>
+
+    <!-- ---------- ASH MAP (mind map) ---------- -->
+    <section class="panel" id="panel-mindmap">
+      <div class="mm-header">
+        <button class="mm-doc-chip" id="mmDocChip" title="Switch document">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2.2"/><circle cx="5" cy="19" r="2.2"/><circle cx="19" cy="19" r="2.2"/><line x1="12" y1="7.2" x2="6.3" y2="17"/><line x1="12" y1="7.2" x2="17.7" y2="17"/></svg>
+          <span id="mmDocTitle">New Mind Map</span>
+        </button>
+        <div class="mm-header-spacer"></div>
+        <select class="mm-select" id="mmLayoutSelect" title="Layout"></select>
+        <select class="mm-select" id="mmThemeSelect" title="Theme"></select>
+        <button class="icon-btn" id="mmUndoBtn" title="Undo">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7"/></svg>
+        </button>
+        <button class="icon-btn" id="mmRedoBtn" title="Redo">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M21 13a9 9 0 1 1-3-7"/></svg>
+        </button>
+        <button class="icon-btn" id="mmExportBtn" title="Export PNG">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+        <button class="icon-btn danger" id="mmDeleteBtn" title="Delete document">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>
+
+      <div class="mm-body">
+        <!-- Left tool rail -->
+        <div class="mm-toolrail" id="mmToolrail">
+          <button class="mm-tool active" data-tool="select" title="Select / Pan">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+          </button>
+          <button class="mm-tool" data-tool="disconnect" title="Disconnect (click a curve)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/></svg>
+          </button>
+          <div class="mm-tool-divider"></div>
+          <button class="mm-tool" data-action="addChild" title="Add child node">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          </button>
+          <button class="mm-tool" data-action="addFree" title="Add free node">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/></svg>
+          </button>
+          <button class="mm-tool" data-action="addMain" title="New main branch (independent root)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/></svg>
+          </button>
+          <div class="mm-tool-divider"></div>
+          <button class="mm-tool" data-action="addImage" title="Add image node">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          </button>
+          <button class="mm-tool" data-action="addAsh" title="Add ASH code node">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </button>
+          <button class="mm-tool" data-action="addTerminal" title="Add terminal output node">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          </button>
+          <button class="mm-tool" data-action="add2D" title="Add 2D canvas output node">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>
+          </button>
+          <button class="mm-tool" data-action="add3D" title="Add 3D scene output node">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          </button>
+          <button class="mm-tool" data-action="addInput" title="Add input form node">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
+          </button>
+          <button class="mm-tool" data-action="addOutput" title="Add output form node">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7 7 7-7"/></svg>
+          </button>
+          <div class="mm-tool-divider"></div>
+          <button class="mm-tool" data-action="toAsh" title="Generate ASH code from map">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+          </button>
+        </div>
+
+        <!-- Canvas -->
+        <div class="mm-canvas-wrap" id="mmCanvasWrap">
+          <svg id="mmSvg" class="mm-svg" width="100%" height="100%"></svg>
+          <div id="mmNodeLayer" class="mm-node-layer"></div>
+          <div class="mm-zoom-readout" id="mmZoomReadout">100%</div>
+          <div class="mm-hint" id="mmHint"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- HELP ---------- -->
+    <section class="panel" id="panel-help">
+      <div class="help-content" id="helpContent"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ═══════════════ Node editor modal (Ash Map) ═══════════════ -->
+<div class="modal-backdrop" id="nodeModalBackdrop" hidden>
+  <div class="modal node-modal">
+    <div class="modal-header">
+      <span>Edit Node</span>
+      <button class="modal-close" id="nodeModalClose">&times;</button>
+    </div>
+    <div class="modal-body">
+      <label class="modal-label">Label</label>
+      <textarea id="nodeTextInput" class="modal-textarea" rows="2"></textarea>
+
+      <div class="modal-row">
+        <label class="modal-check"><input type="checkbox" id="nodeBoldInput"> Bold</label>
+        <label class="modal-check"><input type="checkbox" id="nodeItalicInput"> Italic</label>
+      </div>
+
+      <label class="modal-check"><input type="checkbox" id="nodeCustomColorToggle"> Custom colors</label>
+      <div class="modal-colors" id="nodeColorRow" hidden>
+        <label>Fill<input type="color" id="nodeFillColor"></label>
+        <label>Border<input type="color" id="nodeBorderColor"></label>
+        <label>Text<input type="color" id="nodeTextColor"></label>
+      </div>
+
+      <label class="modal-label">Image</label>
+      <div class="modal-image-row">
+        <img id="nodeImagePreview" class="modal-image-preview" hidden>
+        <label class="btn-secondary" for="nodeImageInput">Choose image</label>
+        <input type="file" id="nodeImageInput" accept="image/*" hidden>
+        <button class="btn-secondary" id="nodeImageRemove" hidden>Remove</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="nodeDuplicateBtn">Duplicate</button>
+      <button class="btn-danger" id="nodeDeleteBtn">Delete</button>
+      <div class="modal-footer-spacer"></div>
+      <button class="btn-primary" id="nodeSaveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ Document picker modal ═══════════════ -->
+<div class="modal-backdrop" id="docModalBackdrop" hidden>
+  <div class="modal doc-modal">
+    <div class="modal-header">
+      <span>Mind Maps</span>
+      <button class="modal-close" id="docModalClose">&times;</button>
+    </div>
+    <div class="modal-body">
+      <button class="btn-primary" id="docNewBtn" style="width:100%;margin-bottom:12px;">+ New Mind Map</button>
+      <div id="docList" class="doc-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ Toast ═══════════════ -->
+<div id="toast" class="toast" hidden></div>
+
+<script src="js/leatr-engine.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/terminal.js"></script>
+<script src="js/mash-model.js"></script>
+<script src="js/mash-canvas.js"></script>
+<script src="js/help-content.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
