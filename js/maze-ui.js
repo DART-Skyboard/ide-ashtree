@@ -12,7 +12,6 @@ const MazeUI = {
 
   init(getEditorSource) {
     this.getEditorSource = getEditorSource;
-
     // Mode segmented control
     document.querySelectorAll("#mazeModeSeg .seg").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -43,7 +42,29 @@ const MazeUI = {
     // Cryptology collapsible
     document.getElementById("mazeCryptoToggle").addEventListener("click", () => this._toggleCrypto());
 
+    // Solve-mode toggle (Instant / Animated) — defaults to Animated
+    document.querySelectorAll("#mazeSolveModeSeg .seg").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#mazeSolveModeSeg .seg").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        this.solveMode = btn.dataset.value;
+      });
+    });
+
     this._renderCryptoPanel();
+  },
+
+  solveMode: "animated",
+
+  /// Create the WebGL renderer immediately (not lazily on first
+  /// Generate) so the canvas is correctly sized the moment the Maze
+  /// tab is shown — this is what was causing "have to switch tabs
+  /// away and back" on first load, and stale framebuffer pixels
+  /// bleeding through the empty-state text.
+  _initRendererIfNeeded() {
+    if (this.renderer3d) return;
+    const canvas = document.getElementById("mazeCanvas");
+    this.renderer3d = new Maze3DRenderer(canvas);
   },
 
   _bindSlider(inputId, valId, key) {
@@ -61,10 +82,14 @@ const MazeUI = {
   },
 
   _ensureRenderer() {
-    if (this.renderer3d) return this.renderer3d;
-    const canvas = document.getElementById("mazeCanvas");
-    this.renderer3d = new Maze3DRenderer(canvas);
+    this._initRendererIfNeeded();
     return this.renderer3d;
+  },
+
+  /// True background = the renderer exists but nothing has been
+  /// generated into it yet (fresh scene, no maze group children).
+  _sceneIsEmpty() {
+    return !this.result;
   },
 
   generate() {
@@ -109,7 +134,7 @@ const MazeUI = {
 
   showSolution() {
     if (!this.result || !this.renderer3d) return;
-    this.renderer3d.showSolutionPath(this.result);
+    this.renderer3d.showSolutionPath(this.result, this.solveMode === "animated");
   },
 
   // ── Cryptology panel ──────────────────────────────────────

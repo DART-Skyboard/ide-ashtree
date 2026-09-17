@@ -147,12 +147,24 @@ class Maze3DRenderer {
     });
 
     const release = (e) => {
+      const wasPinchOrPan = pointers.size >= 2;
       pointers.delete(e.pointerId);
       if (pointers.size === 0) { mode = null; pinchStartDist = null; }
       else if (pointers.size === 1) {
         mode = "orbit";
         const [p] = pointers.values();
         last = { x: p.x, y: p.y };
+      }
+
+      // Double-tap-to-reset only applies to a genuine single-finger tap.
+      // Releasing a pinch/two-finger-pan (wasPinchOrPan) must NEVER be
+      // treated as a tap — that was snapping zoom back to default the
+      // instant a pinch gesture ended, since letting go of both
+      // fingers fires two pointerup events in quick succession.
+      if (!wasPinchOrPan && pointers.size === 0) {
+        const now = Date.now();
+        if (now - lastTapTime < 300) this.resetView();
+        lastTapTime = now;
       }
     };
     el.addEventListener("pointerup", release);
@@ -164,12 +176,9 @@ class Maze3DRenderer {
       this._commit();
     }, { passive: false });
 
+    // Desktop double-click reset (mouse only — touch uses the tap
+    // logic above, which correctly excludes multi-touch releases).
     el.addEventListener("dblclick", () => this.resetView());
-    el.addEventListener("pointerup", () => {
-      const now = Date.now();
-      if (now - lastTapTime < 300 && pointers.size === 0) this.resetView();
-      lastTapTime = now;
-    });
   }
 
   _animate() {
@@ -178,6 +187,7 @@ class Maze3DRenderer {
   }
 
   clearMaze() {
+    this._solveGeneration = (this._solveGeneration || 0) + 1; // invalidates in-flight animated reveals
     while (this.mazeGroup.children.length) {
       const obj = this.mazeGroup.children.pop();
       if (obj.geometry) obj.geometry.dispose();
@@ -356,27 +366,45 @@ class Maze3DRenderer {
     }
   }
 
-  showSolutionPath(r) {
+  showSolutionPath(r, animated = false) {
     const s = 0.5;
     const pathMat = new THREE.MeshBasicMaterial({ color: 0xcc00ff, transparent: true, opacity: 0.9 });
-    if (r.planarPath) {
-      for (const [x, y] of r.planarPath) {
-        const plane = new THREE.Mesh(new THREE.PlaneGeometry(s * 0.8, s * 0.8), pathMat);
-        plane.rotation.x = -Math.PI / 2;
-        plane.position.set(x * s - r.w * s * 0.5 + s * 0.5, 0.05, y * s - r.h * s * 0.5 + s * 0.5);
-        this.mazeGroup.add(plane);
-      }
-    } else if (r.cubicPath) {
-      for (const [x, y, z] of r.cubicPath) {
-        const box = new THREE.Mesh(new THREE.BoxGeometry(s * 0.4, s * 0.4, s * 0.4), pathMat);
-        box.position.set(
-          x * s - r.w * s * 0.5 + s * 0.5,
-          y * s - r.h * s * 0.5 + s * 0.5,
-          z * s - r.d * s * 0.5 + s * 0.5
-        );
-        this.mazeGroup.add(box);
-      }
+    const steps = r.planarPath
+      ? r.planarPath.map(([x, y]) => {
+          const m = new THREE.Mesh(new THREE.PlaneGeometry(s * 0.8, s * 0.8), pathMat);
+          m.rotation.x = -Math.PI / 2;
+          m.position.set(x * s - r.w * s * 0.5 + s * 0.5, 0.05, y * s - r.h * s * 0.5 + s * 0.5);
+          return m;
+        })
+      : (r.cubicPath || []).map(([x, y, z]) => {
+          const m = new THREE.Mesh(new THREE.BoxGeometry(s * 0.4, s * 0.4, s * 0.4), pathMat);
+          m.position.set(
+            x * s - r.w * s * 0.5 + s * 0.5,
+            y * s - r.h * s * 0.5 + s * 0.5,
+            z * s - r.d * s * 0.5 + s * 0.5
+          );
+          return m;
+        });
+
+    if (!animated) {
+      steps.forEach((m) => this.mazeGroup.add(m));
+      return;
     }
+
+    // Animated: reveal one path segment at a time so the solve is
+    // watchable, rather than the whole route appearing instantly.
+    // Bind to this scene's generation so a regenerate mid-animation
+    // stops adding stale segments to the fresh maze.
+    const gen = this._solveGeneration || 0;
+    let i = 0;
+    const stepDelayMs = Math.max(12, Math.min(60, 900 / Math.max(1, steps.length)));
+    const revealNext = () => {
+      if (i >= steps.length || gen !== this._solveGeneration) return;
+      this.mazeGroup.add(steps[i]);
+      i += 1;
+      setTimeout(revealNext, stepDelayMs);
+    };
+    revealNext();
   }
 
   dispose() {

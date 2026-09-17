@@ -146,6 +146,7 @@
   position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
   gap:8px; text-align:center; padding:20px; pointer-events:none;
 }
+.maze-scene-empty[hidden]{ display:none; }
 .maze-scene-empty svg{ margin-bottom:4px; }
 .maze-scene-empty div{ font:400 12px var(--font-mono); color:var(--text-dim); }
 .maze-scene-empty .dim{ font-size:9px; color:var(--text-faint); }

@@ -101,9 +101,12 @@ function switchTab(name) {
   if (name === "mindmap" && mashCanvas) {
     requestAnimationFrame(() => mashCanvas.render());
   }
-  if (name === "maze" && MazeUI.renderer3d) {
+  if (name === "maze") {
     // Three.js sizes off clientWidth/Height, which report 0 while the
-    // panel was display:none — force a resize now that it's visible.
+    // panel was display:none. Create the renderer here (not lazily on
+    // first Generate) and always force a resize on every visit — this
+    // is what fixed "have to switch tabs away and back to see anything".
+    MazeUI._initRendererIfNeeded();
     requestAnimationFrame(() => MazeUI.renderer3d.resize());
   }
 }
