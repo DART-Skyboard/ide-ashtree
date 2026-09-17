@@ -101,6 +101,11 @@ function switchTab(name) {
   if (name === "mindmap" && mashCanvas) {
     requestAnimationFrame(() => mashCanvas.render());
   }
+  if (name === "maze" && MazeUI.renderer3d) {
+    // Three.js sizes off clientWidth/Height, which report 0 while the
+    // panel was display:none — force a resize now that it's visible.
+    requestAnimationFrame(() => MazeUI.renderer3d.resize());
+  }
 }
 
 // ── File state ────────────────────────────────────────────
@@ -560,6 +565,7 @@ function boot() {
   initEditorToolbar();
   initNodeModal();
   initMindMap();
+  MazeUI.init(() => AshEditor.getValue());
   renderFilesList();
 
   document.getElementById("helpContent").innerHTML = HELP_HTML;

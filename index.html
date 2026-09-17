@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="css/editor.css">
 <link rel="stylesheet" href="css/mindmap.css">
 <link rel="stylesheet" href="css/help.css">
+<link rel="stylesheet" href="css/maze.css">
 </head>
 <body>
 
@@ -66,6 +67,10 @@
     <button class="tab" data-tab="mindmap">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="19" r="2.4"/><circle cx="19" cy="19" r="2.4"/><line x1="12" y1="7.4" x2="6.4" y2="17"/><line x1="12" y1="7.4" x2="17.6" y2="17"/></svg>
       Ash Map
+    </button>
+    <button class="tab" data-tab="maze">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+      Maze
     </button>
     <button class="tab" data-tab="help">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><line x1="12" y1="17.5" x2="12" y2="17.5"/></svg>
@@ -239,6 +244,79 @@
     </section>
 
     <!-- ---------- HELP ---------- -->
+    <!-- ---------- MAZE + CRYPTOLOGY ---------- -->
+    <section class="panel" id="panel-maze">
+      <div class="maze-body">
+        <div class="maze-panel" id="mazePanel">
+          <div class="maze-panel-scroll">
+            <div class="maze-header">
+              <span class="maze-dot" style="background:#ff5f57"></span>
+              <span class="maze-dot" style="background:#febc2e"></span>
+              <span class="maze-dot" style="background:#28c840"></span>
+              <span class="maze-title">◈ LEAD EDGE MAZE</span>
+              <div style="flex:1"></div>
+              <button class="icon-btn" id="mazeCollapseBtn" title="Collapse panel">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+            </div>
+
+            <div class="maze-section">
+              <div class="maze-section-label">MODE</div>
+              <div class="maze-segmented" id="mazeModeSeg">
+                <button class="seg active" data-value="cubic">Cubic (3D)</button>
+                <button class="seg" data-value="planar">Planar (2D)</button>
+              </div>
+
+              <div class="maze-section-label" style="margin-top:12px">DIMENSIONS (3–50)</div>
+              <div class="maze-slider-row">
+                <span>Width</span>
+                <input type="range" id="mazeWidth" min="3" max="50" value="10">
+                <span class="maze-slider-val" id="mazeWidthVal">10</span>
+              </div>
+              <div class="maze-slider-row">
+                <span>Height</span>
+                <input type="range" id="mazeHeight" min="3" max="50" value="10">
+                <span class="maze-slider-val" id="mazeHeightVal">10</span>
+              </div>
+              <div class="maze-slider-row" id="mazeDepthRow">
+                <span>Depth</span>
+                <input type="range" id="mazeDepth" min="3" max="50" value="10">
+                <span class="maze-slider-val" id="mazeDepthVal">10</span>
+              </div>
+
+              <button class="maze-action" id="mazeGenerateBtn" style="color:#00ffcc;border-color:rgba(0,255,204,.25);background:rgba(0,255,204,.1)">▸ Generate</button>
+              <button class="maze-action" id="mazeSolveBtn" style="color:#0088ff;border-color:rgba(0,136,255,.25);background:rgba(0,136,255,.1)" disabled>◈ Show Solution</button>
+              <button class="maze-action" id="mazeResetBtn" style="color:#8a97a8;border-color:rgba(138,151,168,.25);background:rgba(138,151,168,.1)">↺ Reset View</button>
+
+              <div class="maze-status" id="mazeStatus">Configure and generate a maze</div>
+              <div class="maze-info" id="mazeInfo" hidden></div>
+            </div>
+
+            <div class="maze-divider"></div>
+
+            <button class="maze-crypto-toggle" id="mazeCryptoToggle">
+              <span>◈ LEAD EDGE CRYPTOLOGY</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="mazeCryptoChevron"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="maze-crypto-panel" id="mazeCryptoPanel" hidden></div>
+          </div>
+        </div>
+
+        <div class="maze-scene-wrap" id="mazeSceneWrap">
+          <canvas id="mazeCanvas" class="maze-canvas"></canvas>
+          <div class="maze-scene-empty" id="mazeSceneEmpty">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#00ffcc" stroke-width="1.5" opacity="0.3"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            <div>Configure and generate a maze</div>
+            <div class="dim">D1/D2/D3 Lead Edge algorithm</div>
+            <div class="dim">1-finger: orbit · 2-finger: pan · pinch: zoom · double-tap: reset</div>
+          </div>
+          <button class="maze-expand-btn" id="mazeExpandBtn" hidden title="Show panel">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
     <section class="panel" id="panel-help">
       <div class="help-content" id="helpContent"></div>
     </section>
@@ -303,12 +381,17 @@
 <!-- ═══════════════ Toast ═══════════════ -->
 <div id="toast" class="toast" hidden></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/leatr-engine.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/editor.js"></script>
 <script src="js/terminal.js"></script>
 <script src="js/mash-model.js"></script>
 <script src="js/mash-canvas.js"></script>
+<script src="js/maze-engine.js"></script>
+<script src="js/maze-3d.js"></script>
+<script src="js/cryptology.js"></script>
+<script src="js/maze-ui.js"></script>
 <script src="js/help-content.js"></script>
 <script src="js/app.js"></script>
 </body>
