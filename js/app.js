@@ -996,6 +996,26 @@ function initMindMap() {
     if (mashStore.redo()) { refreshMindMapChrome(); mashCanvas.render(); }
   });
   document.getElementById("mmExportBtn").addEventListener("click", () => mashCanvas.exportPng());
+  document.getElementById("mmImportInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const doc = MashImport.fromFile(file.name, reader.result);
+        mashStore.documents.push(doc);
+        mashStore.activeDocId = doc.id;
+        mashStore.save();
+        refreshMindMapChrome();
+        mashCanvas.render();
+        toast(`Imported "${doc.title}"`);
+      } catch (err) {
+        toast("Import failed: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  });
   document.getElementById("mmDeleteBtn").addEventListener("click", () => {
     if (!confirm(`Delete "${mashStore.activeDoc.title}"? This can't be undone.`)) return;
     mashStore.deleteDocument(mashStore.activeDocId);
