@@ -16,12 +16,13 @@
 <meta property="og:description" content="A browser-based coding environment for the Ash Edge Language, with a LEATR v2 compiler and the Ash Map visual mind-mapping tool.">
 <meta property="og:image" content="https://ide.leatr.xyz/assets/icons/icon-512.png">
 <meta property="og:type" content="website">
-<link rel="stylesheet" href="css/base.css?v=1789687692">
-<link rel="stylesheet" href="css/layout.css?v=1789687692">
-<link rel="stylesheet" href="css/editor.css?v=1789687692">
-<link rel="stylesheet" href="css/mindmap.css?v=1789687692">
-<link rel="stylesheet" href="css/help.css?v=1789687692">
-<link rel="stylesheet" href="css/maze.css?v=1789687692">
+<link rel="stylesheet" href="css/base.css?v=1789690428">
+<link rel="stylesheet" href="css/layout.css?v=1789690428">
+<link rel="stylesheet" href="css/editor.css?v=1789690428">
+<link rel="stylesheet" href="css/mindmap.css?v=1789690428">
+<link rel="stylesheet" href="css/help.css?v=1789690428">
+<link rel="stylesheet" href="css/maze.css?v=1789690428">
+<link rel="stylesheet" href="css/gl-output.css?v=1789690428">
 </head>
 <body>
 
@@ -137,6 +138,24 @@
       </div>
       <div class="output-log" id="outputLog">
         <div class="output-empty">Press <strong>RUN</strong> to compile your Ash script.</div>
+      </div>
+
+      <!-- GL output — appears when the compiled script imports GLDrivers -->
+      <div class="gl-output-section" id="glOutputSection" hidden>
+        <div class="gl-output-header">
+          <span class="gl-output-title">&#9670; GL OUTPUT</span>
+          <div class="gl-output-spacer"></div>
+          <button class="gl-reset-btn" id="glResetBtn" hidden>&#8634; Reset</button>
+          <button class="gl-render-btn" id="glRenderBtn">&#9656; Render 3D</button>
+        </div>
+        <div class="gl-output-body" id="glOutputBody">
+          <canvas class="gl-output-canvas" id="glOutputCanvas" hidden></canvas>
+          <div class="gl-output-empty" id="glOutputEmpty">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="1.5"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44a.98.98 0 0 1-.94 0l-7.9-4.44a1 1 0 0 1-.53-.88v-9c0-.38.21-.71.53-.88l7.9-4.44a.98.98 0 0 1 .94 0l7.9 4.44c.32.17.53.5.53.88v9z"/></svg>
+            <div>Tap &#9656; Render 3D to execute graphical output</div>
+            <div class="sub">import (GLDrivers) &middot; Arc Edge Vector supported</div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -388,17 +407,19 @@
 <div id="toast" class="toast" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="js/leatr-engine.js?v=1789687692"></script>
-<script src="js/storage.js?v=1789687692"></script>
-<script src="js/editor.js?v=1789687692"></script>
-<script src="js/terminal.js?v=1789687692"></script>
-<script src="js/mash-model.js?v=1789687692"></script>
-<script src="js/mash-canvas.js?v=1789687692"></script>
-<script src="js/maze-engine.js?v=1789687692"></script>
-<script src="js/maze-3d.js?v=1789687692"></script>
-<script src="js/cryptology.js?v=1789687692"></script>
-<script src="js/maze-ui.js?v=1789687692"></script>
-<script src="js/help-content.js?v=1789687692"></script>
-<script src="js/app.js?v=1789687692"></script>
+<script src="js/leatr-engine.js?v=1789690428"></script>
+<script src="js/storage.js?v=1789690428"></script>
+<script src="js/editor.js?v=1789690428"></script>
+<script src="js/terminal.js?v=1789690428"></script>
+<script src="js/mash-model.js?v=1789690428"></script>
+<script src="js/mash-canvas.js?v=1789690428"></script>
+<script src="js/maze-engine.js?v=1789690428"></script>
+<script src="js/maze-3d.js?v=1789690428"></script>
+<script src="js/cryptology.js?v=1789690428"></script>
+<script src="js/maze-ui.js?v=1789690428"></script>
+<script src="js/gl-output.js?v=1789690428"></script>
+<script src="js/arc-edge-gl.js?v=1789690428"></script>
+<script src="js/help-content.js?v=1789690428"></script>
+<script src="js/app.js?v=1789690428"></script>
 </body>
 </html>

@@ -80,6 +80,167 @@ const EXAMPLES = [
   }
   irout ("Result: " placeto (s))
 }|';'|
+` },
+  { name: "3D Animation", code: `// ASH TREE 3D — Arc Edge Geometry · LEATR v2
+// Arc Edge math: Circumference=sqrt(d*3)^2  Area=circ^2
+// Volume=area^3  Sphere SA=vol*0.25  Branch=1/8 arc
+import (GLDrivers)
+
+{{env:AshTree-3D}}
+[[script:ash-tree-arcedge-v1]]
+[net: webgl-runtime]
+[poly: arc-edge-geometry]
+
+(ThreeScene):-: {
+  {{env:AshTree-3D}}
+  with var (scene) var (s) {
+    irin ("background:0x000814 fov:55 py:3 pz:14 fog:true")
+    gl.scene
+    gl.render
+    thenplace var (scene) with var (s)
+  }
+  irout ("Result: " placeto (scene))
+}|';'|
+
+(ArcEdgeNode):-: {
+  [poly: arc-edge-geometry]
+  with var (d) var (levels) var (s) {
+    irin ("name:ashTree d:1.8 levels:5 segs:18 color:0x00ffcc emissive:0x003322 ry:0.0025")
+    thenplace var (s) with var (d)
+  }
+  irout ("Result: " placeto (s))
+}|';'|
+
+(AnimateNode):-: {
+  with var (s) {
+    irin ("target:ashTree ry:0.0025")
+    gl.animate
+    thenplace var (s) with var (s)
+  }
+  irout ("Result: " placeto (s))
+}|';'|
+` },
+  { name: "Neural Scene", code: `// NEURAL BRPN SCENE — 3D animated brain nodes · LEATR v2
+// Visualizes the Lead Edge Ash Tree Reflex neural network
+// Each node: 3-shell BRPN (Aerospace/Maritime/Geological)
+import (GLDrivers)
+
+{{env:NeuralScene}}
+[[script:brpn-neural-v1]]
+[poly: neural-geometry]
+[net: reflex-signal]
+
+(ThreeScene):-: {
+  {{env:NeuralScene}}
+  with var (scene) var (s) {
+    irin ("background:0x000814 fov:60 py:0 pz:20 fog:true")
+    gl.scene
+    gl.render
+    thenplace var (scene) with var (s)
+  }
+  irout ("Result: " placeto (scene))
+}|';'|
+
+(NeuralNode):-: {
+  [poly: brpn-shell-geometry]
+  with var (nodeId) var (shells) var (s) {
+    irin ("count:12 aerospace:true maritime:true geological:true pulse:true")
+    gl.mesh
+    thenplace var (shells) with var (nodeId)
+    thenplace var (s) with var (shells)
+  }
+  irout ("Result: " placeto (s))
+}|';'|
+
+(SynapseNode):-: {
+  [net: signal-propagation]
+  with var (from) var (to) var (signal) var (s) {
+    irin ("speed:0.8 color:0x00ffcc emissive:0x003322")
+    gl.animate
+    thenplace var (signal) with var (from)
+    thenplace var (s) with var (to)
+  }
+  irout ("Result: " placeto (s))
+}|';'|
+
+(AnimateNode):-: {
+  with var (s) {
+    irin ("target:neural pulse:true freq:1.2")
+    gl.animate
+    thenplace var (s) with var (s)
+  }
+  irout ("Result: " placeto (s))
+}|';'|
+` },
+  { name: "Arc Edge Vector", code: `// ARC EDGE VECTOR — Three-axis tangent spline system · LEATR v2
+// Port of arc-edge-vector.html to Ash syntax
+// Arc Edge math (Justin Craig Venable, doc=3.0 replaces \u03c0):
+//   Circumference: sqrt(d \u00d7 3)\u00b2
+//   Area: circ\u00b2    Volume: area\u00b3    Sphere SA: vol \u00d7 0.25
+//   Branch arc: circ / 8  (every branch = 1/8-circle arc)
+import (GLDrivers)
+
+{{env:ArcEdgeVector}}
+[[script:arc-edge-v1]]
+[poly: arc-edge-geometry]
+[net: vector-physics]
+
+(ArcEdgeScene):-: {
+  {{env:ArcEdgeVector}}
+  [[owner:DART-Meadow]]
+  with var (scene) var (s) {
+    irin ("background:0x060a10 fov:60 doc:3.0")
+    gl.scene
+    gl.render
+    thenplace var (scene) with var (s)
+  }
+  irout ("Result: " placeto (scene))
+}|';'|
+
+(ArcVectorNode):-: {
+  [poly: arc-edge-spline]
+  with var (d) var (s) {
+    irin ("axis:X influence:0.5 phase:0.0 smooth:true phys:true")
+    thenplace var (s) with var (d)
+  }
+  irout ("Result: " placeto (s))
+}|';'|
+
+(ArcVectorNode):-: {
+  [poly: arc-edge-spline]
+  with var (d) var (s) {
+    irin ("axis:Y influence:0.4 phase:1.047 smooth:true phys:true")
+    thenplace var (s) with var (d)
+  }
+  irout ("Result: " placeto (s))
+}|';'|
+
+(ArcVectorNode):-: {
+  [poly: arc-edge-spline]
+  with var (d) var (s) {
+    irin ("axis:Z influence:0.6 phase:2.094 smooth:true phys:true")
+    thenplace var (s) with var (d)
+  }
+  irout ("Result: " placeto (s))
+}|';'|
+
+(ArcPhysicsNode):-: {
+  [net: physics-environment]
+  with var (s) {
+    irin ("gravity:9.81 wind:15 temp:72 humidity:60 pressure:14.7")
+    thenplace var (s) with var (s)
+  }
+  irout ("Result: " placeto (s))
+}|';'|
+
+(ArcGridNode):-: {
+  [poly: grid-integration]
+  with var (s) {
+    irin ("enabled:true xz:true xy:true zy:true arcToGrid:true")
+    thenplace var (s) with var (s)
+  }
+  irout ("Result: " placeto (s))
+}|';'|
 ` }
 ];
 
@@ -150,17 +311,55 @@ function runCompile() {
   setStatus("running", "compiling…");
   const netMode = document.getElementById("netModeToggle").checked;
   try {
-    const result = engine.compile(AshEditor.getValue(), netMode);
+    const source = AshEditor.getValue();
+    const result = engine.compile(source, netMode);
     renderOutput();
     AshTerminal.render();
     document.getElementById("shellInfo").textContent = `SHELL: ${result.shell}`;
     document.getElementById("buoyInfo").textContent = `BUOY: ${result.buoyancy.toFixed(4)}`;
     setStatus("ok", `compiled · ${result.shell.toLowerCase()}`);
+    updateGLOutputSection(source);
     switchTab("output");
   } catch (err) {
     setStatus("err", "compile error");
     console.error(err);
   }
+}
+
+// ── GL output panel: shown only when the compiled script imports
+// GLDrivers or calls gl.scene — matches hasGLOutput in
+// IDECompilerOutputView.swift. Auto-renders on every compile, same
+// as the iOS .task{} on IDEGLOutputPanel. ──
+function updateGLOutputSection(source) {
+  const section = document.getElementById("glOutputSection");
+  const shouldShow = GLOutput.hasGLOutput(source);
+  section.hidden = !shouldShow;
+  if (!shouldShow) {
+    GLOutput.teardown();
+    return;
+  }
+  renderGLOutput(source);
+}
+
+function renderGLOutput(source) {
+  const canvas = document.getElementById("glOutputCanvas");
+  const empty = document.getElementById("glOutputEmpty");
+  const resetBtn = document.getElementById("glResetBtn");
+  canvas.hidden = false;
+  empty.hidden = true;
+  resetBtn.hidden = false;
+  GLOutput.render(source, canvas);
+  requestAnimationFrame(() => {
+    if (GLOutput.arcEdge) GLOutput.arcEdge.resize();
+    if (GLOutput.three) GLOutput.three.resize();
+  });
+}
+
+function resetGLOutput() {
+  GLOutput.teardown();
+  document.getElementById("glOutputCanvas").hidden = true;
+  document.getElementById("glOutputEmpty").hidden = false;
+  document.getElementById("glResetBtn").hidden = true;
 }
 
 function renderOutput() {
@@ -592,6 +791,9 @@ function boot() {
 
   document.getElementById("runBtn").addEventListener("click", runCompile);
   window.addEventListener("ash:run", runCompile);
+
+  document.getElementById("glRenderBtn").addEventListener("click", () => renderGLOutput(AshEditor.getValue()));
+  document.getElementById("glResetBtn").addEventListener("click", resetGLOutput);
 
   // Autosave current buffer periodically + on tab switch away from editor
   setInterval(() => { if (fileState.isDirty) saveCurrentFile(); }, 4000);
