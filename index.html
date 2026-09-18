@@ -16,13 +16,14 @@
 <meta property="og:description" content="A browser-based coding environment for the Ash Edge Language, with a LEATR v2 compiler and the Ash Map visual mind-mapping tool.">
 <meta property="og:image" content="https://ide.leatr.xyz/assets/icons/icon-512.png">
 <meta property="og:type" content="website">
-<link rel="stylesheet" href="css/base.css?v=1789741396">
-<link rel="stylesheet" href="css/layout.css?v=1789741396">
-<link rel="stylesheet" href="css/editor.css?v=1789741396">
-<link rel="stylesheet" href="css/mindmap.css?v=1789741396">
-<link rel="stylesheet" href="css/help.css?v=1789741396">
-<link rel="stylesheet" href="css/maze.css?v=1789741396">
-<link rel="stylesheet" href="css/gl-output.css?v=1789741396">
+<link rel="stylesheet" href="css/base.css?v=1789748389">
+<link rel="stylesheet" href="css/layout.css?v=1789748389">
+<link rel="stylesheet" href="css/editor.css?v=1789748389">
+<link rel="stylesheet" href="css/mindmap.css?v=1789748389">
+<link rel="stylesheet" href="css/help.css?v=1789748389">
+<link rel="stylesheet" href="css/maze.css?v=1789748389">
+<link rel="stylesheet" href="css/gl-output.css?v=1789748389">
+<link rel="stylesheet" href="css/calculator.css?v=1789748389">
 </head>
 <body>
 
@@ -41,6 +42,9 @@
       <span class="status-dot" id="statusDot"></span>
       <span id="statusText">ready</span>
     </div>
+    <button class="icon-btn" id="calcLauncherBtn" title="Calculator">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="8" y2="18"/><line x1="12" y1="18" x2="12" y2="18"/><line x1="16" y1="18" x2="16" y2="18"/></svg>
+    </button>
     <button class="btn-run" id="runBtn" title="Build &amp; Run (Ctrl+Enter)">
       <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M2 1.5v9l8-4.5-8-4.5z"/></svg>
       RUN
@@ -84,6 +88,7 @@
 
     <!-- ---------- EDITOR ---------- -->
     <section class="panel active" id="panel-editor">
+      <div class="editor-tabstrip" id="editorTabstrip"></div>
       <div class="editor-toolbar">
         <select class="lang-select" id="langSelect" title="Language">
           <option value="ash">Ash Edge</option>
@@ -148,35 +153,53 @@
 
     <!-- ---------- OUTPUT ---------- -->
     <section class="panel" id="panel-output">
-      <div class="output-toolbar">
-        <span class="output-title">Compiler Output</span>
-        <div class="output-toolbar-spacer"></div>
-        <label class="net-toggle">
-          <input type="checkbox" id="netModeToggle">
-          <span>NET mode</span>
-        </label>
-        <button class="icon-btn" id="clearOutputBtn" title="Clear output">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-        </button>
-      </div>
-      <div class="output-log" id="outputLog">
-        <div class="output-empty">Press <strong>RUN</strong> to compile your Ash script.</div>
-      </div>
-
-      <!-- GL output — appears when the compiled script imports GLDrivers -->
-      <div class="gl-output-section" id="glOutputSection" hidden>
-        <div class="gl-output-header">
-          <span class="gl-output-title">&#9670; GL OUTPUT</span>
-          <div class="gl-output-spacer"></div>
-          <button class="gl-reset-btn" id="glResetBtn" hidden>&#8634; Reset</button>
-          <button class="gl-render-btn" id="glRenderBtn">&#9656; Render 3D</button>
+      <div class="output-body" id="outputBody" data-gl-position="bottom">
+        <div class="output-log-pane">
+          <div class="output-toolbar">
+            <span class="output-title">Compiler Output</span>
+            <div class="output-toolbar-spacer"></div>
+            <label class="net-toggle">
+              <input type="checkbox" id="netModeToggle">
+              <span>NET mode</span>
+            </label>
+            <button class="icon-btn" id="clearOutputBtn" title="Clear output">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+          <div class="output-log" id="outputLog">
+            <div class="output-empty">Press <strong>RUN</strong> to compile your Ash script.</div>
+          </div>
         </div>
-        <div class="gl-output-body" id="glOutputBody">
-          <canvas class="gl-output-canvas" id="glOutputCanvas" hidden></canvas>
-          <div class="gl-output-empty" id="glOutputEmpty">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="1.5"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44a.98.98 0 0 1-.94 0l-7.9-4.44a1 1 0 0 1-.53-.88v-9c0-.38.21-.71.53-.88l7.9-4.44a.98.98 0 0 1 .94 0l7.9 4.44c.32.17.53.5.53.88v9z"/></svg>
-            <div>Tap &#9656; Render 3D to execute graphical output</div>
-            <div class="sub">import (GLDrivers) &middot; Arc Edge Vector supported</div>
+
+        <!-- GL output — appears when the compiled script imports GLDrivers -->
+        <div class="gl-output-section" id="glOutputSection" hidden>
+          <div class="gl-output-header">
+            <span class="gl-output-title">&#9670; GL OUTPUT</span>
+            <div class="gl-output-spacer"></div>
+            <div class="gl-position-menu">
+              <button class="icon-btn" id="glPositionBtn" title="Move graphical output">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+              </button>
+              <div class="gl-position-options" id="glPositionOptions" hidden>
+                <button data-pos="top">Top</button>
+                <button data-pos="bottom">Bottom</button>
+                <button data-pos="left">Left</button>
+                <button data-pos="right">Right</button>
+              </div>
+            </div>
+            <button class="icon-btn" id="glCollapseBtn" title="Collapse graphical output">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="glCollapseIcon"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <button class="gl-reset-btn" id="glResetBtn" hidden>&#8634; Reset</button>
+            <button class="gl-render-btn" id="glRenderBtn">&#9656; Render 3D</button>
+          </div>
+          <div class="gl-output-body" id="glOutputBody">
+            <canvas class="gl-output-canvas" id="glOutputCanvas" hidden></canvas>
+            <div class="gl-output-empty" id="glOutputEmpty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="1.5"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44a.98.98 0 0 1-.94 0l-7.9-4.44a1 1 0 0 1-.53-.88v-9c0-.38.21-.71.53-.88l7.9-4.44a.98.98 0 0 1 .94 0l7.9 4.44c.32.17.53.5.53.88v9z"/></svg>
+              <div>Tap &#9656; Render 3D to execute graphical output</div>
+              <div class="sub">import (GLDrivers) &middot; Arc Edge Vector supported</div>
+            </div>
           </div>
         </div>
       </div>
@@ -427,26 +450,121 @@
 </div>
 
 <!-- ═══════════════ Toast ═══════════════ -->
+
+<!-- ═══════════════ Floating Reckon Calculator ═══════════════ -->
+<div class="calc-float" id="calcFloatWindow" hidden>
+  <div class="calc-float-header" id="calcFloatHeader">
+    <div class="calc-float-drag">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>
+      <span>Reckon</span>
+      <span class="calc-float-sub">Scientific Calculator</span>
+    </div>
+    <div class="calc-float-tabs" role="tablist" aria-label="View">
+      <button class="calc-tab on" id="tab-calc" type="button" onclick="showView('calc')">Calculator</button>
+      <button class="calc-tab" id="tab-src" type="button" onclick="showView('src')">C++ source</button>
+    </div>
+    <div class="calc-float-actions">
+      <div class="calc-theme-wrap">
+        <button class="calc-ghost-btn" id="themeBtn" type="button" aria-expanded="false" aria-controls="themePop">Theme</button>
+        <div class="calc-theme-pop calc-hidden" id="themePop" role="dialog" aria-label="Theme">
+          <h3>Presets</h3>
+          <div class="calc-swatches" id="swatches"></div>
+          <div class="calc-custom">
+            <h3>Custom</h3>
+            <label>Accent <input id="cAccent" type="color" value="#ece8e0"></label>
+            <label>LCD <input id="cLcd" type="color" value="#d2dccb"></label>
+            <label>Base
+              <span class="calc-seg" role="group" aria-label="Base">
+                <button type="button" id="baseNight" class="on">Night</button>
+                <button type="button" id="basePaper">Paper</button>
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <button class="calc-icon-btn" id="calcCollapseBtn" title="Collapse">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="calcCollapseIcon"><polyline points="18 15 12 9 6 15"/></svg>
+      </button>
+      <button class="calc-icon-btn calc-close-btn" id="calcCloseBtn" title="Close">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="calc-float-body" id="calcFloatBody">
+    <main>
+    <section id="view-calc">
+
+  <div class="calc-wrap">
+    <div class="calc-chassis">
+      <div class="calc-lcd">
+        <div class="calc-lcd-top">
+          <div class="calc-flags" id="flags"><b>DEG</b></div>
+          <button class="calc-bs" type="button" aria-label="Backspace" onclick="go({t:'bs'})">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 5H4l-3 7 3 7h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H10Z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/></svg>
+          </button>
+        </div>
+        <div class="calc-out s" id="out" aria-live="polite">0</div>
+      </div>
+      <div class="calc-pads">
+        <div class="calc-sci" id="sci"></div>
+        <div class="calc-num" id="num"></div>
+      </div>
+    </div>
+    <aside class="calc-tape">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <h2>Tape</h2>
+        <button class="calc-linkish" id="clrTape" style="display:none" onclick="clearTape()">Clear</button>
+      </div>
+      <p class="calc-hint" id="hint">Press equals to keep a running tape. Group with parentheses, raise with xⁿ, or take an nth root — e.g. 3 ⁿ√ ( 8 + 19 ).</p>
+      <div id="hist"></div>
+    </aside>
+  </div>
+
+    </section>
+    <section id="view-src" class="calc-hidden">
+
+  <div class="calc-srcbar">
+    <div>
+      <div class="calc-kicker" style="margin-bottom:6px">calculator.cpp</div>
+      <p>One file. Algebraic engine with x^n, nth roots, and parentheses. Windows GUI and terminal GUI. Standard C++ plus the OS — no Qt, no GTK.</p>
+    </div>
+    <div class="calc-btns">
+      <button class="calc-src-btn" type="button" onclick="copyCpp()">Copy</button>
+      <a class="calc-src-btn" href="calculator.cpp" download="calculator.cpp">Download</a>
+    </div>
+  </div>
+  <pre class="calc-src" id="cpp" class="calc-src">Loading calculator.cpp…</pre>
+
+    </section>
+    </main>
+  </div>
+
+  <div class="calc-resize-handle" id="calcResizeHandle"></div>
+</div>
+
 <div id="toast" class="toast" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="js/leatr-engine.js?v=1789741396"></script>
-<script src="js/storage.js?v=1789741396"></script>
-<script src="js/editor.js?v=1789741396"></script>
-<script src="js/terminal.js?v=1789741396"></script>
-<script src="js/mash-model.js?v=1789741396"></script>
-<script src="js/mash-canvas.js?v=1789741396"></script>
-<script src="js/maze-engine.js?v=1789741396"></script>
-<script src="js/maze-3d.js?v=1789741396"></script>
-<script src="js/cryptology.js?v=1789741396"></script>
-<script src="js/maze-ui.js?v=1789741396"></script>
-<script src="js/gl-output.js?v=1789741396"></script>
-<script src="js/arc-edge-gl.js?v=1789741396"></script>
-<script src="js/python-compiler.js?v=1789741396"></script>
-<script src="js/sql-compiler.js?v=1789741396"></script>
-<script src="js/js-compiler.js?v=1789741396"></script>
-<script src="js/cpp-compiler.js?v=1789741396"></script>
-<script src="js/help-content.js?v=1789741396"></script>
-<script src="js/app.js?v=1789741396"></script>
+<script src="js/leatr-engine.js?v=1789748389"></script>
+<script src="js/storage.js?v=1789748389"></script>
+<script src="js/editor.js?v=1789748389"></script>
+<script src="js/terminal.js?v=1789748389"></script>
+<script src="js/mash-model.js?v=1789748389"></script>
+<script src="js/mash-canvas.js?v=1789748389"></script>
+<script src="js/maze-engine.js?v=1789748389"></script>
+<script src="js/maze-3d.js?v=1789748389"></script>
+<script src="js/cryptology.js?v=1789748389"></script>
+<script src="js/maze-ui.js?v=1789748389"></script>
+<script src="js/gl-output.js?v=1789748389"></script>
+<script src="js/arc-edge-gl.js?v=1789748389"></script>
+<script src="js/python-compiler.js?v=1789748389"></script>
+<script src="js/sql-compiler.js?v=1789748389"></script>
+<script src="js/js-compiler.js?v=1789748389"></script>
+<script src="js/cpp-compiler.js?v=1789748389"></script>
+<script src="js/calculator-module.js?v=1789748389"></script>
+<script src="js/calculator-window.js?v=1789748389"></script>
+<script src="js/help-content.js?v=1789748389"></script>
+<script src="js/app.js?v=1789748389"></script>
 </body>
 </html>

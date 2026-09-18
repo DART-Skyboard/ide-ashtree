@@ -50,6 +50,29 @@ function getApi() {
   return apiReady;
 }
 
+// This vendored toolchain's libc++abi (built ~2020, before WebAssembly
+// exception handling matured) has no real __cxa_throw/__cxa_begin_catch
+// implementation — it was built in "exceptions disabled" mode. A modern
+// exception-capable libc++abi exists (wasi-sdk 34+), but its object
+// files use a newer format this toolchain's linker cannot read, and a
+// from-source LLVM rebuild needs ~20-40GB of build space this static
+// site's toolchain doesn't have room for. Real C++ compile/link/run
+// and real canvas graphics both work; try/catch/throw doesn't, so we
+// catch that up front with a clear message instead of a cryptic
+// linker error after a real compile attempt.
+function findExceptionUsage(source) {
+  // Strip comments and string/char literals first so keywords inside
+  // them (e.g. a string literal containing the word "throw") don't
+  // produce a false positive.
+  let stripped = source
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/\/\/.*$/gm, " ")
+    .replace(/"(?:[^"\\]|\\.)*"/g, '""')
+    .replace(/'(?:[^'\\]|\\.)*'/g, "''");
+  const m = stripped.match(/\b(try|catch|throw)\b/);
+  return m ? m[1] : null;
+}
+
 self.onmessage = async (event) => {
   const msg = event.data;
 
@@ -59,6 +82,22 @@ self.onmessage = async (event) => {
     return;
   }
   if (msg.id !== "run") return;
+
+  const exceptionKeyword = findExceptionUsage(msg.source);
+  if (exceptionKeyword) {
+    self.postMessage({
+      id: "error",
+      message:
+        `This code uses C++ exceptions ('${exceptionKeyword}'), which this browser ` +
+        `compiler can't run yet. The compiler itself works — real compiling, linking, ` +
+        `console output, and canvas graphics all run for real — but the exception-` +
+        `handling runtime it ships with predates WebAssembly's modern exception support, ` +
+        `and no maintained browser-compiler build with that support exists yet to swap in. ` +
+        `Rewrite error handling with return codes / std::optional / error output params ` +
+        `instead of try/catch/throw and it will compile and run normally.`
+    });
+    return;
+  }
 
   try {
     await getApi();

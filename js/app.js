@@ -241,7 +241,62 @@ import (GLDrivers)
   }
   irout ("Result: " placeto (s))
 }|';'|
-` }
+` },
+  { name: "Reckon Calculator (Ash)", code: `// RECKON CALCULATOR — scientific calculator, in Ash Edge Language
+// Real port of the Reckon engine (see "Reckon Calculator (C++)" for
+// the original): tokenizer -> recursive-descent parser -> evaluator,
+// same operator precedence chain, same scientific functions.
+// A working version of this exact logic runs live as the IDE's
+// built-in calculator — open it from the calculator icon in the
+// top bar. This file expresses that same pipeline as Ash nodes.
+{{env:ReckonCalculator}}
+[[script:reckon-calc-v1]]
+[poly: expression-tree]
+
+(TokenizerNode):-: {
+  {{env:ReckonCalculator}}
+  with var (src) var (tokens) {
+    irin ("chars:0-9,.,+,-,*,/,^,(,),!,% words:sin,cos,tan,ln,log,sqrt,cbrt,abs,pi,e,nrt")
+    thenplace var (tokens) with var (src)
+  }
+  irout ("Result: " placeto (tokens))
+}|';'|
+
+(ParserNode):-: {
+  [poly: precedence-chain]
+  with var (tokens) var (ast) {
+    irin ("expr:term(+|-)* term:power(*|/)* power:unary(^|nrt)? unary:(-|+)?postfix postfix:primary(!|%)*")
+    thenplace var (ast) with var (tokens)
+  }
+  irout ("Result: " placeto (ast))
+}|';'|
+
+(EvaluatorNode):-: {
+  [poly: recursive-eval]
+  with var (ast) var (deg) var (result) {
+    irin ("mode:deg fns:sin,cos,tan,asin,acos,atan,sinh,cosh,tanh,ln,log,exp,sqrt,cbrt,abs consts:pi,e")
+    thenplace var (result) with var (ast)
+  }
+  irout ("Result: " placeto (result))
+}|';'|
+
+(FormatNode):-: {
+  with var (value) var (display) {
+    irin ("precision:12 tidy:round-if-near-integer errorText:Error,Overflow,Syntax error,Cannot divide by zero,Mismatched parentheses,Invalid input")
+    thenplace var (display) with var (value)
+  }
+  irout ("Result: " placeto (display))
+}|';'|
+
+(TapeNode):-: {
+  with var (expr) var (result) var (history) {
+    irin ("action:record max:24 storage:localStorage")
+    thenplace var (history) with var (expr)
+  }
+  irout ("Result: " placeto (history))
+}|';'|
+` },
+  { name: "Reckon Calculator (C++)", code: null, fetchPath: "assets/calculator.cpp", lang: "cpp" }
 ];
 
 // ── Starter templates for real-language mode ──────────────
@@ -333,6 +388,96 @@ const fileState = {
 };
 let currentLang = "ash";
 
+// ── Open-file tabs — each buffer stays live in memory so switching
+// tabs is instant and never re-prompts to save; closing a tab
+// discards its in-memory buffer (the file itself is untouched if it
+// was already saved via the Files panel). ──
+let openTabs = [];   // { name, lang, content, dirty }
+let activeTabIdx = -1;
+
+function openTab(name, content, lang) {
+  // Reuse an existing tab for this filename rather than duplicating it.
+  const existingIdx = openTabs.findIndex((t) => t.name === name);
+  if (existingIdx >= 0) {
+    saveActiveTabContent();
+    activeTabIdx = existingIdx;
+  } else {
+    saveActiveTabContent();
+    openTabs.push({ name, lang, content, dirty: false });
+    activeTabIdx = openTabs.length - 1;
+  }
+  const tab = openTabs[activeTabIdx];
+  AshEditor.setValue(tab.content);
+  setLanguage(tab.lang);
+  fileState.currentFile = tab.name;
+  markDirty(tab.dirty);
+  updateFileChip();
+  renderTabstrip();
+}
+
+function saveActiveTabContent() {
+  if (activeTabIdx >= 0 && openTabs[activeTabIdx]) {
+    openTabs[activeTabIdx].content = AshEditor.getValue();
+    openTabs[activeTabIdx].dirty = fileState.isDirty;
+  }
+}
+
+function switchEditorTab(idxOrEvent) {
+  const idx = typeof idxOrEvent === "number" ? idxOrEvent : null;
+  if (idx === null || idx === activeTabIdx) return;
+  saveActiveTabContent();
+  activeTabIdx = idx;
+  const tab = openTabs[idx];
+  AshEditor.setValue(tab.content);
+  setLanguage(tab.lang);
+  fileState.currentFile = tab.name;
+  markDirty(tab.dirty);
+  updateFileChip();
+  renderTabstrip();
+}
+
+function closeTab(idx) {
+  const wasActive = idx === activeTabIdx;
+  openTabs.splice(idx, 1);
+  if (openTabs.length === 0) {
+    activeTabIdx = -1;
+    renderTabstrip();
+    return;
+  }
+  if (wasActive) {
+    const nextIdx = Math.min(idx, openTabs.length - 1);
+    activeTabIdx = -1; // force switchEditorTab to actually reload, not no-op
+    switchEditorTab(nextIdx);
+  } else {
+    if (idx < activeTabIdx) activeTabIdx -= 1;
+    renderTabstrip();
+  }
+}
+
+function renderTabstrip() {
+  const strip = document.getElementById("editorTabstrip");
+  strip.innerHTML = openTabs.map((t, i) => `
+    <div class="editor-tab ${i === activeTabIdx ? "active" : ""} ${t.dirty ? "dirty" : ""}" data-idx="${i}">
+      <span class="editor-tab-dot"></span>
+      <span class="editor-tab-name">${escHtml(t.name)}</span>
+      <button class="editor-tab-close" data-closeidx="${i}" title="Close">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`).join("");
+  strip.querySelectorAll(".editor-tab").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      if (e.target.closest(".editor-tab-close")) return;
+      switchEditorTab(+el.dataset.idx);
+    });
+  });
+  strip.querySelectorAll(".editor-tab-close").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeTab(+btn.dataset.closeidx);
+    });
+  });
+}
+
 function setStatus(kind, text) {
   const dot = document.getElementById("statusDot");
   const label = document.getElementById("statusText");
@@ -359,6 +504,27 @@ function toast(msg) {
     el.classList.remove("show");
     setTimeout(() => { el.hidden = true; }, 200);
   }, 1800);
+}
+
+// ── Real file-system download, not an in-browser view ──────
+// Some mobile browsers open a downloaded file inline (as a text/html
+// or text/plain viewer tab) instead of prompting a save-to-device
+// dialog, which looks like "the browser kept it" rather than a real
+// save. Forcing application/octet-stream — the same trick native
+// download managers use — makes every browser treat it as a binary
+// attachment and hand it straight to the OS's save flow instead of
+// trying to render it.
+function downloadTextFile(filename, content) {
+  const blob = new Blob([content], { type: "application/octet-stream" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
 // ── Language switching ─────────────────────────────────────
@@ -510,6 +676,56 @@ function resetGLOutput() {
   document.getElementById("glResetBtn").hidden = true;
 }
 
+// ── GL output layout: top/bottom/left/right + collapse ──────
+// Default stays "bottom" (stacked under the compiler log) unless the
+// user has picked something else before — persisted so it sticks
+// across sessions, same as any other display preference.
+function initGlLayoutControls() {
+  const body = document.getElementById("outputBody");
+  const posBtn = document.getElementById("glPositionBtn");
+  const posMenu = document.getElementById("glPositionOptions");
+  const collapseBtn = document.getElementById("glCollapseBtn");
+  const collapseIcon = document.getElementById("glCollapseIcon");
+
+  const savedPos = IDEStorage.get("gl_output_position", "bottom");
+  body.dataset.glPosition = savedPos;
+
+  posBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    posMenu.hidden = !posMenu.hidden;
+  });
+  document.addEventListener("click", () => { posMenu.hidden = true; });
+  posMenu.addEventListener("click", (e) => e.stopPropagation());
+
+  posMenu.querySelectorAll("[data-pos]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      body.dataset.glPosition = btn.dataset.pos;
+      IDEStorage.set("gl_output_position", btn.dataset.pos);
+      posMenu.hidden = true;
+      // Three.js/WebGL canvases need an explicit resize after their
+      // container's dimensions change — a plain CSS reflow doesn't
+      // trigger it on its own.
+      requestAnimationFrame(() => {
+        if (GLOutput.three) GLOutput.three.resize();
+        if (GLOutput.arcEdge) GLOutput.arcEdge.resize();
+      });
+    });
+  });
+
+  collapseBtn.addEventListener("click", () => {
+    const collapsed = body.classList.toggle("gl-collapsed");
+    collapseIcon.innerHTML = collapsed
+      ? '<polyline points="18 15 12 9 6 15"/>'
+      : '<polyline points="6 9 12 15 18 9"/>';
+    if (!collapsed) {
+      requestAnimationFrame(() => {
+        if (GLOutput.three) GLOutput.three.resize();
+        if (GLOutput.arcEdge) GLOutput.arcEdge.resize();
+      });
+    }
+  });
+}
+
 function renderOutput() {
   const log = document.getElementById("outputLog");
   if (engine.compilerLines.length === 0) {
@@ -567,10 +783,9 @@ function renderFilesList() {
 function openLocalFile(name) {
   const content = IDEStorage.loadFile(name);
   if (content === null) return;
-  AshEditor.setValue(content);
-  fileState.currentFile = name;
-  markDirty(false);
-  updateFileChip();
+  const extToLang = { ".ash": "ash", ".py": "python", ".cpp": "cpp", ".cc": "cpp", ".c": "cpp", ".js": "javascript", ".sql": "sql" };
+  const ext = "." + name.split(".").pop().toLowerCase();
+  openTab(name, content, extToLang[ext] || "ash");
   renderFilesList();
   switchTab("editor");
 }
@@ -578,17 +793,24 @@ function openLocalFile(name) {
 function saveCurrentFile() {
   IDEStorage.saveFile(fileState.currentFile, AshEditor.getValue());
   markDirty(false);
+  if (activeTabIdx >= 0) openTabs[activeTabIdx].dirty = false;
+  renderTabstrip();
   renderFilesList();
 }
 
 function newFile() {
-  const name = IDEStorage.uniqueFileName("untitled");
+  // uniqueFileName only checks saved files — a freshly-opened, not-yet-
+  // saved tab (like the initial untitled.ash from boot()) wouldn't be
+  // seen as taken, so also check against currently open tab names.
+  let name = IDEStorage.uniqueFileName("untitled");
+  while (openTabs.some((t) => t.name === name)) {
+    const m = name.match(/^untitled(?:_(\d+))?\.ash$/);
+    const n = m && m[1] ? parseInt(m[1], 10) + 1 : 1;
+    name = `untitled_${n}.ash`;
+  }
   const initial = `// ${name}\n// Ash Edge Language · LEATR v2\n{{env:MyProject}}\n[[script:new-script]]\n\n`;
   IDEStorage.saveFile(name, initial);
-  AshEditor.setValue(initial);
-  fileState.currentFile = name;
-  markDirty(false);
-  updateFileChip();
+  openTab(name, initial, "ash");
   renderFilesList();
 }
 
@@ -811,10 +1033,9 @@ function handleToolAction(action) {
     case "addOutput": mashCanvas.addTypedNode("output_form", "output.display()"); break;
     case "toAsh": {
       const code = MashAshCodeGenerator.toAshSource(mashStore.activeDoc);
-      AshEditor.setValue(code);
-      fileState.currentFile = `${mashStore.activeDoc.title.replace(/[^a-z0-9]/gi, "_") || "generated"}.ash`;
+      const name = `${mashStore.activeDoc.title.replace(/[^a-z0-9]/gi, "_") || "generated"}.ash`;
+      openTab(name, code, "ash");
       markDirty(true);
-      updateFileChip();
       switchTab("editor");
       toast("Generated Ash code from mind map");
       break;
@@ -828,14 +1049,27 @@ function initEditorToolbar() {
   const sel = document.getElementById("exampleSelect");
   sel.innerHTML = `<option value="">Examples…</option>` +
     EXAMPLES.map((e, i) => `<option value="${i}">${escHtml(e.name)}</option>`).join("");
-  sel.addEventListener("change", () => {
+  sel.addEventListener("change", async () => {
     if (sel.value === "") return;
     const ex = EXAMPLES[+sel.value];
-    AshEditor.setValue(ex.code);
-    setLanguage("ash");
-    fileState.currentFile = `${ex.name.replace(/\s+/g, "-").toLowerCase()}.ash`;
+    const lang = ex.lang || "ash";
+    const extMap = { ash: ".ash", cpp: ".cpp" };
+    const name = `${ex.name.replace(/\s+/g, "-").toLowerCase()}${extMap[lang] || ".ash"}`;
+    if (ex.fetchPath) {
+      // Real C++ example fetched from the same bundled asset the
+      // built-in calculator's "C++ source" tab reads — one file,
+      // two places it's shown, always in sync.
+      try {
+        const res = await fetch(ex.fetchPath);
+        const code = await res.text();
+        openTab(name, code, lang);
+      } catch (e) {
+        toast("Could not load " + ex.fetchPath);
+      }
+    } else {
+      openTab(name, ex.code, lang);
+    }
     markDirty(false);
-    updateFileChip();
     sel.value = "";
   });
 
@@ -848,15 +1082,9 @@ function initEditorToolbar() {
     // so switching languages never silently discards real work.
     const isBlankish = !fileState.isDirty;
     if (lang !== "ash" && isBlankish) {
-      AshEditor.setValue(LANG_TEMPLATES[lang]);
-      fileState.currentFile = `untitled${LANG_EXT[lang]}`;
-      markDirty(false);
-      updateFileChip();
+      openTab(`untitled${LANG_EXT[lang]}`, LANG_TEMPLATES[lang], lang);
     } else if (lang === "ash" && isBlankish) {
-      AshEditor.setValue(DEFAULT_SCRIPT);
-      fileState.currentFile = "untitled.ash";
-      markDirty(false);
-      updateFileChip();
+      openTab("untitled.ash", DEFAULT_SCRIPT, "ash");
     }
   });
 
@@ -866,11 +1094,7 @@ function initEditorToolbar() {
   document.getElementById("filesNewBtn").addEventListener("click", newFile);
 
   document.getElementById("downloadBtn").addEventListener("click", () => {
-    const blob = new Blob([AshEditor.getValue()], { type: "text/plain" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = fileState.currentFile;
-    a.click();
+    downloadTextFile(fileState.currentFile, AshEditor.getValue());
   });
 
   document.getElementById("uploadInput").addEventListener("change", (e) => {
@@ -878,13 +1102,10 @@ function initEditorToolbar() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      AshEditor.setValue(reader.result);
-      fileState.currentFile = file.name;
       const ext = "." + file.name.split(".").pop().toLowerCase();
       const extToLang = { ".ash": "ash", ".py": "python", ".cpp": "cpp", ".cc": "cpp", ".c": "cpp", ".js": "javascript", ".sql": "sql" };
-      if (extToLang[ext]) setLanguage(extToLang[ext]);
+      openTab(file.name, reader.result, extToLang[ext] || "ash");
       markDirty(false);
-      updateFileChip();
     };
     reader.readAsText(file);
     e.target.value = "";
@@ -948,18 +1169,24 @@ function initNodeModal() {
 function boot() {
   initTabs();
   AshEditor.init();
-  AshEditor.onChange = () => { markDirty(true); };
+  AshEditor.onChange = () => {
+    markDirty(true);
+    if (activeTabIdx >= 0) {
+      openTabs[activeTabIdx].dirty = true;
+      renderTabstrip();
+    }
+  };
 
   const savedContent = IDEStorage.loadFile("untitled.ash");
-  AshEditor.setValue(savedContent !== null ? savedContent : DEFAULT_SCRIPT);
+  openTab("untitled.ash", savedContent !== null ? savedContent : DEFAULT_SCRIPT, "ash");
   markDirty(false);
-  updateFileChip();
 
   AshTerminal.init(engine, () => AshEditor.getValue());
   initEditorToolbar();
   initNodeModal();
   initMindMap();
   MazeUI.init(() => AshEditor.getValue());
+  CalcWindow.init();
   renderFilesList();
 
   document.getElementById("helpContent").innerHTML = HELP_HTML;
@@ -969,6 +1196,7 @@ function boot() {
 
   document.getElementById("glRenderBtn").addEventListener("click", () => renderGLOutput(AshEditor.getValue()));
   document.getElementById("glResetBtn").addEventListener("click", resetGLOutput);
+  initGlLayoutControls();
 
   // Autosave current buffer periodically + on tab switch away from editor
   setInterval(() => { if (fileState.isDirty) saveCurrentFile(); }, 4000);
