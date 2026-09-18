@@ -126,20 +126,29 @@ pre.calc-src{margin:0 auto;max-width:1040px;padding:16px;border:1px solid var(--
    (Ash Tree IDE additions on top of the embedded Reckon calc)
    ═══════════════════════════════════════════════════════════ */
 .calc-float{
-  position:fixed; top:80px; left:calc(50% - 260px);
-  width:540px; max-width:calc(100vw - 20px);
+  position:fixed; top:60px; left:calc(50% - 460px);
+  width:920px; max-width:calc(100vw - 20px);
   z-index:200; border-radius:16px; overflow:hidden;
   background:var(--chassis, #1e1c19);
   box-shadow:0 24px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06);
   display:flex; flex-direction:column;
 }
 .calc-float[hidden]{ display:none; }
+/* The reference page's .calc-wrap stacks keypad+tape below 860px
+   viewport width, which was meant for a whole browser window, not a
+   floating panel — a window narrower than that but still roomy
+   enough for both side by side would wrongly stack them. Keep them
+   side-by-side down to a lower, window-appropriate threshold. */
+@media (min-width:620px){
+  .calc-float .calc-wrap{ flex-direction:row !important; align-items:flex-start !important; }
+}
 
 .calc-float-header{
   display:flex; align-items:center; gap:10px; flex-wrap:wrap;
   padding:9px 10px 9px 14px; background:#111;
   border-bottom:1px solid rgba(255,255,255,.08);
   cursor:grab; user-select:none; flex-shrink:0;
+  touch-action:none;
 }
 .calc-float-header:active{ cursor:grabbing; }
 .calc-float-drag{
@@ -177,7 +186,7 @@ pre.calc-src{margin:0 auto;max-width:1040px;padding:16px;border:1px solid var(--
 
 .calc-resize-handle{
   position:absolute; right:0; bottom:0; width:18px; height:18px;
-  cursor:nwse-resize; z-index:5;
+  cursor:nwse-resize; z-index:5; touch-action:none;
 }
 .calc-resize-handle::after{
   content:""; position:absolute; right:4px; bottom:4px; width:8px; height:8px;
