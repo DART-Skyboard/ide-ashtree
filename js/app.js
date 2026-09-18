@@ -244,6 +244,60 @@ import (GLDrivers)
 ` }
 ];
 
+// ── Starter templates for real-language mode ──────────────
+const LANG_TEMPLATES = {
+  python: `# Python 3 — real CPython via Pyodide
+def greet(name):
+    return f"Hello, {name}!"
+
+for i in range(3):
+    print(greet("Ash Tree"), i)
+`,
+  cpp: `// C / C++ — real Clang, compiled and linked to WebAssembly, run via WASI
+#include <cstdio>
+
+int main() {
+    printf("Hello from real C++!\\n");
+    for (int i = 0; i < 3; i++) {
+        printf("count: %d\\n", i);
+    }
+    return 0;
+}
+`,
+  javascript: `// JavaScript — runs natively
+function greet(name) {
+  return \`Hello, \${name}!\`;
+}
+
+for (let i = 0; i < 3; i++) {
+  console.log(greet("Ash Tree"), i);
+}
+`,
+  sql: `-- SQL — real SQLite (sql.js), fresh in-memory database each run
+CREATE TABLE nodes (id INTEGER PRIMARY KEY, name TEXT, kind TEXT);
+INSERT INTO nodes (name, kind) VALUES ('root', 'main'), ('leaf1', 'note'), ('leaf2', 'note');
+
+SELECT * FROM nodes;
+`
+};
+
+const CPP_GRAPHICS_TEMPLATE = `// C++ graphical output — draws to a real <canvas> via canvas.h
+#include <canvas_main.h>
+
+Canvas canvas(320, 240);
+
+void setup() {
+    canvas.setFillStyle("#00ffcc");
+}
+
+void loop(double t, double dt) {
+    canvas.clearRect(0, 0, 320, 240);
+    canvas.beginPath();
+    canvas.arc(160, 120, 40 + 20 * (t - (int)t), 0, 6.283);
+    canvas.fill(FILL_RULE_NONZERO);
+}
+`;
+
 const engine = new LeatrEngine();
 const mashStore = new MashStore();
 let mashCanvas = null;
@@ -277,6 +331,7 @@ const fileState = {
   currentFile: "untitled.ash",
   isDirty: false
 };
+let currentLang = "ash";
 
 function setStatus(kind, text) {
   const dot = document.getElementById("statusDot");
@@ -306,8 +361,53 @@ function toast(msg) {
   }, 1800);
 }
 
+// ── Language switching ─────────────────────────────────────
+const LANG_EXT = { ash: ".ash", python: ".py", cpp: ".cpp", javascript: ".js", sql: ".sql" };
+const LANG_LABEL = { python: "PYTHON 3", cpp: "C / C++", javascript: "JAVASCRIPT", sql: "SQL" };
+
+function setLanguage(lang) {
+  currentLang = lang;
+  document.getElementById("langSelect").value = lang;
+  const isAsh = lang === "ash";
+  document.getElementById("ashFooter").hidden = !isAsh;
+  document.getElementById("langConsole").hidden = isAsh;
+  if (!isAsh) {
+    document.getElementById("langConsoleTitle").textContent = LANG_LABEL[lang];
+  }
+  // Ash keeps its own Output-tab flow; other languages don't use it.
+  document.getElementById("glOutputSection").hidden = true;
+  GLOutput.teardown();
+}
+
+function langConsoleClear() {
+  document.getElementById("langConsoleOutput").innerHTML = "";
+  document.getElementById("langCanvas").hidden = true;
+}
+
+function langConsoleWrite(text, isStderr) {
+  const out = document.getElementById("langConsoleOutput");
+  const placeholder = out.querySelector(".placeholder");
+  if (placeholder) placeholder.remove();
+  // wasm-clang's own log lines carry ANSI color codes meant for a
+  // terminal; strip them since this is a plain HTML <div>.
+  const clean = text.replace(/\x1b\[[0-9;]*m/g, "");
+  const span = document.createElement("span");
+  if (isStderr) span.className = "stderr-line";
+  span.textContent = clean;
+  out.appendChild(span);
+  out.scrollTop = out.scrollHeight;
+}
+
+function langConsoleStatus(kind, text) {
+  const el = document.getElementById("langConsoleStatus");
+  el.className = "lang-console-status" + (kind ? " " + kind : "");
+  el.textContent = text;
+}
+
 // ── Compile / run ─────────────────────────────────────────
 function runCompile() {
+  if (currentLang !== "ash") return runOtherLanguage();
+
   setStatus("running", "compiling…");
   const netMode = document.getElementById("netModeToggle").checked;
   try {
@@ -323,6 +423,54 @@ function runCompile() {
   } catch (err) {
     setStatus("err", "compile error");
     console.error(err);
+  }
+}
+
+// Real multi-language execution — Python (Pyodide), C/C++ (wasm-clang),
+// JavaScript (native), SQL (sql.js). Each is a genuine interpreter/
+// compiler, not a simulation; output streams into the console panel
+// beneath the editor exactly as it's produced.
+function runOtherLanguage() {
+  const source = AshEditor.getValue();
+  langConsoleClear();
+  setStatus("running", `running ${currentLang}…`);
+  langConsoleStatus("running", "Running…");
+
+  const onOutput = (text) => langConsoleWrite(text, false);
+  const onDone = (code) => {
+    setStatus("ok", `${currentLang} · exit ${code}`);
+    langConsoleStatus("ok", `Finished (exit ${code})`);
+  };
+  const onError = (message) => {
+    setStatus("err", `${currentLang} error`);
+    langConsoleStatus("err", "Error");
+    langConsoleWrite(message + "\n", true);
+  };
+  const onLoading = () => {
+    langConsoleStatus("running", "Loading runtime… (first run only)");
+  };
+
+  if (currentLang === "python") {
+    PythonCompiler.run(source, { onOutput, onDone, onError, onLoading });
+  } else if (currentLang === "javascript") {
+    JsCompiler.run(source, { onOutput, onDone, onError });
+  } else if (currentLang === "sql") {
+    SqlCompiler.run(source, { onOutput, onDone, onError, onLoading });
+  } else if (currentLang === "cpp") {
+    const needsCanvas = source.includes("canvas.h") || source.includes("canvas_main.h") || source.includes("Canvas ");
+    const canvasEl = document.getElementById("langCanvas");
+    if (needsCanvas) {
+      canvasEl.hidden = false;
+      canvasEl.width = 320; canvasEl.height = 240;
+      CppCompiler.attachCanvas(canvasEl);
+    } else {
+      canvasEl.hidden = true;
+    }
+    CppCompiler.onOutput = onOutput;
+    CppCompiler.onDone = onDone;
+    CppCompiler.onError = onError;
+    langConsoleStatus("running", "Compiling (clang) → linking (lld) → running…");
+    CppCompiler.run(source);
   }
 }
 
@@ -684,11 +832,35 @@ function initEditorToolbar() {
     if (sel.value === "") return;
     const ex = EXAMPLES[+sel.value];
     AshEditor.setValue(ex.code);
+    setLanguage("ash");
     fileState.currentFile = `${ex.name.replace(/\s+/g, "-").toLowerCase()}.ash`;
     markDirty(false);
     updateFileChip();
     sel.value = "";
   });
+
+  document.getElementById("langSelect").addEventListener("change", (e) => {
+    const lang = e.target.value;
+    setLanguage(lang);
+    // Loading a language's starter template is a convenience, not a
+    // requirement — only do it when the buffer is still the default/
+    // untouched Ash script or another language's untouched template,
+    // so switching languages never silently discards real work.
+    const isBlankish = !fileState.isDirty;
+    if (lang !== "ash" && isBlankish) {
+      AshEditor.setValue(LANG_TEMPLATES[lang]);
+      fileState.currentFile = `untitled${LANG_EXT[lang]}`;
+      markDirty(false);
+      updateFileChip();
+    } else if (lang === "ash" && isBlankish) {
+      AshEditor.setValue(DEFAULT_SCRIPT);
+      fileState.currentFile = "untitled.ash";
+      markDirty(false);
+      updateFileChip();
+    }
+  });
+
+  document.getElementById("langConsoleClearBtn").addEventListener("click", langConsoleClear);
 
   document.getElementById("newFileBtn").addEventListener("click", newFile);
   document.getElementById("filesNewBtn").addEventListener("click", newFile);
@@ -708,6 +880,9 @@ function initEditorToolbar() {
     reader.onload = () => {
       AshEditor.setValue(reader.result);
       fileState.currentFile = file.name;
+      const ext = "." + file.name.split(".").pop().toLowerCase();
+      const extToLang = { ".ash": "ash", ".py": "python", ".cpp": "cpp", ".cc": "cpp", ".c": "cpp", ".js": "javascript", ".sql": "sql" };
+      if (extToLang[ext]) setLanguage(extToLang[ext]);
       markDirty(false);
       updateFileChip();
     };

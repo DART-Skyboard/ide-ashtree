@@ -16,13 +16,13 @@
 <meta property="og:description" content="A browser-based coding environment for the Ash Edge Language, with a LEATR v2 compiler and the Ash Map visual mind-mapping tool.">
 <meta property="og:image" content="https://ide.leatr.xyz/assets/icons/icon-512.png">
 <meta property="og:type" content="website">
-<link rel="stylesheet" href="css/base.css?v=1789690428">
-<link rel="stylesheet" href="css/layout.css?v=1789690428">
-<link rel="stylesheet" href="css/editor.css?v=1789690428">
-<link rel="stylesheet" href="css/mindmap.css?v=1789690428">
-<link rel="stylesheet" href="css/help.css?v=1789690428">
-<link rel="stylesheet" href="css/maze.css?v=1789690428">
-<link rel="stylesheet" href="css/gl-output.css?v=1789690428">
+<link rel="stylesheet" href="css/base.css?v=1789741396">
+<link rel="stylesheet" href="css/layout.css?v=1789741396">
+<link rel="stylesheet" href="css/editor.css?v=1789741396">
+<link rel="stylesheet" href="css/mindmap.css?v=1789741396">
+<link rel="stylesheet" href="css/help.css?v=1789741396">
+<link rel="stylesheet" href="css/maze.css?v=1789741396">
+<link rel="stylesheet" href="css/gl-output.css?v=1789741396">
 </head>
 <body>
 
@@ -85,6 +85,13 @@
     <!-- ---------- EDITOR ---------- -->
     <section class="panel active" id="panel-editor">
       <div class="editor-toolbar">
+        <select class="lang-select" id="langSelect" title="Language">
+          <option value="ash">Ash Edge</option>
+          <option value="python">Python 3</option>
+          <option value="cpp">C / C++</option>
+          <option value="javascript">JavaScript</option>
+          <option value="sql">SQL</option>
+        </select>
         <div class="file-chip" id="currentFileChip">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           <span id="currentFileName">untitled.ash</span>
@@ -97,13 +104,13 @@
         <button class="icon-btn" id="newFileBtn" title="New file">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
-        <button class="icon-btn" id="downloadBtn" title="Download .ash file">
+        <button class="icon-btn" id="downloadBtn" title="Download file">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </button>
-        <label class="icon-btn" for="uploadInput" title="Open .ash file">
+        <label class="icon-btn" for="uploadInput" title="Open file">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         </label>
-        <input type="file" id="uploadInput" accept=".ash,.txt" hidden>
+        <input type="file" id="uploadInput" accept=".ash,.txt,.py,.cpp,.cc,.c,.js,.sql" hidden>
       </div>
 
       <div class="editor-wrap">
@@ -112,7 +119,23 @@
         <pre class="editor-highlight" id="editorHighlight" aria-hidden="true"></pre>
       </div>
 
-      <div class="editor-footer">
+      <!-- Real-language console: Python/C++/JS/SQL output + optional
+           canvas for C++ graphical programs. Hidden in Ash mode,
+           which uses the LEATR compiler's own Output tab instead. -->
+      <div class="lang-console" id="langConsole" hidden>
+        <div class="lang-console-header">
+          <span class="lang-console-title" id="langConsoleTitle">CONSOLE</span>
+          <div class="lang-console-spacer"></div>
+          <span class="lang-console-status" id="langConsoleStatus"></span>
+          <button class="icon-btn" id="langConsoleClearBtn" title="Clear console">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
+        <canvas class="lang-canvas" id="langCanvas" hidden></canvas>
+        <div class="lang-console-output" id="langConsoleOutput"></div>
+      </div>
+
+      <div class="editor-footer" id="ashFooter">
         <span id="cursorInfo">Ln 1, Col 1</span>
         <span class="footer-sep">·</span>
         <span id="charCount">0 chars</span>
@@ -407,19 +430,23 @@
 <div id="toast" class="toast" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="js/leatr-engine.js?v=1789690428"></script>
-<script src="js/storage.js?v=1789690428"></script>
-<script src="js/editor.js?v=1789690428"></script>
-<script src="js/terminal.js?v=1789690428"></script>
-<script src="js/mash-model.js?v=1789690428"></script>
-<script src="js/mash-canvas.js?v=1789690428"></script>
-<script src="js/maze-engine.js?v=1789690428"></script>
-<script src="js/maze-3d.js?v=1789690428"></script>
-<script src="js/cryptology.js?v=1789690428"></script>
-<script src="js/maze-ui.js?v=1789690428"></script>
-<script src="js/gl-output.js?v=1789690428"></script>
-<script src="js/arc-edge-gl.js?v=1789690428"></script>
-<script src="js/help-content.js?v=1789690428"></script>
-<script src="js/app.js?v=1789690428"></script>
+<script src="js/leatr-engine.js?v=1789741396"></script>
+<script src="js/storage.js?v=1789741396"></script>
+<script src="js/editor.js?v=1789741396"></script>
+<script src="js/terminal.js?v=1789741396"></script>
+<script src="js/mash-model.js?v=1789741396"></script>
+<script src="js/mash-canvas.js?v=1789741396"></script>
+<script src="js/maze-engine.js?v=1789741396"></script>
+<script src="js/maze-3d.js?v=1789741396"></script>
+<script src="js/cryptology.js?v=1789741396"></script>
+<script src="js/maze-ui.js?v=1789741396"></script>
+<script src="js/gl-output.js?v=1789741396"></script>
+<script src="js/arc-edge-gl.js?v=1789741396"></script>
+<script src="js/python-compiler.js?v=1789741396"></script>
+<script src="js/sql-compiler.js?v=1789741396"></script>
+<script src="js/js-compiler.js?v=1789741396"></script>
+<script src="js/cpp-compiler.js?v=1789741396"></script>
+<script src="js/help-content.js?v=1789741396"></script>
+<script src="js/app.js?v=1789741396"></script>
 </body>
 </html>
