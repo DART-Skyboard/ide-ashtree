@@ -183,15 +183,41 @@ class AshRuntime {
   // values in place of their names. No eval() — a small real parser
   // over +,-,*,/,^ and parentheses, operating on the actual numbers
   // the script's variables hold right now.
+  // Research(...)'s expr can be either a literal arithmetic expression
+  // using declared numeric variables directly (Research (mass * gravity)),
+  // OR a single bare identifier naming a declared STRING variable whose
+  // current text IS the expression to evaluate (Research (expr), where
+  // `expr` holds "3+4*2" — set live via `set expr 3+4*2` in the terminal).
+  // The second form is what makes a real calculator possible in Ash: the
+  // formula itself becomes data the user can change at runtime, not a
+  // fixed token in the source.
   _evalExpr(expr) {
     if (!expr) return null;
-    let substituted = expr;
+    let source = expr;
+    if (this.hasVar(expr.trim()) && typeof this.vars[expr.trim()] === "string") {
+      source = this.vars[expr.trim()];
+    }
+    let substituted = source;
     for (const name of Object.keys(this.vars).sort((a, b) => b.length - a.length)) {
       const v = this.vars[name];
       if (typeof v !== "number") continue;
       substituted = substituted.replace(new RegExp(`\\b${name}\\b`, "g"), `(${v})`);
     }
-    if (!/^[\d\s+\-*/^().]+$/.test(substituted)) return null; // unresolved identifiers remain — bail safely
+    // Real scientific-calculator functions/constants, same semantics as
+    // the standalone Reckon calculator engine — sin/cos/tan in degrees,
+    // matching that engine's default DEG mode.
+    substituted = substituted
+      .replace(/\bpi\b/gi, `(${Math.PI})`)
+      .replace(/\be\b/g, `(${Math.E})`)
+      .replace(/\bsqrt\(/gi, "Math.sqrt(")
+      .replace(/\bcbrt\(/gi, "Math.cbrt(")
+      .replace(/\babs\(/gi, "Math.abs(")
+      .replace(/\bln\(/gi, "Math.log(")
+      .replace(/\blog\(/gi, "Math.log10(")
+      .replace(/\bsin\(([^)]+)\)/gi, (_, a) => `Math.sin((${a})*Math.PI/180)`)
+      .replace(/\bcos\(([^)]+)\)/gi, (_, a) => `Math.cos((${a})*Math.PI/180)`)
+      .replace(/\btan\(([^)]+)\)/gi, (_, a) => `Math.tan((${a})*Math.PI/180)`);
+    if (!/^[\d\s+\-*/^().MathsqrtcbabuloginPIE,]+$/.test(substituted)) return null; // unresolved identifiers remain — bail safely
     try {
       const jsExpr = substituted.replace(/\^/g, "**");
       // eslint-disable-next-line no-new-func
@@ -217,8 +243,18 @@ class AshRuntime {
   // ── Generalized graphical-intent detection ──────────────────────
   // True for ANY script that imports GLDrivers or calls gl.* — not
   // hardcoded to specific example names. This is what decides whether
-  // the Interface tab shows anything for a given script.
+  // the Interface tab shows a canvas for a given script.
   static hasGraphicalIntent(source) {
     return /import\s*\(\s*GLDrivers\s*\)/.test(source) || /\bgl\.\w+/.test(source);
+  }
+
+  // True for any script whose runtime has real declared variables to
+  // interact with — driving the generic "Program Controls" panel
+  // (live input fields + Run) shown in the Interface tab for scripts
+  // that don't draw graphics but do have real, settable state. This
+  // is what makes the calculator (and any other variable-driven
+  // script) usable from Interface without being hardcoded by name.
+  hasInteractiveState() {
+    return this.listVars().some((v) => v !== "s");
   }
 }

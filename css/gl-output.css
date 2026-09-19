@@ -130,3 +130,56 @@
   border:1px solid rgba(0,229,255,.3); border-radius:8px; color:#00e5ff; cursor:pointer;
   left:220px;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Program Controls — generic live-variable panel for any script
+   with real declared state but no graphical output, plus a real
+   keypad layout when the script exposes a single "expr" variable
+   (the Ash calculator pattern — general to any script that follows
+   the same convention, not hardcoded to one example).
+   ═══════════════════════════════════════════════════════════ */
+.program-controls{
+  position:absolute; inset:0; overflow-y:auto; padding:20px;
+  display:flex; flex-direction:column; align-items:center; gap:16px;
+}
+.program-controls[hidden]{ display:none; }
+.pc-title{ font:700 10px var(--font-mono); letter-spacing:.1em; color:#00e5ff; align-self:flex-start; }
+
+.pc-calc{
+  width:100%; max-width:360px; background:#141a22; border:1px solid rgba(0,229,255,.2);
+  border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:10px;
+}
+.pc-calc-display{
+  background:#0a0f14; border-radius:8px; padding:14px 12px; text-align:right;
+  font:600 22px var(--font-mono); color:#e8f4f2; min-height:32px; overflow-x:auto; white-space:nowrap;
+}
+.pc-calc-expr{ font:400 11px var(--font-mono); color:var(--text-dim); text-align:right; min-height:14px; }
+.pc-calc-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:7px; }
+.pc-key{
+  padding:12px 0; border-radius:8px; border:none; cursor:pointer;
+  font:600 14px var(--font-mono); color:#e8f4f2; background:#1f2932;
+}
+.pc-key:active{ background:#2a3742; }
+.pc-key.op{ background:#0d3e46; color:#4dd8e8; }
+.pc-key.fn{ background:#221a33; color:#b98cf0; font-size:11px; }
+.pc-key.eq{ background:#00e5ff; color:#00141a; }
+.pc-key.clear{ background:#3a1a1a; color:#ff8a8a; }
+
+.pc-generic{
+  width:100%; max-width:420px; background:#141a22; border:1px solid rgba(0,229,255,.2);
+  border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:12px;
+}
+.pc-field{ display:flex; flex-direction:column; gap:5px; }
+.pc-field label{ font:600 9px var(--font-mono); letter-spacing:.05em; color:var(--text-dim); }
+.pc-field input{
+  background:#0a0f14; border:1px solid rgba(255,255,255,.1); border-radius:6px;
+  padding:8px 10px; font:500 13px var(--font-mono); color:#e8f4f2;
+}
+.pc-run-btn{
+  margin-top:4px; padding:10px; border-radius:8px; border:none; cursor:pointer;
+  font:700 11px var(--font-mono); letter-spacing:.05em; background:#00e5ff; color:#00141a;
+}
+.pc-output{
+  width:100%; max-width:420px; background:#0a0f14; border-radius:10px; padding:12px 14px;
+  font:500 13px var(--font-mono); color:#e8f4f2; min-height:20px;
+}

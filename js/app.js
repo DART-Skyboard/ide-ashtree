@@ -242,58 +242,28 @@ import (GLDrivers)
   irout ("Result: " placeto (s))
 }|';'|
 ` },
-  { name: "Reckon Calculator (Ash)", code: `// RECKON CALCULATOR — scientific calculator, in Ash Edge Language
-// Real port of the Reckon engine (see "Reckon Calculator (C++)" for
-// the original): tokenizer -> recursive-descent parser -> evaluator,
-// same operator precedence chain, same scientific functions.
-// A working version of this exact logic runs live as the IDE's
-// built-in calculator — open it from the calculator icon in the
-// top bar. This file expresses that same pipeline as Ash nodes.
+  { name: "Reckon Calculator (Ash)", code: `// RECKON CALCULATOR — a real, working calculator in Ash Edge Language
+// Build & Run, then in the Terminal:
+//   set expr 3+4*2       (set the formula — any + - * / ^ expression,
+//                          plus sin(x) cos(x) tan(x) sqrt(x) ln(x)
+//                          log(x) pi e — angles in degrees)
+//   run                  (evaluates expr for real and prints the result)
+// Or open the Interface tab for a real keypad — tap digits/operators,
+// press "=" to evaluate. Both the terminal and the Interface keypad
+// drive the SAME real evaluator (Research below), so anything you can
+// type in one, you can tap in the other.
 {{env:ReckonCalculator}}
 [[script:reckon-calc-v1]]
 [poly: expression-tree]
 
-(TokenizerNode):-: {
+(CalculatorNode):-: {
   {{env:ReckonCalculator}}
-  with var (src) var (tokens) {
-    irin ("chars:0-9,.,+,-,*,/,^,(,),!,% words:sin,cos,tan,ln,log,sqrt,cbrt,abs,pi,e,nrt")
-    thenplace var (tokens) with var (src)
+  with var (expr) var (s) {
+    irin ("Data: expr=0")
+    Research (expr)
+    thenplace var (s) with var (s)
   }
-  irout ("Result: " placeto (tokens))
-}|';'|
-
-(ParserNode):-: {
-  [poly: precedence-chain]
-  with var (tokens) var (ast) {
-    irin ("expr:term(+|-)* term:power(*|/)* power:unary(^|nrt)? unary:(-|+)?postfix postfix:primary(!|%)*")
-    thenplace var (ast) with var (tokens)
-  }
-  irout ("Result: " placeto (ast))
-}|';'|
-
-(EvaluatorNode):-: {
-  [poly: recursive-eval]
-  with var (ast) var (deg) var (result) {
-    irin ("mode:deg fns:sin,cos,tan,asin,acos,atan,sinh,cosh,tanh,ln,log,exp,sqrt,cbrt,abs consts:pi,e")
-    thenplace var (result) with var (ast)
-  }
-  irout ("Result: " placeto (result))
-}|';'|
-
-(FormatNode):-: {
-  with var (value) var (display) {
-    irin ("precision:12 tidy:round-if-near-integer errorText:Error,Overflow,Syntax error,Cannot divide by zero,Mismatched parentheses,Invalid input")
-    thenplace var (display) with var (value)
-  }
-  irout ("Result: " placeto (display))
-}|';'|
-
-(TapeNode):-: {
-  with var (expr) var (result) var (history) {
-    irin ("action:record max:24 storage:localStorage")
-    thenplace var (history) with var (expr)
-  }
-  irout ("Result: " placeto (history))
+  irout ("Result: " placeto (s))
 }|';'|
 ` },
   { name: "Reckon Calculator (C++)", code: null, fetchPath: "assets/calculator.cpp", lang: "cpp" }
@@ -665,15 +635,121 @@ function updateInterfaceTab(source) {
   // rendering as a built-in example.
   const shouldShow = AshRuntime.hasGraphicalIntent(source);
   const emptyText = document.getElementById("glOutputEmptyText");
-  if (!shouldShow) {
-    GLOutput.teardown();
-    document.getElementById("glOutputCanvas").hidden = true;
-    document.getElementById("glOutputEmpty").hidden = false;
-    document.getElementById("glResetBtn").hidden = true;
-    emptyText.textContent = "This script has no graphical output";
+  const controls = document.getElementById("programControls");
+
+  if (shouldShow) {
+    controls.hidden = true;
+    renderGLOutput(source);
     return;
   }
-  renderGLOutput(source);
+
+  GLOutput.teardown();
+  document.getElementById("glOutputCanvas").hidden = true;
+
+  // No graphics — but if the program has real declared state (any
+  // script, not just the calculator), show live Program Controls
+  // instead of the plain empty message.
+  if (engine.runtime && engine.runtime.hasInteractiveState()) {
+    document.getElementById("glOutputEmpty").hidden = true;
+    document.getElementById("glResetBtn").hidden = true;
+    renderProgramControls();
+  } else {
+    document.getElementById("glOutputEmpty").hidden = false;
+    document.getElementById("glResetBtn").hidden = true;
+    controls.hidden = true;
+    emptyText.textContent = "This script has no graphical output";
+  }
+}
+
+// ── Program Controls: a live UI for any script's real declared
+// variables. A script whose only interactive variable is literally
+// named "expr" (the calculator convention used by the Ash Reckon
+// Calculator example) gets a real keypad; every other variable-
+// driven script gets generic labeled input fields + Run — general
+// to any script, not hardcoded by example name. ──
+function renderProgramControls() {
+  const controls = document.getElementById("programControls");
+  const rt = engine.runtime;
+  const vars = rt.listVars();
+  controls.hidden = false;
+
+  const interactiveVars = vars.filter((v) => v !== "s");
+  if (interactiveVars.length === 1 && interactiveVars[0] === "expr") {
+    controls.innerHTML = `
+      <div class="pc-title">◈ PROGRAM CONTROLS — CALCULATOR</div>
+      <div class="pc-calc">
+        <div class="pc-calc-expr" id="pcCalcExpr"></div>
+        <div class="pc-calc-display" id="pcCalcDisplay">0</div>
+        <div class="pc-calc-grid">
+          <button class="pc-key clear" data-k="AC">AC</button>
+          <button class="pc-key op" data-k="(">(</button>
+          <button class="pc-key op" data-k=")">)</button>
+          <button class="pc-key op" data-k="/">÷</button>
+          <button class="pc-key" data-k="7">7</button>
+          <button class="pc-key" data-k="8">8</button>
+          <button class="pc-key" data-k="9">9</button>
+          <button class="pc-key op" data-k="*">×</button>
+          <button class="pc-key" data-k="4">4</button>
+          <button class="pc-key" data-k="5">5</button>
+          <button class="pc-key" data-k="6">6</button>
+          <button class="pc-key op" data-k="-">−</button>
+          <button class="pc-key" data-k="1">1</button>
+          <button class="pc-key" data-k="2">2</button>
+          <button class="pc-key" data-k="3">3</button>
+          <button class="pc-key op" data-k="+">+</button>
+          <button class="pc-key fn" data-k="sqrt(">√</button>
+          <button class="pc-key" data-k="0">0</button>
+          <button class="pc-key" data-k=".">.</button>
+          <button class="pc-key eq" data-k="=">=</button>
+        </div>
+      </div>
+      <div class="pc-output" id="pcCalcResult"></div>
+    `;
+    let exprStr = "";
+    const exprEl = document.getElementById("pcCalcExpr");
+    const displayEl = document.getElementById("pcCalcDisplay");
+    const resultEl = document.getElementById("pcCalcResult");
+    controls.querySelectorAll(".pc-key").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const k = btn.dataset.k;
+        if (k === "AC") { exprStr = ""; }
+        else if (k === "=") {
+          rt.setVar("expr", exprStr || "0");
+          const outputs = rt.run();
+          resultEl.textContent = outputs.join("\n");
+        } else {
+          exprStr += k;
+        }
+        exprEl.textContent = exprStr;
+        displayEl.textContent = exprStr || "0";
+      });
+    });
+    return;
+  }
+
+  // Generic case: one labeled input per declared variable, plus Run.
+  // "s" is the implicit working-slot every real script declares — it's
+  // internal plumbing, not something the user meaningfully sets.
+  controls.innerHTML = `
+    <div class="pc-title">◈ PROGRAM CONTROLS</div>
+    <div class="pc-generic">
+      ${interactiveVars.map((v) => `
+        <div class="pc-field">
+          <label>${escHtml(v)}</label>
+          <input type="text" data-var="${escHtml(v)}" value="${escHtml(String(rt.vars[v]))}">
+        </div>`).join("")}
+      <button class="pc-run-btn" id="pcRunBtn">▸ RUN</button>
+    </div>
+    <div class="pc-output" id="pcOutput"></div>
+  `;
+  document.getElementById("pcRunBtn").addEventListener("click", () => {
+    controls.querySelectorAll("[data-var]").forEach((input) => {
+      rt.setVar(input.dataset.var, input.value);
+    });
+    const outputs = rt.run();
+    document.getElementById("pcOutput").textContent = outputs.join("\n");
+    AshTerminal.render();
+  });
 }
 
 function renderGLOutput(source) {
