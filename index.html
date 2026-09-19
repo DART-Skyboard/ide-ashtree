@@ -16,14 +16,14 @@
 <meta property="og:description" content="A browser-based coding environment for the Ash Edge Language, with a LEATR v2 compiler and the Ash Map visual mind-mapping tool.">
 <meta property="og:image" content="https://ide.leatr.xyz/assets/icons/icon-512.png">
 <meta property="og:type" content="website">
-<link rel="stylesheet" href="css/base.css?v=1789767682">
-<link rel="stylesheet" href="css/layout.css?v=1789767682">
-<link rel="stylesheet" href="css/editor.css?v=1789767682">
-<link rel="stylesheet" href="css/mindmap.css?v=1789767682">
-<link rel="stylesheet" href="css/help.css?v=1789767682">
-<link rel="stylesheet" href="css/maze.css?v=1789767682">
-<link rel="stylesheet" href="css/gl-output.css?v=1789767682">
-<link rel="stylesheet" href="css/calculator.css?v=1789767682">
+<link rel="stylesheet" href="css/base.css?v=1789797666">
+<link rel="stylesheet" href="css/layout.css?v=1789797666">
+<link rel="stylesheet" href="css/editor.css?v=1789797666">
+<link rel="stylesheet" href="css/mindmap.css?v=1789797666">
+<link rel="stylesheet" href="css/help.css?v=1789797666">
+<link rel="stylesheet" href="css/maze.css?v=1789797666">
+<link rel="stylesheet" href="css/gl-output.css?v=1789797666">
+<link rel="stylesheet" href="css/calculator.css?v=1789797666">
 </head>
 <body>
 
@@ -64,6 +64,10 @@
     <button class="tab" data-tab="terminal">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
       Terminal
+    </button>
+    <button class="tab" data-tab="interface">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Interface
     </button>
     <button class="tab" data-tab="files">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
@@ -153,52 +157,46 @@
 
     <!-- ---------- OUTPUT ---------- -->
     <section class="panel" id="panel-output">
-      <div class="output-body" id="outputBody" data-gl-position="bottom">
-        <div class="output-log-pane">
-          <div class="output-toolbar">
-            <span class="output-title">Compiler Output</span>
-            <div class="output-toolbar-spacer"></div>
-            <label class="net-toggle">
-              <input type="checkbox" id="netModeToggle">
-              <span>NET mode</span>
-            </label>
-            <button class="icon-btn" id="clearOutputBtn" title="Clear output">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            </button>
-          </div>
-          <div class="output-log" id="outputLog">
-            <div class="output-empty">Press <strong>RUN</strong> to compile your Ash script.</div>
-          </div>
-        </div>
+      <div class="output-toolbar">
+        <span class="output-title">Compiler Output</span>
+        <div class="output-toolbar-spacer"></div>
+        <label class="net-toggle">
+          <input type="checkbox" id="netModeToggle">
+          <span>NET mode</span>
+        </label>
+        <button class="icon-btn" id="clearOutputBtn" title="Clear output">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>
+      <div class="output-log" id="outputLog">
+        <div class="output-empty">Press <strong>RUN</strong> to compile your Ash script.</div>
+      </div>
+    </section>
 
-        <!-- GL output — appears when the compiled script imports GLDrivers -->
-        <div class="gl-output-section" id="glOutputSection" hidden>
+    <!-- ---------- INTERFACE — the running program's graphical surface.
+         Always present as its own tab; shows real content whenever the
+         compiled script has graphical intent (import (GLDrivers) or any
+         gl.* call — AshRuntime.hasGraphicalIntent, general to ANY
+         script, not just built-in examples), auto-rendering on every
+         successful build exactly like Terminal auto-updates. ---------- -->
+    <section class="panel" id="panel-interface">
+      <div class="output-body" id="outputBody" data-gl-position="bottom">
+        <div class="gl-output-section" id="glOutputSection" style="height:100%; flex:1;">
           <div class="gl-output-header">
-            <span class="gl-output-title">&#9670; GL OUTPUT</span>
+            <span class="gl-output-title">&#9670; INTERFACE</span>
             <div class="gl-output-spacer"></div>
-            <div class="gl-position-menu">
-              <button class="icon-btn" id="glPositionBtn" title="Move graphical output">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
-              </button>
-              <div class="gl-position-options" id="glPositionOptions" hidden>
-                <button data-pos="top">Top</button>
-                <button data-pos="bottom">Bottom</button>
-                <button data-pos="left">Left</button>
-                <button data-pos="right">Right</button>
-              </div>
-            </div>
             <button class="icon-btn" id="glCollapseBtn" title="Collapse graphical output">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="glCollapseIcon"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <button class="gl-reset-btn" id="glResetBtn" hidden>&#8634; Reset</button>
-            <button class="gl-render-btn" id="glRenderBtn">&#9656; Render 3D</button>
+            <button class="gl-render-btn" id="glRenderBtn">&#9656; Re-render</button>
           </div>
           <div class="gl-output-body" id="glOutputBody">
             <canvas class="gl-output-canvas" id="glOutputCanvas" hidden></canvas>
             <div class="gl-output-empty" id="glOutputEmpty">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="1.5"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44a.98.98 0 0 1-.94 0l-7.9-4.44a1 1 0 0 1-.53-.88v-9c0-.38.21-.71.53-.88l7.9-4.44a.98.98 0 0 1 .94 0l7.9 4.44c.32.17.53.5.53.88v9z"/></svg>
-              <div>Tap &#9656; Render 3D to execute graphical output</div>
-              <div class="sub">import (GLDrivers) &middot; Arc Edge Vector supported</div>
+              <div id="glOutputEmptyText">This script has no graphical output</div>
+              <div class="sub">Scripts that <code>import (GLDrivers)</code> or call <code>gl.*</code> render here automatically after Build &amp; Run</div>
             </div>
           </div>
         </div>
@@ -550,26 +548,27 @@
 <div id="toast" class="toast" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="js/leatr-engine.js?v=1789767682"></script>
-<script src="js/storage.js?v=1789767682"></script>
-<script src="js/editor.js?v=1789767682"></script>
-<script src="js/terminal.js?v=1789767682"></script>
-<script src="js/mash-model.js?v=1789767682"></script>
-<script src="js/mash-canvas.js?v=1789767682"></script>
-<script src="js/mash-import.js?v=1789767682"></script>
-<script src="js/maze-engine.js?v=1789767682"></script>
-<script src="js/maze-3d.js?v=1789767682"></script>
-<script src="js/cryptology.js?v=1789767682"></script>
-<script src="js/maze-ui.js?v=1789767682"></script>
-<script src="js/gl-output.js?v=1789767682"></script>
-<script src="js/arc-edge-gl.js?v=1789767682"></script>
-<script src="js/python-compiler.js?v=1789767682"></script>
-<script src="js/sql-compiler.js?v=1789767682"></script>
-<script src="js/js-compiler.js?v=1789767682"></script>
-<script src="js/cpp-compiler.js?v=1789767682"></script>
-<script src="js/calculator-module.js?v=1789767682"></script>
-<script src="js/calculator-window.js?v=1789767682"></script>
-<script src="js/help-content.js?v=1789767682"></script>
-<script src="js/app.js?v=1789767682"></script>
+<script src="js/ash-runtime.js?v=1789797666"></script>
+<script src="js/leatr-engine.js?v=1789797666"></script>
+<script src="js/storage.js?v=1789797666"></script>
+<script src="js/editor.js?v=1789797666"></script>
+<script src="js/terminal.js?v=1789797666"></script>
+<script src="js/mash-model.js?v=1789797666"></script>
+<script src="js/mash-canvas.js?v=1789797666"></script>
+<script src="js/mash-import.js?v=1789797666"></script>
+<script src="js/maze-engine.js?v=1789797666"></script>
+<script src="js/maze-3d.js?v=1789797666"></script>
+<script src="js/cryptology.js?v=1789797666"></script>
+<script src="js/maze-ui.js?v=1789797666"></script>
+<script src="js/gl-output.js?v=1789797666"></script>
+<script src="js/arc-edge-gl.js?v=1789797666"></script>
+<script src="js/python-compiler.js?v=1789797666"></script>
+<script src="js/sql-compiler.js?v=1789797666"></script>
+<script src="js/js-compiler.js?v=1789797666"></script>
+<script src="js/cpp-compiler.js?v=1789797666"></script>
+<script src="js/calculator-module.js?v=1789797666"></script>
+<script src="js/calculator-window.js?v=1789797666"></script>
+<script src="js/help-content.js?v=1789797666"></script>
+<script src="js/app.js?v=1789797666"></script>
 </body>
 </html>

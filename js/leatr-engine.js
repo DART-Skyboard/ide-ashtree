@@ -119,10 +119,17 @@ class LeatrEngine {
         continue;
       }
 
-      // (NodeName):-:{  or  (ref)
+      // (NodeName):-:{  or  (ref) — depth-tracked so a nested paren, like
+      // irout ("..." placeto (velocity)), doesn't truncate at the first
+      // inner ")" and leave the outer one dangling as a stray character.
       if (c === "(") {
         let j = i + 1;
-        while (j < n && source[j] !== ")") j++;
+        let depth = 1;
+        while (j < n && depth > 0) {
+          if (source[j] === "(") depth++;
+          else if (source[j] === ")") depth--;
+          if (depth > 0) j++;
+        }
         const inner = source.slice(i + 1, j);
         if (j < n) j++;
         const afterParen = source.slice(j).replace(/^\s+/, "");
@@ -224,14 +231,54 @@ class LeatrEngine {
 
             if (["outerTag", "innerTag", "polyTag", "netTag"].includes(inner.kind)) {
               node.children.push({ type: "TagAnnotation", value: inner.value, children: [] });
+            } else if (inner.kind === "keyword" && inner.value === "thenplace") {
+              // thenplace var (dest) with var (src) — copies src's current
+              // value into dest at runtime. Shape is fixed: keyword,
+              // declaration:var, varRef, declaration:with, declaration:var,
+              // varRef. Captured as name=dest, value=src so the runtime
+              // can execute the actual copy.
+              let j = i + 1;
+              const expect = (idx, kind, val) => tokens[idx] && tokens[idx].kind === kind && (val === undefined || tokens[idx].value === val);
+              if (expect(j, "declaration", "var") && tokens[j + 1] && tokens[j + 1].kind === "varRef") {
+                const dest = tokens[j + 1].value.replace(/^\(|\)$/g, "");
+                j += 2;
+                if (expect(j, "declaration", "with") && expect(j + 1, "declaration", "var") &&
+                    tokens[j + 2] && tokens[j + 2].kind === "varRef") {
+                  const srcName = tokens[j + 2].value.replace(/^\(|\)$/g, "");
+                  node.children.push({ type: "KeywordStatement", name: "thenplace", value: srcName, dest, children: [] });
+                  i = j + 2;
+                } else {
+                  node.children.push({ type: "KeywordStatement", name: "thenplace", value: "", dest, children: [] });
+                  i = j - 1;
+                }
+              } else {
+                node.children.push({ type: "KeywordStatement", name: "thenplace", value: "", children: [] });
+              }
             } else if (inner.kind === "keyword") {
-              const val = (i + 1 < tokens.length && tokens[i + 1].kind === "string") ? tokens[i + 1].value : "";
+              // A keyword's payload is one following token: a string
+              // literal ("Data: ..."), or a parenthesized blob — which
+              // itself may mix a string prefix with a placeto(var) ref,
+              // as irout does: irout ("Result: F=" placeto (velocity)).
+              // Nested parens are depth-tracked by the lexer, so that
+              // whole blob arrives as ONE varRef/nodeRef token whose
+              // inner text still needs unwrapping.
+              const next = i + 1 < tokens.length ? tokens[i + 1] : null;
+              let val = "";
+              if (next && next.kind === "string") {
+                val = next.value.replace(/^"|"$/g, "");
+                i += 1;
+              } else if (next && (next.kind === "varRef" || next.kind === "nodeRef")) {
+                let raw = next.value.replace(/^\(/, "").replace(/\)$/, "");
+                raw = raw.replace(/"([^"]*)"/g, "$1").replace(/\bplaceto\s*\(([^)]+)\)/g, "$1");
+                val = raw.trim();
+                i += 1;
+              }
               node.children.push({ type: "KeywordStatement", name: inner.value, value: val, children: [] });
-              if (val !== "") i += 1;
             } else if (inner.kind === "naturalTool") {
               node.children.push({ type: "NaturalToolCall", name: inner.value, value: "", children: [] });
             } else if (inner.kind === "declaration" && inner.value === "var") {
-              const vName = i + 1 < tokens.length ? tokens[i + 1].value : "";
+              const raw = i + 1 < tokens.length ? tokens[i + 1].value : "";
+              const vName = raw.replace(/^\(|\)$/g, ""); // varRef keeps its "(name)" shell — strip it
               node.children.push({ type: "VarDeclaration", name: vName, value: "", children: [] });
               i += 1;
             } else if (inner.kind === "importStmt") {
@@ -366,29 +413,70 @@ class LeatrEngine {
   }
 
   // ── Terminal command handler ─────────────────────────────────
+  // ── Real terminal command handling — a live AshRuntime instance
+  // parses the script's actual node/var/irin structure once (on
+  // compile), then set/run/status genuinely operate on that state
+  // for the rest of the session, same as any real interpreter. ──
   handleTerminalCommand(cmd, source) {
-    const c = cmd.trim().toLowerCase();
+    const c = cmd.trim();
+    const lc = c.toLowerCase();
     this.terminalLines.push({ text: `ash ▸ ${cmd}`, color: "#00ffcc", isSystem: false });
-    switch (c) {
-      case "run":
-        this.compile(source);
-        break;
-      case "clear":
-        this.terminalLines = [];
-        this.compilerLines = [];
-        break;
-      case "info":
-        this.terminalLines.push({ text: "  LEATR v2 · Ash Edge Language · DART Meadow", color: "#8ab4cc", isSystem: true });
-        this.terminalLines.push({ text: "  Compiler Standard: (xa²√xa)±1", color: "#8ab4cc", isSystem: true });
-        break;
-      case "help":
-        this.terminalLines.push({ text: "  Commands: run · info · clear · exit · help", color: "#8ab4cc", isSystem: true });
-        break;
-      case "exit":
-        this.terminalLines.push({ text: "  Session ended.", color: "#4a8a7a", isSystem: true });
-        break;
-      default:
-        this.terminalLines.push({ text: `  Unknown: '${cmd}' — type 'help'`, color: "#ff9500", isSystem: false });
+
+    if (!this.runtime || this._runtimeSource !== source) {
+      try {
+        const tokens = this.lex(source);
+        const ast = this.parse(tokens);
+        this.runtime = new AshRuntime(ast);
+        this._runtimeSource = source;
+      } catch (e) {
+        this.runtime = null;
+      }
+    }
+
+    const parts = c.split(/\s+/);
+    const verb = (parts[0] || "").toLowerCase();
+
+    if (lc === "run") {
+      this.compile(source);
+      if (this.runtime) {
+        const outputs = this.runtime.run();
+        outputs.forEach((line) => this.terminalLines.push({ text: `  → ${line}`, color: "#ffffff", isSystem: false }));
+      }
+    } else if (lc === "clear") {
+      this.terminalLines = [];
+      this.compilerLines = [];
+    } else if (lc === "status") {
+      if (this.runtime) {
+        const s = this.runtime.status();
+        this.terminalLines.push({ text: `  ${s || "(no variables declared)"}`, color: "#8ab4cc", isSystem: true });
+      } else {
+        this.terminalLines.push({ text: "  No script compiled yet — type 'run' first.", color: "#ff9500", isSystem: false });
+      }
+    } else if (verb === "set" && parts.length >= 3) {
+      const varName = parts[1];
+      const value = parts.slice(2).join(" ");
+      if (this.runtime) {
+        const result = this.runtime.setVar(varName, value);
+        this.terminalLines.push({
+          text: `  ${result.message}`,
+          color: result.ok ? "#8ab4cc" : "#ff9500",
+          isSystem: result.ok
+        });
+      } else {
+        this.terminalLines.push({ text: "  No script compiled yet — type 'run' first.", color: "#ff9500", isSystem: false });
+      }
+    } else if (lc === "info") {
+      this.terminalLines.push({ text: "  LEATR v2 · Ash Edge Language · DART Meadow", color: "#8ab4cc", isSystem: true });
+      this.terminalLines.push({ text: "  Compiler Standard: (xa²√xa)±1", color: "#8ab4cc", isSystem: true });
+    } else if (lc === "help") {
+      this.terminalLines.push({ text: "  Commands: run · set <var> <value> · status · info · clear · exit · help", color: "#8ab4cc", isSystem: true });
+      if (this.runtime && this.runtime.listVars().length) {
+        this.terminalLines.push({ text: `  Declared variables: ${this.runtime.listVars().join(", ")}`, color: "#8ab4cc", isSystem: true });
+      }
+    } else if (lc === "exit") {
+      this.terminalLines.push({ text: "  Session ended.", color: "#4a8a7a", isSystem: true });
+    } else {
+      this.terminalLines.push({ text: `  Unknown: '${cmd}' — type 'help'`, color: "#ff9500", isSystem: false });
     }
     if (this.onChange) this.onChange(this);
   }

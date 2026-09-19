@@ -379,6 +379,14 @@ function switchTab(name) {
     MazeUI._initRendererIfNeeded();
     requestAnimationFrame(() => MazeUI.renderer3d.resize());
   }
+  if (name === "interface") {
+    // Same WebGL-canvas-sizing issue as Maze — force a resize on every
+    // visit since the panel may have been display:none until now.
+    requestAnimationFrame(() => {
+      if (GLOutput.arcEdge) GLOutput.arcEdge.resize();
+      if (GLOutput.three) GLOutput.three.resize();
+    });
+  }
 }
 
 // ── File state ────────────────────────────────────────────
@@ -580,11 +588,17 @@ function runCompile() {
     const source = AshEditor.getValue();
     const result = engine.compile(source, netMode);
     renderOutput();
+    // Build & Run genuinely runs the program, not just compiles it —
+    // same as pressing "run" in the terminal — so the Terminal tab
+    // always reflects a program that has actually executed by the
+    // time the build finishes, matching how a real compile-and-run
+    // button behaves.
+    engine.handleTerminalCommand("run", source);
     AshTerminal.render();
     document.getElementById("shellInfo").textContent = `SHELL: ${result.shell}`;
     document.getElementById("buoyInfo").textContent = `BUOY: ${result.buoyancy.toFixed(4)}`;
     setStatus("ok", `compiled · ${result.shell.toLowerCase()}`);
-    updateGLOutputSection(source);
+    updateInterfaceTab(source);
     switchTab("output");
   } catch (err) {
     setStatus("err", "compile error");
@@ -644,12 +658,19 @@ function runOtherLanguage() {
 // GLDrivers or calls gl.scene — matches hasGLOutput in
 // IDECompilerOutputView.swift. Auto-renders on every compile, same
 // as the iOS .task{} on IDEGLOutputPanel. ──
-function updateGLOutputSection(source) {
-  const section = document.getElementById("glOutputSection");
-  const shouldShow = GLOutput.hasGLOutput(source);
-  section.hidden = !shouldShow;
+function updateInterfaceTab(source) {
+  // Generalized detection — ANY script that imports GLDrivers or calls
+  // gl.*, not a hardcoded list of example names. A user's own novel
+  // script using the same real syntax gets the same real Interface
+  // rendering as a built-in example.
+  const shouldShow = AshRuntime.hasGraphicalIntent(source);
+  const emptyText = document.getElementById("glOutputEmptyText");
   if (!shouldShow) {
     GLOutput.teardown();
+    document.getElementById("glOutputCanvas").hidden = true;
+    document.getElementById("glOutputEmpty").hidden = false;
+    document.getElementById("glResetBtn").hidden = true;
+    emptyText.textContent = "This script has no graphical output";
     return;
   }
   renderGLOutput(source);
@@ -681,39 +702,12 @@ function resetGLOutput() {
 // user has picked something else before — persisted so it sticks
 // across sessions, same as any other display preference.
 function initGlLayoutControls() {
-  const body = document.getElementById("outputBody");
-  const posBtn = document.getElementById("glPositionBtn");
-  const posMenu = document.getElementById("glPositionOptions");
   const collapseBtn = document.getElementById("glCollapseBtn");
   const collapseIcon = document.getElementById("glCollapseIcon");
 
-  const savedPos = IDEStorage.get("gl_output_position", "bottom");
-  body.dataset.glPosition = savedPos;
-
-  posBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    posMenu.hidden = !posMenu.hidden;
-  });
-  document.addEventListener("click", () => { posMenu.hidden = true; });
-  posMenu.addEventListener("click", (e) => e.stopPropagation());
-
-  posMenu.querySelectorAll("[data-pos]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      body.dataset.glPosition = btn.dataset.pos;
-      IDEStorage.set("gl_output_position", btn.dataset.pos);
-      posMenu.hidden = true;
-      // Three.js/WebGL canvases need an explicit resize after their
-      // container's dimensions change — a plain CSS reflow doesn't
-      // trigger it on its own.
-      requestAnimationFrame(() => {
-        if (GLOutput.three) GLOutput.three.resize();
-        if (GLOutput.arcEdge) GLOutput.arcEdge.resize();
-      });
-    });
-  });
-
   collapseBtn.addEventListener("click", () => {
-    const collapsed = body.classList.toggle("gl-collapsed");
+    const section = document.getElementById("glOutputSection");
+    const collapsed = section.classList.toggle("gl-collapsed");
     collapseIcon.innerHTML = collapsed
       ? '<polyline points="18 15 12 9 6 15"/>'
       : '<polyline points="6 9 12 15 18 9"/>';
