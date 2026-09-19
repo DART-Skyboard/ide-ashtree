@@ -22,6 +22,7 @@ const CalcWindow = {
     document.getElementById("calcLauncherBtn").addEventListener("click", () => this.toggle());
     document.getElementById("calcCloseBtn").addEventListener("click", () => this.close());
     document.getElementById("calcCollapseBtn").addEventListener("click", () => this.toggleCollapse());
+    this._bindTapeDrawer();
 
     this._restoreGeometry();
     this._bindDrag();
@@ -53,6 +54,22 @@ const CalcWindow = {
       ? '<polyline points="6 9 12 15 18 9"/>'
       : '<polyline points="18 15 12 9 6 15"/>';
     this._saveGeometry();
+  },
+
+  // Tape slides out from the right edge of the window on demand,
+  // instead of permanently occupying keypad width — this only exists
+  // once ReckonCalculator.init() has built the Tape markup, so the
+  // tab is wired the first time the calculator window opens.
+  _bindTapeDrawer() {
+    const tab = document.getElementById("calcTapeTab");
+    if (!tab || tab._bound) return;
+    tab._bound = true;
+    tab.addEventListener("click", () => {
+      const tape = document.querySelector(".calc-tape");
+      if (!tape) return;
+      const open = tape.classList.toggle("calc-tape-open");
+      tab.setAttribute("aria-expanded", open ? "true" : "false");
+    });
   },
 
   _bindDrag() {
