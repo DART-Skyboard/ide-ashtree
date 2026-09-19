@@ -168,3 +168,18 @@
   .mm-toolrail{ width:40px; }
   .mm-tool{ width:32px; height:32px; }
 }
+
+/* ── Export format menu ─────────────────────────────────────── */
+.mm-export-menu{ position:relative; }
+.mm-export-options{
+  position:absolute; top:32px; right:0; z-index:30;
+  background:var(--bg-2); border:1px solid var(--line); border-radius:8px;
+  display:flex; flex-direction:column; padding:4px; min-width:180px;
+  box-shadow:0 8px 20px rgba(0,0,0,.4);
+}
+.mm-export-options[hidden]{ display:none; }
+.mm-export-options button{
+  background:none; border:none; color:var(--text-hi); text-align:left;
+  padding:7px 10px; border-radius:5px; font:500 11px var(--font-mono); cursor:pointer;
+}
+.mm-export-options button:hover{ background:var(--bg-3); color:var(--accent); }

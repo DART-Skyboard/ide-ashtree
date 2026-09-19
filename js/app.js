@@ -1065,7 +1065,25 @@ function initMindMap() {
   document.getElementById("mmRedoBtn").addEventListener("click", () => {
     if (mashStore.redo()) { refreshMindMapChrome(); mashCanvas.render(); }
   });
-  document.getElementById("mmExportBtn").addEventListener("click", () => mashCanvas.exportPng());
+  const exportBtn = document.getElementById("mmExportBtn");
+  const exportMenu = document.getElementById("mmExportOptions");
+  exportBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    exportMenu.hidden = !exportMenu.hidden;
+  });
+  document.addEventListener("click", () => { exportMenu.hidden = true; });
+  exportMenu.addEventListener("click", (e) => e.stopPropagation());
+  exportMenu.querySelectorAll("[data-fmt]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      exportMenu.hidden = true;
+      const fmt = btn.dataset.fmt;
+      if (fmt === "mash") mashCanvas.exportMash();
+      else if (fmt === "freemind") mashCanvas.exportFreeMind();
+      else if (fmt === "markdown") mashCanvas.exportMarkdown();
+      else if (fmt === "pdf") mashCanvas.exportPdf();
+      else if (fmt === "png") mashCanvas.exportPng();
+    });
+  });
   document.getElementById("mmImportInput").addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (!file) return;

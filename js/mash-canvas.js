@@ -755,9 +755,97 @@ class MashCanvas {
   exportPng() {
     const doc = this.doc;
     if (!doc) return;
+    const canvas = this._renderToCanvas(2);
+    if (!canvas) return;
+    canvas.toBlob((blob) => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${doc.title.replace(/[^a-z0-9]/gi, "_")}.png`;
+      a.click();
+    });
+  }
+
+  // ── MASH — this app's own JSON format, byte-identical shape to
+  // what iOS's exportMASH() produces (JSONEncoder().encode(doc)),
+  // so a file exported here re-imports cleanly on either platform. ──
+  exportMash() {
+    const doc = this.doc;
+    if (!doc) return;
+    const json = JSON.stringify(doc, null, 2);
+    downloadTextFile(`${doc.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.mash`, json);
+  }
+
+  // ── FreeMind (.mm) — same <node TEXT="..."> shape as iOS's real
+  // exportFreeMind(), so it round-trips with MashImport.fromFreeMind
+  // on both platforms and opens correctly in FreeMind/MindNode/etc. ──
+  exportFreeMind() {
+    const doc = this.doc;
+    if (!doc) return;
+    let mm = `<?xml version="1.0" encoding="UTF-8"?>\n<map version="1.0.1">\n`;
+    const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const nodeXML = (id, indent) => {
+      const n = doc.nodes[id];
+      if (!n) return "";
+      let out = `${indent}<node TEXT="${esc(n.text)}">\n`;
+      for (const childId of n.children) out += nodeXML(childId, indent + "  ");
+      out += `${indent}</node>\n`;
+      return out;
+    };
+    mm += nodeXML(doc.rootId, "  ");
+    mm += "</map>";
+    downloadTextFile(`${doc.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.mm`, mm);
+  }
+
+  // ── Markdown — a nested bullet outline of the tree, same shape as
+  // iOS's exportMarkdown() (heading for the root, indented bullets
+  // for descendants). ──
+  exportMarkdown() {
+    const doc = this.doc;
+    if (!doc) return;
+    let md = `# ${doc.title}\n\n`;
+    const walk = (id, depth) => {
+      const n = doc.nodes[id];
+      if (!n) return;
+      if (depth > 0) md += `${"  ".repeat(depth - 1)}- ${n.text}\n`;
+      for (const childId of n.children) walk(childId, depth + 1);
+    };
+    walk(doc.rootId, 0);
+    downloadTextFile(`${doc.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.md`, md);
+  }
+
+  // ── PDF — same layout math as exportPng (shared bounds/draw code),
+  // rendered onto a canvas and dropped into a jsPDF page sized to
+  // match, so the PDF looks identical to the PNG export. ──
+  async exportPdf() {
+    const doc = this.doc;
+    if (!doc) return;
+    if (!window.jspdf) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+        s.onload = resolve;
+        s.onerror = () => reject(new Error("Failed to load jsPDF"));
+        document.head.appendChild(s);
+      });
+    }
+    const canvas = this._renderToCanvas(2);
+    if (!canvas) return;
+    const { jsPDF } = window.jspdf;
+    const orientation = canvas.width >= canvas.height ? "landscape" : "portrait";
+    const pdf = new jsPDF({ orientation, unit: "pt", format: [canvas.width / 2, canvas.height / 2] });
+    const imgData = canvas.toDataURL("image/png");
+    pdf.addImage(imgData, "PNG", 0, 0, canvas.width / 2, canvas.height / 2);
+    pdf.save(`${doc.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.pdf`);
+  }
+
+  // Shared by exportPng and exportPdf — factored out so both produce
+  // pixel-identical output instead of two copies of the same drawing
+  // code drifting apart over time.
+  _renderToCanvas(scale) {
+    const doc = this.doc;
     const theme = mashThemeById(doc.themeId);
     const nodes = Object.values(doc.nodes);
-    if (nodes.length === 0) return;
+    if (nodes.length === 0) return null;
 
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const n of nodes) {
@@ -770,7 +858,6 @@ class MashCanvas {
     const w = maxX - minX, h = maxY - minY;
 
     const canvas = document.createElement("canvas");
-    const scale = 2; // retina export
     canvas.width = w * scale;
     canvas.height = h * scale;
     const ctx = canvas.getContext("2d");
@@ -780,7 +867,6 @@ class MashCanvas {
 
     const px = (x) => x - minX, py = (y) => y - minY;
 
-    // Edges
     ctx.strokeStyle = theme.connectionColor;
     ctx.lineWidth = 2;
     for (const node of nodes) {
@@ -795,7 +881,6 @@ class MashCanvas {
       }
     }
 
-    // Nodes
     for (const node of nodes) {
       const fill = node.fillColor || MASH_TYPE_FILL[node.type] ||
         (node.type === "root" ? theme.rootFill : node.type === "main" ? theme.mainFill : theme.noteFill);
@@ -818,13 +903,7 @@ class MashCanvas {
       ctx.textBaseline = "middle";
       ctx.fillText(node.text.slice(0, 40), px(node.x), py(node.y));
     }
-
-    canvas.toBlob((blob) => {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `${doc.title.replace(/[^a-z0-9]/gi, "_")}.png`;
-      a.click();
-    });
+    return canvas;
   }
 }
 
