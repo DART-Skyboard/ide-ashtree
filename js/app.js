@@ -266,7 +266,9 @@ import (GLDrivers)
   irout ("Result: " placeto (s))
 }|';'|
 ` },
-  { name: "Reckon Calculator (C++)", code: null, fetchPath: "assets/calculator.cpp", lang: "cpp" }
+  { name: "Reckon Calculator (C++, graphical)", code: null, fetchPath: "assets/calculator_graphical.cpp", lang: "cpp" },
+  { name: "Reckon Calculator (C++, console)", code: null, fetchPath: "assets/calculator_console.cpp", lang: "cpp" },
+  { name: "Reckon Calculator (C++, original — needs a real compiler)", code: null, fetchPath: "assets/calculator.cpp", lang: "cpp" }
 ];
 
 // ── Starter templates for real-language mode ──────────────
