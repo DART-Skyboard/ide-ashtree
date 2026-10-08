@@ -588,15 +588,18 @@ function runOtherLanguage() {
   setStatus("running", `running ${currentLang}…`);
   langConsoleStatus("running", "Running…");
 
-  const onOutput = (text) => langConsoleWrite(text, false);
+  AshTerminal._line("── run " + currentLang + " ──", "#4a8a7a");
+  const onOutput = (text) => { langConsoleWrite(text, false); AshTerminal._line(text); };
   const onDone = (code) => {
     setStatus("ok", `${currentLang} · exit ${code}`);
     langConsoleStatus("ok", `Finished (exit ${code})`);
+    AshTerminal._line(`(exit ${code})`, "#4a8a7a");
   };
   const onError = (message) => {
     setStatus("err", `${currentLang} error`);
     langConsoleStatus("err", "Error");
     langConsoleWrite(message + "\n", true);
+    AshTerminal._line(message, "#ff6b6b");
   };
   const onLoading = () => {
     langConsoleStatus("running", "Loading runtime… (first run only)");
@@ -610,13 +613,16 @@ function runOtherLanguage() {
     SqlCompiler.run(source, { onOutput, onDone, onError, onLoading });
   } else if (currentLang === "cpp") {
     const needsCanvas = source.includes("canvas.h") || source.includes("canvas_main.h") || source.includes("Canvas ");
-    const canvasEl = document.getElementById("langCanvas");
+    const langCanvasEl = document.getElementById("langCanvas");
+    langCanvasEl.hidden = true;
     if (needsCanvas) {
+      // C++ canvas graphics render in the Interface tab's canvas.
+      const canvasEl = document.getElementById("glOutputCanvas");
       canvasEl.hidden = false;
       canvasEl.width = 320; canvasEl.height = 240;
+      document.getElementById("glOutputEmpty").hidden = true;
+      document.getElementById("programControls").hidden = true;
       CppCompiler.attachCanvas(canvasEl);
-    } else {
-      canvasEl.hidden = true;
     }
     CppCompiler.onOutput = onOutput;
     CppCompiler.onDone = onDone;
