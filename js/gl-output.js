@@ -37,12 +37,34 @@ const GLOutput = {
     if (this.rafId) cancelAnimationFrame(this.rafId);
     this.rafId = null;
     if (this.arcEdge) { this.arcEdge.dispose(); this.arcEdge = null; }
+    if (this.ashGL) { try { ASH_GL.stop && ASH_GL.stop(); } catch (e) {} this.ashGL.remove(); this.ashGL = null; if (this.canvas) this.canvas.hidden = false; }
     if (this.three) { this.three.dispose(); this.three = null; }
   },
 
   // Renders the appropriate scene for the given source into `canvas`.
+  // Real ASH_GL node drivers (Ariel dartide/gldrivers.js), driven by the shared Ash executor, for scripts that
+  // spell out gl.scene / gl.camera / gl.mesh … statements. Arc Edge scripts keep their dedicated renderer.
+  usesAshGL(source) {
+    return typeof AshExec !== "undefined" && typeof ASH_GL !== "undefined" && !this.isArcEdge(source)
+      && /^\s*gl\.(scene|camera|light|geometry|material|mesh|shader|animate|render)\b/m.test(source);
+  },
+
+  renderAshGL(source, canvas) {
+    const holder = canvas.parentElement;
+    let gc = document.getElementById("ash-gl-canvas");
+    if (!gc) {
+      gc = document.createElement("canvas"); gc.id = "ash-gl-canvas";
+      gc.style.cssText = "width:100%;height:100%;display:block;";
+      holder.appendChild(gc);
+    }
+    canvas.hidden = true; this.ashGL = gc;
+    const host = { gl: { call: (node, irin, name) => { try { const f = ASH_GL[node]; if (f) f(irin); } catch (e) { console.warn("[ASH_GL]", node, e.message); } } } };
+    AshExec.run(source, host);
+  },
+
   render(source, canvas) {
     this.teardown();
+    if (this.usesAshGL(source)) { this.renderAshGL(source, canvas); return "ash-gl"; }
     if (this.isArcEdge(source)) {
       this.arcEdge = new ArcEdgeGL(canvas);
       return "arc-edge";
