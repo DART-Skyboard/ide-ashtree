@@ -266,6 +266,20 @@ import (GLDrivers)
   irout ("Result: " placeto (s))
 }|';'|
 ` },
+  { name: "Journal Listener (Ash 2.1)", code: `// Ash 2.1: listen for an event, read a Shell 64 fact, journal it.
+// Open a shell64.state.ash file and type: shell64 load   — then run this and type: emit shard
+import (NetDrivers)
+(JournalMirror):-: {
+  var (k) // Shell 64 key
+  var (type) // journal entry type
+  var (s) // working slot
+  irin ("Data: k=syntax/ash/ash-autumn-repo type=shard_reflection")
+  net.listen (EventNode) [net:event] { when (evt) = shard }
+  shell64.read (k) placeto (s)
+  journal.write (entry) with var (s) [net:contents] [frp:Maritime/Envelope/R]
+  irout ("Journaled: "placeto (s))
+}|';\'|
+` },
   { name: "Reckon Calculator (C++, graphical)", code: null, fetchPath: "assets/calculator_graphical.cpp", lang: "cpp" },
   { name: "Reckon Calculator (C++, console)", code: null, fetchPath: "assets/calculator_console.cpp", lang: "cpp" },
   { name: "Reckon Calculator (C++, original — needs a real compiler)", code: null, fetchPath: "assets/calculator.cpp", lang: "cpp" }

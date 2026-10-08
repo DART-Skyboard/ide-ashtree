@@ -417,6 +417,28 @@ class LeatrEngine {
   // parses the script's actual node/var/irin structure once (on
   // compile), then set/run/status genuinely operate on that state
   // for the rest of the session, same as any real interpreter. ──
+  _tl(text, color, isSystem) { this.terminalLines.push({ text, color: color || "#8ab4cc", isSystem: !!isSystem }); if (this.onChange) this.onChange(this); }
+
+  _hasAshExtensions(source) { return typeof AshExec !== "undefined" && /^\s*(net|shell64|journal)\./m.test(source); }
+
+  // Ash 2.1 extension statements (net./shell64./journal.) executed by the shared Ash executor with an IDE host.
+  _runAshExtensions(source) {
+    if (!this._hasAshExtensions(source)) return;
+    this._ashHandlers = {};
+    const host = {
+      log: (line) => this._tl(`  → ${line}`, "#ffffff"),
+      shell64: {
+        read: (k) => (this.shell64State ? AshShell64.read(this.shell64State, k) : null),
+        classify: (r) => AshShell64.classify(r),
+        update: (k, p) => (this.shell64State ? AshShell64.update(this.shell64State, k, p) : false)
+      },
+      journal: { write: (e) => this._tl(`  [journal] ${e.type} · ${e.pattern && e.pattern.text} (IDE preview — the live journal is written by Autumn)`, "#bf5fff", true) },
+      net: { listen: (evt, fn) => { (this._ashHandlers[evt] = this._ashHandlers[evt] || []).push(fn); this._tl(`  [net] listening for '${evt}' — type: emit ${evt}`, "#39ff14", true); } }
+    };
+    if (!this.shell64State) this._tl("  (Shell 64 socket empty — open a shell64.state.ash file and type 'shell64 load')", "#4a8a7a", true);
+    try { AshExec.run(source, host); } catch (e) { this._tl(`  Ash exec error: ${e.message}`, "#ff6b6b"); }
+  }
+
   handleTerminalCommand(cmd, source) {
     const c = cmd.trim();
     const lc = c.toLowerCase();
@@ -438,10 +460,28 @@ class LeatrEngine {
 
     if (lc === "run") {
       this.compile(source);
-      if (this.runtime) {
+      if (this._hasAshExtensions(source)) {
+        this._runAshExtensions(source);      // Ash 2.1 programs (net./shell64./journal.) run on the shared Ash executor
+      } else if (this.runtime) {
         const outputs = this.runtime.run();
         outputs.forEach((line) => this.terminalLines.push({ text: `  → ${line}`, color: "#ffffff", isSystem: false }));
       }
+    } else if (lc === "shell64 load") {
+      // Load the current editor text (a shell64.state.ash file) as the Shell 64 socket state.
+      const st = typeof AshShell64 !== "undefined" ? AshShell64.parse(source) : null;
+      if (st && st.recs.length) { this.shell64State = st; this._tl(`  Shell 64 socket loaded: ${st.recs.length} records`, "#8ab4cc", true); }
+      else this._tl("  Open a shell64.state.ash file in the editor first (needs irin \"Data: k=... bl=... \" records).", "#ff9500");
+    } else if (lc === "shell64 info") {
+      if (!this.shell64State) this._tl("  Shell 64 socket empty — 'shell64 load' with a state file open.", "#ff9500");
+      else {
+        const cnt = { data: 0, sequence: 0, buildable: 0 };
+        this.shell64State.recs.forEach((r) => cnt[AshShell64.classify(r)]++);
+        this._tl(`  Shell 64: ${this.shell64State.recs.length} records · data ${cnt.data} · sequence ${cnt.sequence} · buildable ${cnt.buildable}`, "#8ab4cc", true);
+      }
+    } else if (verb === "emit" && parts.length >= 2) {
+      const evt = parts[1], hs = (this._ashHandlers || {})[evt] || [];
+      if (!hs.length) this._tl(`  No listener for '${evt}' — run a script with net.listen first.`, "#ff9500");
+      hs.forEach((fn) => fn({ type: evt, ts: Date.now() }));
     } else if (lc === "clear") {
       this.terminalLines = [];
       this.compilerLines = [];
@@ -469,7 +509,7 @@ class LeatrEngine {
       this.terminalLines.push({ text: "  LEATR v2 · Ash Edge Language · DART Meadow", color: "#8ab4cc", isSystem: true });
       this.terminalLines.push({ text: "  Compiler Standard: (xa²√xa)±1", color: "#8ab4cc", isSystem: true });
     } else if (lc === "help") {
-      this.terminalLines.push({ text: "  Commands: run · set <var> <value> · status · info · clear · exit · help", color: "#8ab4cc", isSystem: true });
+      this.terminalLines.push({ text: "  Commands: run · set <var> <value> · status · info · shell64 load|info · emit <event> · clear · exit · help", color: "#8ab4cc", isSystem: true });
       if (this.runtime && this.runtime.listVars().length) {
         this.terminalLines.push({ text: `  Declared variables: ${this.runtime.listVars().join(", ")}`, color: "#8ab4cc", isSystem: true });
       }

@@ -24,6 +24,15 @@ const HELP_HTML = `
   <tr><td><code>with var (x)</code></td><td>Declare a variable</td></tr>
   <tr><td><code>thenplace var (a) with var (b)</code></td><td>Assign / route a value</td></tr>
 </table>
+<h3>Ash 2.1 — network, Shell 64, journal</h3>
+<table>
+  <tr><th>Syntax</th><th>Meaning</th></tr>
+  <tr><td><code>net.listen (EventNode) [net:event] { when (evt) = shard }</code></td><td>Run the statements below on each matching event (terminal: <code>emit shard</code>)</td></tr>
+  <tr><td><code>shell64.read (k) placeto (s)</code></td><td>Read a Shell 64 record's reflexive state (<code>bl</code>, <code>rbli</code>, tool, data / sequence / buildable). Open a <code>shell64.state.ash</code> file and type <code>shell64 load</code></td></tr>
+  <tr><td><code>journal.write (entry) with var (s)</code></td><td>Journal an entry (IDE shows a preview; Autumn writes the real journal)</td></tr>
+  <tr><td><code>[frp:Maritime/Envelope/R]</code></td><td>Tag one of the 63 shell / tool / phase checks</td></tr>
+  <tr><td><code>gl.backend (three|webgl|webgpu)</code></td><td>Graphics wrapper backend (spec: Ash 2.1)</td></tr>
+</table>
 <p>A minimal program:</p>
 <pre><code>{{env:MyProject}}
 [[script:hello-v1]]

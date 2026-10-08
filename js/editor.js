@@ -219,8 +219,13 @@ const AshEditor = {
       if (isLetter(c) || c === "_") {
         let j = i + 1;
         while (j < n && isWordChar(source[j])) j++;
-        const word = source.slice(i, j);
+        let word = source.slice(i, j);
         let cls = "";
+        // Ash 2.1 dotted keywords: net.listen / shell64.read / journal.write / gl.scene / agent.spawn …
+        if (/^(net|shell64|journal|gl|agent)$/.test(word) && source[j] === "." && isLetter(source[j + 1] || "")) {
+          let k = j + 1; while (k < n && isWordChar(source[k])) k++;
+          out += `<span class="tok-keyword">${esc(source.slice(i, k))}</span>`; i = k; continue;
+        }
         if (word === "import") cls = "tok-decl";
         else if (LEATR_KEYWORDS.has(word)) cls = "tok-keyword";
         else if (LEATR_DECLARATIONS.has(word)) cls = "tok-decl";
