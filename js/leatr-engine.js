@@ -478,6 +478,11 @@ class LeatrEngine {
         this.shell64State.recs.forEach((r) => cnt[AshShell64.classify(r)]++);
         this._tl(`  Shell 64: ${this.shell64State.recs.length} records · data ${cnt.data} · sequence ${cnt.sequence} · buildable ${cnt.buildable}`, "#8ab4cc", true);
       }
+    } else if (verb === "radian") {
+      // Tool Radian: radian encode <text> | decode <state> | analyze <text>  (runs locally, nothing is sent)
+      const rest = c.slice(c.toLowerCase().indexOf("radian") + 6).trim();
+      const reply = typeof AshRadian !== "undefined" ? AshRadian.respond(/^(encode|decode|analy[sz]e)\b/i.test(rest) ? rest : "analyze " + rest) : null;
+      (reply || "  Tool Radian is not loaded.").split("\n").forEach((ln) => this._tl("  " + ln, "#8ab4cc", true));
     } else if (verb === "emit" && parts.length >= 2) {
       const evt = parts[1], hs = (this._ashHandlers || {})[evt] || [];
       if (!hs.length) this._tl(`  No listener for '${evt}' — run a script with net.listen first.`, "#ff9500");
@@ -509,7 +514,7 @@ class LeatrEngine {
       this.terminalLines.push({ text: "  LEATR v2 · Ash Edge Language · DART Meadow", color: "#8ab4cc", isSystem: true });
       this.terminalLines.push({ text: "  Compiler Standard: (xa²√xa)±1", color: "#8ab4cc", isSystem: true });
     } else if (lc === "help") {
-      this.terminalLines.push({ text: "  Commands: run · set <var> <value> · status · info · shell64 load|info · emit <event> · clear · exit · help", color: "#8ab4cc", isSystem: true });
+      this.terminalLines.push({ text: "  Commands: run · set <var> <value> · status · info · shell64 load|info · radian encode|decode|analyze <…> · emit <event> · clear · exit · help", color: "#8ab4cc", isSystem: true });
       if (this.runtime && this.runtime.listVars().length) {
         this.terminalLines.push({ text: `  Declared variables: ${this.runtime.listVars().join(", ")}`, color: "#8ab4cc", isSystem: true });
       }
