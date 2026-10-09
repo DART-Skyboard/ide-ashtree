@@ -1,4 +1,4 @@
-// Shell 64 socket host wrapper: parse/serialize shell64.state.ash (reflexive variable state) and run cascade reads.
+// Shell 64 socket host wrapper: parse/serialize shell64.state.ash (reflexive variable state) and run reflex reads.
 // No decimals. State per record: bl, rbli, t, a, shell. Round-trips the .ash file byte-for-byte.
 (function (global) {
   'use strict';
@@ -17,9 +17,9 @@
   function classify(r) { return r.bl === 0 ? 'data' : (r.rbli >= 1 ? 'buildable' : 'sequence'); }
   function read(st, k) { return st.byKey[k] || null; }
   function find(st, prefix) { return st.recs.filter(function (r) { return r.k.indexOf(prefix) === 0; }); }
-  // Cascade routing: a context (tool, shell) re-reads the SAME fact as buildable without destroying its stored form.
+  // Reflex routing: a context (tool, shell) re-reads the SAME fact as buildable without destroying its stored form.
   function route(r, ctx) { return Object.assign({}, r, { bl: r.bl + 1, rbli: r.rbli + 1, t: ctx.tool || r.t, shell: ctx.shell || r.shell }); }
-  // Cascade writes back (dynamic update). Only bl/rbli/t/a/shell may change.
+  // Reflex writes back (dynamic update). Only bl/rbli/t/a/shell may change.
   function update(st, k, patch) {
     var r = st.byKey[k]; if (!r) return false;
     ['bl', 'rbli', 't', 'a', 'shell'].forEach(function (f) { if (patch[f] !== undefined) r[f] = patch[f]; });
