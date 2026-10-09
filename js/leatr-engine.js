@@ -480,8 +480,10 @@ class LeatrEngine {
       }
     } else if (verb === "radian") {
       // Tool Radian: radian encode <text> | decode <state> | analyze <text>  (runs locally, nothing is sent)
-      const rest = c.slice(c.toLowerCase().indexOf("radian") + 6).trim();
-      const reply = typeof AshRadian !== "undefined" ? AshRadian.respond(/^(encode|decode|analy[sz]e)\b/i.test(rest) ? rest : "analyze " + rest) : null;
+      let rest = c.slice(c.toLowerCase().indexOf("radian") + 6).trim();
+      // optional context for the 63 checks: `emotion=worried shell=MAR` (neutral / absent = baseline)
+      const rctx = {}; rest = rest.split(/\s+/).filter((t) => { const m = /^(emotion|shell)=(\S+)$/i.exec(t); if (m) { rctx[m[1].toLowerCase()] = m[1].toLowerCase() === "shell" ? m[2].toUpperCase() : m[2].toLowerCase(); return false; } return true; }).join(" ");
+      const reply = typeof AshRadian !== "undefined" ? AshRadian.respond(/^(encode|decode|analy[sz]e)\b/i.test(rest) ? rest : "analyze " + rest, rctx) : null;
       (reply || "  Tool Radian is not loaded.").split("\n").forEach((ln) => this._tl("  " + ln, "#8ab4cc", true));
     } else if (verb === "emit" && parts.length >= 2) {
       const evt = parts[1], hs = (this._ashHandlers || {})[evt] || [];
@@ -514,7 +516,7 @@ class LeatrEngine {
       this.terminalLines.push({ text: "  LEATR v2 · Ash Edge Language · DART Meadow", color: "#8ab4cc", isSystem: true });
       this.terminalLines.push({ text: "  Compiler Standard: (xa²√xa)±1", color: "#8ab4cc", isSystem: true });
     } else if (lc === "help") {
-      this.terminalLines.push({ text: "  Commands: run · set <var> <value> · status · info · shell64 load|info · radian encode|decode|analyze <…> · emit <event> · clear · exit · help", color: "#8ab4cc", isSystem: true });
+      this.terminalLines.push({ text: "  Commands: run · set <var> <value> · status · info · shell64 load|info · radian encode|decode|analyze <…> [emotion=<name> shell=GEO|MAR|AERO] · emit <event> · clear · exit · help", color: "#8ab4cc", isSystem: true });
       if (this.runtime && this.runtime.listVars().length) {
         this.terminalLines.push({ text: `  Declared variables: ${this.runtime.listVars().join(", ")}`, color: "#8ab4cc", isSystem: true });
       }
