@@ -1,0 +1,311 @@
+// Drift - web browser for Samara OS (Ash node syntax).
+// net.fetch is host-mediated and can fail on CORS. Before each fetch Drift pre-loads an
+// in-app error page into (page); a successful fetch overwrites it, a failed one leaves it visible.
+// 'drift://home' is a built-in page (a string var), so it works fully offline.
+// History keeps 4 pages back (address + page text, so Back never refetches) and 1 forward.
+import (SamaraHW)
+{{env:Samara}}
+[[script:drift-v1]]
+(Drift):-: {
+  [net: https] [poly: browser]
+  with var (s) var (addr) var (cur) var (page) var (homepage) var (fa) var (fp) var (st) var (ba1) var (bp1) var (ba2) var (bp2) var (ba3) var (bp3) var (ba4) var (bp4) var (bm1) var (bm2) var (bm3) var (bm4) var (bm5) var (bm6) {
+    irin ("Data: s=0")
+  }
+  thenplace "https://api.github.com/zen" placeto (bm1)
+  store.get (drift.bm.1) placeto (bm1)
+  thenplace "https://en.wikipedia.org/api/rest_v1/page/summary/Ash_tree" placeto (bm2)
+  store.get (drift.bm.2) placeto (bm2)
+  thenplace "https://api.github.com/octocat" placeto (bm3)
+  store.get (drift.bm.3) placeto (bm3)
+  thenplace "https://catfact.ninja/fact" placeto (bm4)
+  store.get (drift.bm.4) placeto (bm4)
+  thenplace "https://httpbin.org/uuid" placeto (bm5)
+  store.get (drift.bm.5) placeto (bm5)
+  thenplace "https://example.com" placeto (bm6)
+  store.get (drift.bm.6) placeto (bm6)
+  thenplace "Drift - home\n\nWelcome. Type an address above and press Go, or open the star menu.\n\nBookmarks:\n1) ${bm1}\n2) ${bm2}\n3) ${bm3}\n4) ${bm4}\n5) ${bm5}\n6) ${bm6}\n\nThe last bookmark (example.com) does not allow cross-origin reads, so it shows Drift's in-app error page." placeto (homepage)
+  thenplace "drift://home" placeto (addr)
+  thenplace "drift://home" placeto (cur)
+  thenplace (homepage) placeto (page)
+  thenplace "drift://home" placeto (fa)
+  thenplace (homepage) placeto (fp)
+  thenplace "drift://home" placeto (ba1)
+  thenplace (homepage) placeto (bp1)
+  thenplace "drift://home" placeto (ba2)
+  thenplace (homepage) placeto (bp2)
+  thenplace "drift://home" placeto (ba3)
+  thenplace (homepage) placeto (bp3)
+  thenplace "drift://home" placeto (ba4)
+  thenplace (homepage) placeto (bp4)
+  net.status placeto (st)
+
+  ui.screen (browser) title="Drift" {
+    ui.row (bar) gap=4 {
+      ui.button (bback) label="<"
+      ui.button (bfwd) label=">"
+      ui.input (url) placeholder="Search or enter address" value=(addr)
+      ui.button (bgo) label="Go"
+      ui.button (brel) label="R"
+    }
+    ui.text (view) text=(page) size=14
+    ui.row (foot) gap=8 {
+      ui.button (bhome) label="Home"
+      ui.button (bstar) label="Bookmark this"
+      ui.button (bmenu) label="Bookmarks"
+      ui.button (bquit) label="Exit"
+    }
+    ui.text (net) text="Network: ${st}" size=11
+  }
+  ui.screen (marks) title="Bookmarks" {
+    ui.button (m1) label=(bm1)
+    ui.button (m2) label=(bm2)
+    ui.button (m3) label=(bm3)
+    ui.button (m4) label=(bm4)
+    ui.button (m5) label=(bm5)
+    ui.button (m6) label=(bm6)
+    ui.button (mback) label="Back"
+  }
+
+  ui.on (url) submit {
+    thenplace (ba3) placeto (ba4)
+    thenplace (bp3) placeto (bp4)
+    thenplace (ba2) placeto (ba3)
+    thenplace (bp2) placeto (bp3)
+    thenplace (ba1) placeto (ba2)
+    thenplace (bp1) placeto (bp2)
+    thenplace (cur) placeto (ba1)
+    thenplace (page) placeto (bp1)
+    thenplace "" placeto (fa)
+    thenplace "" placeto (fp)
+    thenplace (addr) placeto (cur)
+    ui.set (url) value=(addr)
+    thenplace "Could not load ${addr}.\n\nThe site may block cross-origin requests (CORS), or you may be offline.\nBuilt-in pages (drift://home) cannot be fetched: press Home.\nTry a bookmark: they are known to allow browser requests." placeto (page)
+    ui.set (view) text=(page)
+    net.fetch ($addr) placeto (page)
+    ui.set (view) text=(page)
+    ui.screen (browser)
+  }
+  ui.on (bgo) tap {
+    thenplace (ba3) placeto (ba4)
+    thenplace (bp3) placeto (bp4)
+    thenplace (ba2) placeto (ba3)
+    thenplace (bp2) placeto (bp3)
+    thenplace (ba1) placeto (ba2)
+    thenplace (bp1) placeto (bp2)
+    thenplace (cur) placeto (ba1)
+    thenplace (page) placeto (bp1)
+    thenplace "" placeto (fa)
+    thenplace "" placeto (fp)
+    thenplace (addr) placeto (cur)
+    ui.set (url) value=(addr)
+    thenplace "Could not load ${addr}.\n\nThe site may block cross-origin requests (CORS), or you may be offline.\nBuilt-in pages (drift://home) cannot be fetched: press Home.\nTry a bookmark: they are known to allow browser requests." placeto (page)
+    ui.set (view) text=(page)
+    net.fetch ($addr) placeto (page)
+    ui.set (view) text=(page)
+    ui.screen (browser)
+  }
+  ui.on (brel) tap {
+    thenplace (cur) placeto (addr)
+    thenplace (addr) placeto (cur)
+    ui.set (url) value=(addr)
+    thenplace "Could not load ${addr}.\n\nThe site may block cross-origin requests (CORS), or you may be offline.\nBuilt-in pages (drift://home) cannot be fetched: press Home.\nTry a bookmark: they are known to allow browser requests." placeto (page)
+    ui.set (view) text=(page)
+    net.fetch ($addr) placeto (page)
+    ui.set (view) text=(page)
+    ui.screen (browser)
+  }
+  ui.on (bback) tap {
+    thenplace (cur) placeto (fa)
+    thenplace (page) placeto (fp)
+    thenplace (ba1) placeto (addr)
+    thenplace (ba1) placeto (cur)
+    thenplace (bp1) placeto (page)
+    thenplace (ba2) placeto (ba1)
+    thenplace (bp2) placeto (bp1)
+    thenplace (ba3) placeto (ba2)
+    thenplace (bp3) placeto (bp2)
+    thenplace (ba4) placeto (ba3)
+    thenplace (bp4) placeto (bp3)
+    ui.set (url) value=(addr)
+    ui.set (view) text=(page)
+  }
+  ui.on (bfwd) tap {
+    thenplace (ba3) placeto (ba4)
+    thenplace (bp3) placeto (bp4)
+    thenplace (ba2) placeto (ba3)
+    thenplace (bp2) placeto (bp3)
+    thenplace (ba1) placeto (ba2)
+    thenplace (bp1) placeto (bp2)
+    thenplace (cur) placeto (ba1)
+    thenplace (page) placeto (bp1)
+    thenplace (fa) placeto (addr)
+    thenplace (fa) placeto (cur)
+    thenplace (fp) placeto (page)
+    thenplace "drift://home" placeto (fa)
+    thenplace (homepage) placeto (fp)
+    ui.set (url) value=(addr)
+    ui.set (view) text=(page)
+  }
+  ui.on (bhome) tap {
+    thenplace (ba3) placeto (ba4)
+    thenplace (bp3) placeto (bp4)
+    thenplace (ba2) placeto (ba3)
+    thenplace (bp2) placeto (bp3)
+    thenplace (ba1) placeto (ba2)
+    thenplace (bp1) placeto (bp2)
+    thenplace (cur) placeto (ba1)
+    thenplace (page) placeto (bp1)
+    thenplace "drift://home" placeto (addr)
+    thenplace "drift://home" placeto (cur)
+    thenplace "Drift - home\n\nWelcome. Type an address above and press Go, or open the star menu.\n\nBookmarks:\n1) ${bm1}\n2) ${bm2}\n3) ${bm3}\n4) ${bm4}\n5) ${bm5}\n6) ${bm6}\n\nThe last bookmark (example.com) does not allow cross-origin reads, so it shows Drift's in-app error page." placeto (homepage)
+    thenplace (homepage) placeto (page)
+    ui.set (url) value=(addr)
+    ui.set (view) text=(page)
+  }
+  ui.on (bstar) tap {
+    thenplace (bm5) placeto (bm6)
+    thenplace (bm4) placeto (bm5)
+    thenplace (bm3) placeto (bm4)
+    thenplace (bm2) placeto (bm3)
+    thenplace (bm1) placeto (bm2)
+    thenplace (cur) placeto (bm1)
+    store.set (drift.bm.1) with (bm1)
+    ui.set (m1) label=(bm1)
+    store.set (drift.bm.2) with (bm2)
+    ui.set (m2) label=(bm2)
+    store.set (drift.bm.3) with (bm3)
+    ui.set (m3) label=(bm3)
+    store.set (drift.bm.4) with (bm4)
+    ui.set (m4) label=(bm4)
+    store.set (drift.bm.5) with (bm5)
+    ui.set (m5) label=(bm5)
+    store.set (drift.bm.6) with (bm6)
+    ui.set (m6) label=(bm6)
+    sys.notify ("Bookmarked") title="Drift"
+  }
+  ui.on (bmenu) tap { ui.screen (marks) }
+  ui.on (mback) tap { ui.screen (browser) }
+  ui.on (m1) tap {
+    thenplace (ba3) placeto (ba4)
+    thenplace (bp3) placeto (bp4)
+    thenplace (ba2) placeto (ba3)
+    thenplace (bp2) placeto (bp3)
+    thenplace (ba1) placeto (ba2)
+    thenplace (bp1) placeto (bp2)
+    thenplace (cur) placeto (ba1)
+    thenplace (page) placeto (bp1)
+    thenplace "" placeto (fa)
+    thenplace "" placeto (fp)
+    thenplace (bm1) placeto (addr)
+    thenplace (addr) placeto (cur)
+    ui.set (url) value=(addr)
+    thenplace "Could not load ${addr}.\n\nThe site may block cross-origin requests (CORS), or you may be offline.\nBuilt-in pages (drift://home) cannot be fetched: press Home.\nTry a bookmark: they are known to allow browser requests." placeto (page)
+    ui.set (view) text=(page)
+    net.fetch ($addr) placeto (page)
+    ui.set (view) text=(page)
+    ui.screen (browser)
+  }
+  ui.on (m2) tap {
+    thenplace (ba3) placeto (ba4)
+    thenplace (bp3) placeto (bp4)
+    thenplace (ba2) placeto (ba3)
+    thenplace (bp2) placeto (bp3)
+    thenplace (ba1) placeto (ba2)
+    thenplace (bp1) placeto (bp2)
+    thenplace (cur) placeto (ba1)
+    thenplace (page) placeto (bp1)
+    thenplace "" placeto (fa)
+    thenplace "" placeto (fp)
+    thenplace (bm2) placeto (addr)
+    thenplace (addr) placeto (cur)
+    ui.set (url) value=(addr)
+    thenplace "Could not load ${addr}.\n\nThe site may block cross-origin requests (CORS), or you may be offline.\nBuilt-in pages (drift://home) cannot be fetched: press Home.\nTry a bookmark: they are known to allow browser requests." placeto (page)
+    ui.set (view) text=(page)
+    net.fetch ($addr) placeto (page)
+    ui.set (view) text=(page)
+    ui.screen (browser)
+  }
+  ui.on (m3) tap {
+    thenplace (ba3) placeto (ba4)
+    thenplace (bp3) placeto (bp4)
+    thenplace (ba2) placeto (ba3)
+    thenplace (bp2) placeto (bp3)
+    thenplace (ba1) placeto (ba2)
+    thenplace (bp1) placeto (bp2)
+    thenplace (cur) placeto (ba1)
+    thenplace (page) placeto (bp1)
+    thenplace "" placeto (fa)
+    thenplace "" placeto (fp)
+    thenplace (bm3) placeto (addr)
+    thenplace (addr) placeto (cur)
+    ui.set (url) value=(addr)
+    thenplace "Could not load ${addr}.\n\nThe site may block cross-origin requests (CORS), or you may be offline.\nBuilt-in pages (drift://home) cannot be fetched: press Home.\nTry a bookmark: they are known to allow browser requests." placeto (page)
+    ui.set (view) text=(page)
+    net.fetch ($addr) placeto (page)
+    ui.set (view) text=(page)
+    ui.screen (browser)
+  }
+  ui.on (m4) tap {
+    thenplace (ba3) placeto (ba4)
+    thenplace (bp3) placeto (bp4)
+    thenplace (ba2) placeto (ba3)
+    thenplace (bp2) placeto (bp3)
+    thenplace (ba1) placeto (ba2)
+    thenplace (bp1) placeto (bp2)
+    thenplace (cur) placeto (ba1)
+    thenplace (page) placeto (bp1)
+    thenplace "" placeto (fa)
+    thenplace "" placeto (fp)
+    thenplace (bm4) placeto (addr)
+    thenplace (addr) placeto (cur)
+    ui.set (url) value=(addr)
+    thenplace "Could not load ${addr}.\n\nThe site may block cross-origin requests (CORS), or you may be offline.\nBuilt-in pages (drift://home) cannot be fetched: press Home.\nTry a bookmark: they are known to allow browser requests." placeto (page)
+    ui.set (view) text=(page)
+    net.fetch ($addr) placeto (page)
+    ui.set (view) text=(page)
+    ui.screen (browser)
+  }
+  ui.on (m5) tap {
+    thenplace (ba3) placeto (ba4)
+    thenplace (bp3) placeto (bp4)
+    thenplace (ba2) placeto (ba3)
+    thenplace (bp2) placeto (bp3)
+    thenplace (ba1) placeto (ba2)
+    thenplace (bp1) placeto (bp2)
+    thenplace (cur) placeto (ba1)
+    thenplace (page) placeto (bp1)
+    thenplace "" placeto (fa)
+    thenplace "" placeto (fp)
+    thenplace (bm5) placeto (addr)
+    thenplace (addr) placeto (cur)
+    ui.set (url) value=(addr)
+    thenplace "Could not load ${addr}.\n\nThe site may block cross-origin requests (CORS), or you may be offline.\nBuilt-in pages (drift://home) cannot be fetched: press Home.\nTry a bookmark: they are known to allow browser requests." placeto (page)
+    ui.set (view) text=(page)
+    net.fetch ($addr) placeto (page)
+    ui.set (view) text=(page)
+    ui.screen (browser)
+  }
+  ui.on (m6) tap {
+    thenplace (ba3) placeto (ba4)
+    thenplace (bp3) placeto (bp4)
+    thenplace (ba2) placeto (ba3)
+    thenplace (bp2) placeto (bp3)
+    thenplace (ba1) placeto (ba2)
+    thenplace (bp1) placeto (bp2)
+    thenplace (cur) placeto (ba1)
+    thenplace (page) placeto (bp1)
+    thenplace "" placeto (fa)
+    thenplace "" placeto (fp)
+    thenplace (bm6) placeto (addr)
+    thenplace (addr) placeto (cur)
+    ui.set (url) value=(addr)
+    thenplace "Could not load ${addr}.\n\nThe site may block cross-origin requests (CORS), or you may be offline.\nBuilt-in pages (drift://home) cannot be fetched: press Home.\nTry a bookmark: they are known to allow browser requests." placeto (page)
+    ui.set (view) text=(page)
+    net.fetch ($addr) placeto (page)
+    ui.set (view) text=(page)
+    ui.screen (browser)
+  }
+  ui.on (bquit) tap { sys.home }
+  input.on (back) { ui.screen (browser) }
+  ui.screen (browser)
+}|';'|

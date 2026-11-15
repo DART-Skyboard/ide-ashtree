@@ -1,0 +1,308 @@
+// Leaf - notepad for Samara OS (Ash node syntax).
+// 8 note slots (Ash has no branching or dynamic lists, so slots are fixed and explicit).
+// A slot reading "+ New note" is empty: tap it, write, Save. Delete resets the slot.
+// Each slot persists to store.* under leaf.title.N / leaf.body.N.
+import (SamaraHW)
+{{env:Samara}}
+[[script:leaf-v1]]
+(Leaf):-: {
+  [net: none] [poly: notes]
+  with var (s) var (t1) var (title1) var (body1) var (t2) var (title2) var (body2) var (t3) var (title3) var (body3) var (t4) var (title4) var (body4) var (t5) var (title5) var (body5) var (t6) var (title6) var (body6) var (t7) var (title7) var (body7) var (t8) var (title8) var (body8) {
+    irin ("Data: s=0")
+  }
+  thenplace "+ New note" placeto (title1)
+  thenplace "" placeto (body1)
+  store.get (leaf.title.1) placeto (title1)
+  store.get (leaf.body.1) placeto (body1)
+  thenplace (title1) placeto (t1)
+  thenplace "+ New note" placeto (title2)
+  thenplace "" placeto (body2)
+  store.get (leaf.title.2) placeto (title2)
+  store.get (leaf.body.2) placeto (body2)
+  thenplace (title2) placeto (t2)
+  thenplace "+ New note" placeto (title3)
+  thenplace "" placeto (body3)
+  store.get (leaf.title.3) placeto (title3)
+  store.get (leaf.body.3) placeto (body3)
+  thenplace (title3) placeto (t3)
+  thenplace "+ New note" placeto (title4)
+  thenplace "" placeto (body4)
+  store.get (leaf.title.4) placeto (title4)
+  store.get (leaf.body.4) placeto (body4)
+  thenplace (title4) placeto (t4)
+  thenplace "+ New note" placeto (title5)
+  thenplace "" placeto (body5)
+  store.get (leaf.title.5) placeto (title5)
+  store.get (leaf.body.5) placeto (body5)
+  thenplace (title5) placeto (t5)
+  thenplace "+ New note" placeto (title6)
+  thenplace "" placeto (body6)
+  store.get (leaf.title.6) placeto (title6)
+  store.get (leaf.body.6) placeto (body6)
+  thenplace (title6) placeto (t6)
+  thenplace "+ New note" placeto (title7)
+  thenplace "" placeto (body7)
+  store.get (leaf.title.7) placeto (title7)
+  store.get (leaf.body.7) placeto (body7)
+  thenplace (title7) placeto (t7)
+  thenplace "+ New note" placeto (title8)
+  thenplace "" placeto (body8)
+  store.get (leaf.title.8) placeto (title8)
+  store.get (leaf.body.8) placeto (body8)
+  thenplace (title8) placeto (t8)
+
+  ui.screen (list) title="Leaf" {
+    ui.button (n1) label=(t1)
+    ui.button (n2) label=(t2)
+    ui.button (n3) label=(t3)
+    ui.button (n4) label=(t4)
+    ui.button (n5) label=(t5)
+    ui.button (n6) label=(t6)
+    ui.button (n7) label=(t7)
+    ui.button (n8) label=(t8)
+    ui.button (leafhome) label="Home"
+  }
+  ui.screen (edit1) title="Note 1" {
+    ui.input (ti1) placeholder="Title" value=(title1)
+    ui.input (bi1) placeholder="Write here" multiline=true value=(body1)
+    ui.row (bar1) gap=8 {
+      ui.button (sv1) label="Save"
+      ui.button (dl1) label="Delete" color=#ff453a
+      ui.button (bk1) label="Back"
+    }
+  }
+  ui.screen (edit2) title="Note 2" {
+    ui.input (ti2) placeholder="Title" value=(title2)
+    ui.input (bi2) placeholder="Write here" multiline=true value=(body2)
+    ui.row (bar2) gap=8 {
+      ui.button (sv2) label="Save"
+      ui.button (dl2) label="Delete" color=#ff453a
+      ui.button (bk2) label="Back"
+    }
+  }
+  ui.screen (edit3) title="Note 3" {
+    ui.input (ti3) placeholder="Title" value=(title3)
+    ui.input (bi3) placeholder="Write here" multiline=true value=(body3)
+    ui.row (bar3) gap=8 {
+      ui.button (sv3) label="Save"
+      ui.button (dl3) label="Delete" color=#ff453a
+      ui.button (bk3) label="Back"
+    }
+  }
+  ui.screen (edit4) title="Note 4" {
+    ui.input (ti4) placeholder="Title" value=(title4)
+    ui.input (bi4) placeholder="Write here" multiline=true value=(body4)
+    ui.row (bar4) gap=8 {
+      ui.button (sv4) label="Save"
+      ui.button (dl4) label="Delete" color=#ff453a
+      ui.button (bk4) label="Back"
+    }
+  }
+  ui.screen (edit5) title="Note 5" {
+    ui.input (ti5) placeholder="Title" value=(title5)
+    ui.input (bi5) placeholder="Write here" multiline=true value=(body5)
+    ui.row (bar5) gap=8 {
+      ui.button (sv5) label="Save"
+      ui.button (dl5) label="Delete" color=#ff453a
+      ui.button (bk5) label="Back"
+    }
+  }
+  ui.screen (edit6) title="Note 6" {
+    ui.input (ti6) placeholder="Title" value=(title6)
+    ui.input (bi6) placeholder="Write here" multiline=true value=(body6)
+    ui.row (bar6) gap=8 {
+      ui.button (sv6) label="Save"
+      ui.button (dl6) label="Delete" color=#ff453a
+      ui.button (bk6) label="Back"
+    }
+  }
+  ui.screen (edit7) title="Note 7" {
+    ui.input (ti7) placeholder="Title" value=(title7)
+    ui.input (bi7) placeholder="Write here" multiline=true value=(body7)
+    ui.row (bar7) gap=8 {
+      ui.button (sv7) label="Save"
+      ui.button (dl7) label="Delete" color=#ff453a
+      ui.button (bk7) label="Back"
+    }
+  }
+  ui.screen (edit8) title="Note 8" {
+    ui.input (ti8) placeholder="Title" value=(title8)
+    ui.input (bi8) placeholder="Write here" multiline=true value=(body8)
+    ui.row (bar8) gap=8 {
+      ui.button (sv8) label="Save"
+      ui.button (dl8) label="Delete" color=#ff453a
+      ui.button (bk8) label="Back"
+    }
+  }
+  ui.on (n1) tap { ui.screen (edit1) }
+  ui.on (sv1) tap {
+    thenplace (title1) placeto (t1)
+    store.set (leaf.title.1) with (title1)
+    store.set (leaf.body.1) with (body1)
+    ui.set (n1) label=(t1)
+    sys.notify ("Note saved") title="Leaf"
+    ui.screen (list)
+  }
+  ui.on (dl1) tap {
+    thenplace "+ New note" placeto (title1)
+    thenplace "" placeto (body1)
+    thenplace (title1) placeto (t1)
+    store.set (leaf.title.1) with (title1)
+    store.set (leaf.body.1) with (body1)
+    ui.set (ti1) value=(title1)
+    ui.set (bi1) value=(body1)
+    ui.set (n1) label=(t1)
+    ui.screen (list)
+  }
+  ui.on (bk1) tap { ui.screen (list) }
+  ui.on (n2) tap { ui.screen (edit2) }
+  ui.on (sv2) tap {
+    thenplace (title2) placeto (t2)
+    store.set (leaf.title.2) with (title2)
+    store.set (leaf.body.2) with (body2)
+    ui.set (n2) label=(t2)
+    sys.notify ("Note saved") title="Leaf"
+    ui.screen (list)
+  }
+  ui.on (dl2) tap {
+    thenplace "+ New note" placeto (title2)
+    thenplace "" placeto (body2)
+    thenplace (title2) placeto (t2)
+    store.set (leaf.title.2) with (title2)
+    store.set (leaf.body.2) with (body2)
+    ui.set (ti2) value=(title2)
+    ui.set (bi2) value=(body2)
+    ui.set (n2) label=(t2)
+    ui.screen (list)
+  }
+  ui.on (bk2) tap { ui.screen (list) }
+  ui.on (n3) tap { ui.screen (edit3) }
+  ui.on (sv3) tap {
+    thenplace (title3) placeto (t3)
+    store.set (leaf.title.3) with (title3)
+    store.set (leaf.body.3) with (body3)
+    ui.set (n3) label=(t3)
+    sys.notify ("Note saved") title="Leaf"
+    ui.screen (list)
+  }
+  ui.on (dl3) tap {
+    thenplace "+ New note" placeto (title3)
+    thenplace "" placeto (body3)
+    thenplace (title3) placeto (t3)
+    store.set (leaf.title.3) with (title3)
+    store.set (leaf.body.3) with (body3)
+    ui.set (ti3) value=(title3)
+    ui.set (bi3) value=(body3)
+    ui.set (n3) label=(t3)
+    ui.screen (list)
+  }
+  ui.on (bk3) tap { ui.screen (list) }
+  ui.on (n4) tap { ui.screen (edit4) }
+  ui.on (sv4) tap {
+    thenplace (title4) placeto (t4)
+    store.set (leaf.title.4) with (title4)
+    store.set (leaf.body.4) with (body4)
+    ui.set (n4) label=(t4)
+    sys.notify ("Note saved") title="Leaf"
+    ui.screen (list)
+  }
+  ui.on (dl4) tap {
+    thenplace "+ New note" placeto (title4)
+    thenplace "" placeto (body4)
+    thenplace (title4) placeto (t4)
+    store.set (leaf.title.4) with (title4)
+    store.set (leaf.body.4) with (body4)
+    ui.set (ti4) value=(title4)
+    ui.set (bi4) value=(body4)
+    ui.set (n4) label=(t4)
+    ui.screen (list)
+  }
+  ui.on (bk4) tap { ui.screen (list) }
+  ui.on (n5) tap { ui.screen (edit5) }
+  ui.on (sv5) tap {
+    thenplace (title5) placeto (t5)
+    store.set (leaf.title.5) with (title5)
+    store.set (leaf.body.5) with (body5)
+    ui.set (n5) label=(t5)
+    sys.notify ("Note saved") title="Leaf"
+    ui.screen (list)
+  }
+  ui.on (dl5) tap {
+    thenplace "+ New note" placeto (title5)
+    thenplace "" placeto (body5)
+    thenplace (title5) placeto (t5)
+    store.set (leaf.title.5) with (title5)
+    store.set (leaf.body.5) with (body5)
+    ui.set (ti5) value=(title5)
+    ui.set (bi5) value=(body5)
+    ui.set (n5) label=(t5)
+    ui.screen (list)
+  }
+  ui.on (bk5) tap { ui.screen (list) }
+  ui.on (n6) tap { ui.screen (edit6) }
+  ui.on (sv6) tap {
+    thenplace (title6) placeto (t6)
+    store.set (leaf.title.6) with (title6)
+    store.set (leaf.body.6) with (body6)
+    ui.set (n6) label=(t6)
+    sys.notify ("Note saved") title="Leaf"
+    ui.screen (list)
+  }
+  ui.on (dl6) tap {
+    thenplace "+ New note" placeto (title6)
+    thenplace "" placeto (body6)
+    thenplace (title6) placeto (t6)
+    store.set (leaf.title.6) with (title6)
+    store.set (leaf.body.6) with (body6)
+    ui.set (ti6) value=(title6)
+    ui.set (bi6) value=(body6)
+    ui.set (n6) label=(t6)
+    ui.screen (list)
+  }
+  ui.on (bk6) tap { ui.screen (list) }
+  ui.on (n7) tap { ui.screen (edit7) }
+  ui.on (sv7) tap {
+    thenplace (title7) placeto (t7)
+    store.set (leaf.title.7) with (title7)
+    store.set (leaf.body.7) with (body7)
+    ui.set (n7) label=(t7)
+    sys.notify ("Note saved") title="Leaf"
+    ui.screen (list)
+  }
+  ui.on (dl7) tap {
+    thenplace "+ New note" placeto (title7)
+    thenplace "" placeto (body7)
+    thenplace (title7) placeto (t7)
+    store.set (leaf.title.7) with (title7)
+    store.set (leaf.body.7) with (body7)
+    ui.set (ti7) value=(title7)
+    ui.set (bi7) value=(body7)
+    ui.set (n7) label=(t7)
+    ui.screen (list)
+  }
+  ui.on (bk7) tap { ui.screen (list) }
+  ui.on (n8) tap { ui.screen (edit8) }
+  ui.on (sv8) tap {
+    thenplace (title8) placeto (t8)
+    store.set (leaf.title.8) with (title8)
+    store.set (leaf.body.8) with (body8)
+    ui.set (n8) label=(t8)
+    sys.notify ("Note saved") title="Leaf"
+    ui.screen (list)
+  }
+  ui.on (dl8) tap {
+    thenplace "+ New note" placeto (title8)
+    thenplace "" placeto (body8)
+    thenplace (title8) placeto (t8)
+    store.set (leaf.title.8) with (title8)
+    store.set (leaf.body.8) with (body8)
+    ui.set (ti8) value=(title8)
+    ui.set (bi8) value=(body8)
+    ui.set (n8) label=(t8)
+    ui.screen (list)
+  }
+  ui.on (bk8) tap { ui.screen (list) }
+  ui.on (leafhome) tap { sys.home }
+  input.on (back) { ui.screen (list) }
+  ui.screen (list)
+}|';'|

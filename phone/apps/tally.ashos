@@ -1,0 +1,311 @@
+// Tally - calculator for Samara OS (Ash node syntax).
+// Evaluation is real: Research (expr) parses the expression text held in the string var expr.
+// Ash has no branching, so Backspace is an undo stack (u1..u6); every key pushes the old expression.
+import (SamaraHW)
+{{env:Samara}}
+[[script:tally-v1]]
+(Tally):-: {
+  [net: none] [poly: arithmetic]
+  with var (s) var (expr) var (res) var (hist) var (u1) var (u2) var (u3) var (u4) var (u5) var (u6) {
+    irin ("Data: res=0")
+  }
+  thenplace "" placeto (expr)
+  thenplace "" placeto (hist)
+  thenplace "" placeto (u1)
+  thenplace "" placeto (u2)
+  thenplace "" placeto (u3)
+  thenplace "" placeto (u4)
+  thenplace "" placeto (u5)
+  thenplace "" placeto (u6)
+  store.get (tally.hist) placeto (hist)
+
+  ui.screen (calc) title="Tally" {
+    ui.text (disp) text=(expr) size=40 align=right
+    ui.text (out) text=(res) size=22 align=right color=#8e8e93
+    ui.grid (pad) cols=4 gap=6 {
+      ui.button (kac) label="AC" color=#ff453a
+      ui.button (kbs) label="<-" color=#5e5ce6
+      ui.button (kpc) label="%" color=#5e5ce6
+      ui.button (kdv) label="/" color=#ff9500
+      ui.button (k7) label="7"
+      ui.button (k8) label="8"
+      ui.button (k9) label="9"
+      ui.button (kmu) label="*" color=#ff9500
+      ui.button (k4) label="4"
+      ui.button (k5) label="5"
+      ui.button (k6) label="6"
+      ui.button (kmi) label="-" color=#ff9500
+      ui.button (k1) label="1"
+      ui.button (k2) label="2"
+      ui.button (k3) label="3"
+      ui.button (kpl) label="+" color=#ff9500
+      ui.button (ksg) label="+/-" color=#5e5ce6
+      ui.button (k0) label="0"
+      ui.button (kdt) label="."
+      ui.button (keq) label="=" color=#34c759
+    }
+    ui.row (tools) gap=8 {
+      ui.button (hbtn) label="History"
+      ui.button (qbtn) label="Home"
+    }
+  }
+  ui.screen (histscr) title="Tally history" {
+    ui.list (hl) items=(hist)
+    ui.row (hrow) gap=8 {
+      ui.button (hclr) label="Clear history"
+      ui.button (hback) label="Back"
+    }
+  }
+  ui.on (kac) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "" placeto (expr)
+    thenplace "0" placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (kbs) tap {
+    thenplace (u1) placeto (expr)
+    thenplace (u2) placeto (u1)
+    thenplace (u3) placeto (u2)
+    thenplace (u4) placeto (u3)
+    thenplace (u5) placeto (u4)
+    thenplace (u6) placeto (u5)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (kpc) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "(${expr})/100" placeto (expr)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (kdv) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "${expr}/" placeto (expr)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (k7) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "${expr}7" placeto (expr)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (k8) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "${expr}8" placeto (expr)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (k9) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "${expr}9" placeto (expr)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (kmu) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "${expr}*" placeto (expr)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (k4) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "${expr}4" placeto (expr)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (k5) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "${expr}5" placeto (expr)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (k6) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "${expr}6" placeto (expr)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (kmi) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "${expr}-" placeto (expr)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (k1) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "${expr}1" placeto (expr)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (k2) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "${expr}2" placeto (expr)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (k3) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "${expr}3" placeto (expr)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (kpl) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "${expr}+" placeto (expr)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (ksg) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "-(${expr})" placeto (expr)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (k0) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "${expr}0" placeto (expr)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (kdt) tap {
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace "${expr}." placeto (expr)
+    Research (expr) placeto (res)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (keq) tap {
+    Research (expr) placeto (res)
+    thenplace "${expr} = ${res},${hist}" placeto (hist)
+    store.set (tally.hist) with (hist)
+    ui.set (hl) items=(hist)
+    thenplace (u5) placeto (u6)
+    thenplace (u4) placeto (u5)
+    thenplace (u3) placeto (u4)
+    thenplace (u2) placeto (u3)
+    thenplace (u1) placeto (u2)
+    thenplace (expr) placeto (u1)
+    thenplace (res) placeto (expr)
+    ui.set (disp) text=(expr)
+    ui.set (out) text=(res)
+  }
+  ui.on (hbtn) tap { ui.set (hl) items=(hist); ui.screen (histscr) }
+  ui.on (hback) tap { ui.screen (calc) }
+  ui.on (hclr) tap {
+    thenplace "" placeto (hist)
+    store.set (tally.hist) with (hist)
+    ui.set (hl) items=(hist)
+  }
+  ui.on (qbtn) tap { sys.home }
+  input.on (back) { sys.home }
+  ui.screen (calc)
+}|';'|

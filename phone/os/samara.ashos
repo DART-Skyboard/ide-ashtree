@@ -1,0 +1,203 @@
+// Samara OS 1.0 - demo OS image source (Ash node syntax).
+// Compile together with the apps:
+//   Seedpress.compile({ files:{ 'phone/os/samara.ashos':..., 'phone/apps/tally.ashos':..., ... }, entry:'phone/os/samara.ashos' })
+import (SamaraHW)
+{{env:Samara}}
+[[script:samara-os-v1]]
+
+// ---- manifest (lifted into seed.manifest by Seedpress) ----
+// Default theme. Themes the OS ships (switch live in Rings via sys.setting (theme)):
+//   ash (default dark) | birch (light) | dusk | ember | ink
+sys.theme (ash)
+sys.layout grid=4x5 dock=4
+sys.boot (Crown)
+
+sys.app (tally) name="Tally" glyph="=" color=#ff9500 entry=Tally
+sys.app (leaf)  name="Leaf"  glyph="L" color=#34c759 entry=Leaf
+sys.app (drift) name="Drift" glyph="@" color=#0a84ff entry=Drift
+sys.app (lens)  name="Lens"  glyph="o" color=#bf5af2 entry=Lens
+sys.app (rings) name="Rings" glyph="*" color=#8e8e93 entry=Rings
+
+// ---- Crown: home, Bark (lock), notification shade, app menu ----
+(Crown):-: {
+  [net: none] [poly: shell]
+  with var (now) var (pct) var (inbox) var (s) {
+    irin ("Data: s=0")
+  }
+  sys.clock placeto (now)
+  power.battery placeto (pct)
+  thenplace "Welcome to Samara OS" placeto (inbox)
+
+  ui.screen (home) title="Crown" {
+    ui.col (widget) gap=4 {
+      ui.text (clk) text=(now) size=56 align=center
+      ui.text (bat) text="Battery ${pct}%" size=14 align=center color=#8e8e93
+    }
+    ui.row (dockbar) gap=8 {
+      ui.button (hshade) label="Notifications"
+      ui.button (hmenu) label="All apps"
+      ui.button (hlock) label="Lock"
+    }
+  }
+
+  ui.screen (menu) title="Apps" {
+    ui.grid (mgrid) cols=2 gap=8 {
+      ui.button (mtally) label="Tally  (calculator)"
+      ui.button (mleaf) label="Leaf  (notes)"
+      ui.button (mdrift) label="Drift  (browser)"
+      ui.button (mlens) label="Lens  (camera)"
+      ui.button (mrings) label="Rings  (settings)"
+    }
+    ui.button (mback) label="Back to home"
+  }
+
+  ui.screen (shade) title="Notifications" {
+    ui.list (inboxl) items=(inbox)
+    ui.row (qs1) gap=8 {
+      ui.button (qdim) label="Dim"
+      ui.button (qmid) label="Medium"
+      ui.button (qbright) label="Bright"
+    }
+    ui.row (qs2) gap=8 {
+      ui.button (qtest) label="Test notification"
+      ui.button (qclear) label="Clear"
+      ui.button (qclose) label="Close"
+    }
+  }
+
+  ui.screen (bark) title="Bark" {
+    ui.text (bclk) text=(now) size=64 align=center
+    ui.text (bhint) text="Tap Unlock to enter Crown" size=14 align=center color=#8e8e93
+    ui.text (bnotif) text=(inbox) size=14 align=center
+    ui.button (bunlock) label="Unlock"
+  }
+
+  ui.on (hshade) tap { ui.set (inboxl) items=(inbox); ui.screen (shade) }
+  ui.on (hmenu) tap { ui.screen (menu) }
+  ui.on (hlock) tap {
+    sys.clock placeto (now)
+    ui.set (bclk) text=(now)
+    ui.screen (bark)
+  }
+  ui.on (bunlock) tap {
+    sys.clock placeto (now)
+    power.battery placeto (pct)
+    ui.set (clk) text=(now)
+    ui.set (bat) text="Battery ${pct}%"
+    sys.home
+  }
+  ui.on (mtally) tap { sys.launch (tally) }
+  ui.on (mleaf) tap { sys.launch (leaf) }
+  ui.on (mdrift) tap { sys.launch (drift) }
+  ui.on (mlens) tap { sys.launch (lens) }
+  ui.on (mrings) tap { sys.launch (rings) }
+  ui.on (mback) tap { ui.screen (home) }
+  ui.on (qdim) tap { sys.setting (brightness) 0.3 }
+  ui.on (qmid) tap { sys.setting (brightness) 0.6 }
+  ui.on (qbright) tap { sys.setting (brightness) 1.0 }
+  ui.on (qtest) tap {
+    sys.clock placeto (now)
+    sys.notify ("Hello from Crown") title="Samara"
+    thenplace "${now}  Hello from Crown,${inbox}" placeto (inbox)
+    ui.set (inboxl) items=(inbox)
+  }
+  ui.on (qclear) tap {
+    thenplace "" placeto (inbox)
+    ui.set (inboxl) items=(inbox)
+  }
+  ui.on (qclose) tap { ui.screen (home) }
+
+  // hardware keys
+  input.on (home) { ui.screen (home) }
+  input.on (back) { ui.screen (home) }
+  input.on (power) {
+    power.sleep
+    sys.clock placeto (now)
+    ui.set (bclk) text=(now)
+    ui.screen (bark)
+  }
+  input.on (volup) { snd.volume (1) }
+  input.on (voldown) { snd.volume (0.3) }
+
+  ui.screen (bark)
+}|';'|
+
+// ---- Rings: settings ----
+(Rings):-: {
+  [net: none] [poly: settings]
+  with var (s) var (pct) var (chg) var (st) {
+    irin ("Data: s=0")
+  }
+  power.battery placeto (pct)
+  power.charging placeto (chg)
+  net.status placeto (st)
+
+  ui.screen (rings) title="Rings" {
+    ui.text (thh) text="Theme" size=16
+    ui.row (th1) gap=6 {
+      ui.button (tash) label="Ash"
+      ui.button (tbirch) label="Birch"
+      ui.button (tdusk) label="Dusk"
+      ui.button (tember) label="Ember"
+      ui.button (tink) label="Ink"
+    }
+    ui.text (brh) text="Brightness" size=16
+    ui.row (br1) gap=6 {
+      ui.button (b30) label="30%"
+      ui.button (b60) label="60%"
+      ui.button (b100) label="100%"
+    }
+    ui.text (vlh) text="Volume" size=16
+    ui.row (vl1) gap=6 {
+      ui.button (v0) label="Mute"
+      ui.button (v5) label="50%"
+      ui.button (v10) label="100%"
+    }
+    ui.text (about) text="Samara OS 1.0.0\nBattery ${pct}%  charging: ${chg}\nNetwork: ${st}" size=13
+    ui.button (rhome) label="Home"
+  }
+  ui.on (tash) tap { sys.setting (theme) ash }
+  ui.on (tbirch) tap { sys.setting (theme) birch }
+  ui.on (tdusk) tap { sys.setting (theme) dusk }
+  ui.on (tember) tap { sys.setting (theme) ember }
+  ui.on (tink) tap { sys.setting (theme) ink }
+  ui.on (b30) tap { sys.setting (brightness) 0.3 }
+  ui.on (b60) tap { sys.setting (brightness) 0.6 }
+  ui.on (b100) tap { sys.setting (brightness) 1.0 }
+  ui.on (v0) tap { snd.volume (0) }
+  ui.on (v5) tap { snd.volume (0.5); snd.beep freq=660 ms=80 }
+  ui.on (v10) tap { snd.volume (1); snd.beep freq=660 ms=80 }
+  ui.on (rhome) tap { sys.home }
+  input.on (back) { sys.home }
+  ui.screen (rings)
+}|';'|
+
+// ---- Lens: camera (cam.*; the host falls back to a synthetic test pattern without getUserMedia) ----
+(Lens):-: {
+  [net: none] [poly: camera]
+  with var (s) var (shot) {
+    irin ("Data: s=0")
+  }
+  ui.screen (lens) title="Lens" {
+    gfx.canvas (view) w=240 h=320
+    ui.row (lrow) gap=8 {
+      ui.button (lback) label="Rear"
+      ui.button (lfront) label="Front"
+      ui.button (lsnap) label="Shutter"
+    }
+    ui.button (lhome) label="Home"
+  }
+  cam.open (back)
+  ui.on (lback) tap { cam.close; cam.open (back) }
+  ui.on (lfront) tap { cam.close; cam.open (front) }
+  ui.on (lsnap) tap {
+    cam.snap placeto (shot)
+    gfx.clear (view) color=#000
+    gfx.image (view) x=0 y=0 w=240 h=320 src=(shot)
+    snd.beep freq=1200 ms=40
+    input.haptic (20)
+  }
+  ui.on (lhome) tap { cam.close; sys.home }
+  input.on (back) { cam.close; sys.home }
+  ui.screen (lens)
+}|';'|
