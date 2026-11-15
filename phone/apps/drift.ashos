@@ -23,7 +23,7 @@ import (SamaraHW)
   store.get (drift.bm.5) placeto (bm5)
   thenplace "https://example.com" placeto (bm6)
   store.get (drift.bm.6) placeto (bm6)
-  thenplace "Drift - home\n\nWelcome. Type an address above and press Go, or open the star menu.\n\nBookmarks:\n1) ${bm1}\n2) ${bm2}\n3) ${bm3}\n4) ${bm4}\n5) ${bm5}\n6) ${bm6}\n\nThe last bookmark (example.com) does not allow cross-origin reads, so it shows Drift's in-app error page." placeto (homepage)
+  thenplace "Drift - home\n\nWelcome. Type an address above and press Go, or open Bookmarks.\n\nBookmarks:\n1) ${bm1}\n2) ${bm2}\n3) ${bm3}\n4) ${bm4}\n5) ${bm5}\n6) ${bm6}\n\nThe last bookmark (example.com) does not allow cross-origin reads, so it shows Drift's in-app error page." placeto (homepage)
   thenplace "drift://home" placeto (addr)
   thenplace "drift://home" placeto (cur)
   thenplace (homepage) placeto (page)
@@ -40,30 +40,34 @@ import (SamaraHW)
   net.status placeto (st)
 
   ui.screen (browser) title="Drift" {
-    ui.row (bar) gap=4 {
-      ui.button (bback) label="<"
-      ui.button (bfwd) label=">"
-      ui.input (url) placeholder="Search or enter address" value=(addr)
-      ui.button (bgo) label="Go"
-      ui.button (brel) label="R"
+    ui.col (toolbar) gap=8 {
+      ui.row (nav) gap=8 {
+        ui.button (bback) label="‹" kind=tool
+        ui.button (bfwd) label="›" kind=tool
+        ui.button (brel) label="↻" kind=tool
+        ui.button (bhome) label="⌂" kind=tool
+      }
+      ui.row (addr) gap=8 {
+        ui.input (url) placeholder="Search or enter address" value=(addr)
+        ui.button (bgo) label="Go" kind=go
+      }
     }
     ui.text (view) text=(page) size=14
     ui.row (foot) gap=8 {
-      ui.button (bhome) label="Home"
-      ui.button (bstar) label="Bookmark this"
-      ui.button (bmenu) label="Bookmarks"
-      ui.button (bquit) label="Exit"
+      ui.button (bstar) label="Bookmark" kind=tab
+      ui.button (bmenu) label="Bookmarks" kind=tab
+      ui.button (bquit) label="Exit" kind=tab
     }
     ui.text (net) text="Network: ${st}" size=11
   }
   ui.screen (marks) title="Bookmarks" {
-    ui.button (m1) label=(bm1)
-    ui.button (m2) label=(bm2)
-    ui.button (m3) label=(bm3)
-    ui.button (m4) label=(bm4)
-    ui.button (m5) label=(bm5)
-    ui.button (m6) label=(bm6)
-    ui.button (mback) label="Back"
+    ui.button (m1) label=(bm1) kind=card
+    ui.button (m2) label=(bm2) kind=card
+    ui.button (m3) label=(bm3) kind=card
+    ui.button (m4) label=(bm4) kind=card
+    ui.button (m5) label=(bm5) kind=card
+    ui.button (m6) label=(bm6) kind=card
+    ui.button (mback) label="Back" kind=tonal
   }
 
   ui.on (url) submit {
@@ -157,7 +161,7 @@ import (SamaraHW)
     thenplace (page) placeto (bp1)
     thenplace "drift://home" placeto (addr)
     thenplace "drift://home" placeto (cur)
-    thenplace "Drift - home\n\nWelcome. Type an address above and press Go, or open the star menu.\n\nBookmarks:\n1) ${bm1}\n2) ${bm2}\n3) ${bm3}\n4) ${bm4}\n5) ${bm5}\n6) ${bm6}\n\nThe last bookmark (example.com) does not allow cross-origin reads, so it shows Drift's in-app error page." placeto (homepage)
+    thenplace "Drift - home\n\nWelcome. Type an address above and press Go, or open Bookmarks.\n\nBookmarks:\n1) ${bm1}\n2) ${bm2}\n3) ${bm3}\n4) ${bm4}\n5) ${bm5}\n6) ${bm6}\n\nThe last bookmark (example.com) does not allow cross-origin reads, so it shows Drift's in-app error page." placeto (homepage)
     thenplace (homepage) placeto (page)
     ui.set (url) value=(addr)
     ui.set (view) text=(page)

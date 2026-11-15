@@ -12,11 +12,11 @@ sys.theme (ash)
 sys.layout grid=4x5 dock=4
 sys.boot (Crown)
 
-sys.app (tally) name="Tally" glyph="=" color=#ff9500 entry=Tally
-sys.app (leaf)  name="Leaf"  glyph="L" color=#34c759 entry=Leaf
-sys.app (drift) name="Drift" glyph="@" color=#0a84ff entry=Drift
-sys.app (lens)  name="Lens"  glyph="o" color=#bf5af2 entry=Lens
-sys.app (rings) name="Rings" glyph="*" color=#8e8e93 entry=Rings
+sys.app (tally) name="Tally" glyph="±" color=#ff9500 entry=Tally
+sys.app (leaf)  name="Leaf"  glyph="❦" color=#34c759 entry=Leaf
+sys.app (drift) name="Drift" glyph="◎" color=#0a84ff entry=Drift
+sys.app (lens)  name="Lens"  glyph="◉" color=#bf5af2 entry=Lens
+sys.app (rings) name="Rings" glyph="⚙" color=#8e8e93 entry=Rings
 
 // ---- Crown: home, Bark (lock), notification shade, app menu ----
 (Crown):-: {
@@ -30,13 +30,13 @@ sys.app (rings) name="Rings" glyph="*" color=#8e8e93 entry=Rings
 
   ui.screen (home) title="Crown" {
     ui.col (widget) gap=4 {
-      ui.text (clk) text=(now) size=56 align=center
-      ui.text (bat) text="Battery ${pct}%" size=14 align=center color=#8e8e93
+      ui.text (clk) text=(now) size=clock align=center
+      ui.text (bat) text="Battery ${pct}%" size=14 align=center color=dim
     }
     ui.row (dockbar) gap=8 {
-      ui.button (hshade) label="Notifications"
-      ui.button (hmenu) label="All apps"
-      ui.button (hlock) label="Lock"
+      ui.button (hshade) label="Notifications" kind=glass
+      ui.button (hmenu) label="All apps" kind=glass
+      ui.button (hlock) label="Lock" kind=glass
     }
   }
 
@@ -48,7 +48,7 @@ sys.app (rings) name="Rings" glyph="*" color=#8e8e93 entry=Rings
       ui.button (mlens) label="Lens  (camera)"
       ui.button (mrings) label="Rings  (settings)"
     }
-    ui.button (mback) label="Back to home"
+    ui.button (mback) label="Back to home" kind=tonal
   }
 
   ui.screen (shade) title="Notifications" {
@@ -67,7 +67,7 @@ sys.app (rings) name="Rings" glyph="*" color=#8e8e93 entry=Rings
 
   ui.screen (bark) title="Bark" {
     ui.text (bclk) text=(now) size=64 align=center
-    ui.text (bhint) text="Tap Unlock to enter Crown" size=14 align=center color=#8e8e93
+    ui.text (bhint) text="Tap Unlock to enter Crown" size=14 align=center color=dim
     ui.text (bnotif) text=(inbox) size=14 align=center
     ui.button (bunlock) label="Unlock"
   }
@@ -183,9 +183,9 @@ sys.app (rings) name="Rings" glyph="*" color=#8e8e93 entry=Rings
     ui.row (lrow) gap=8 {
       ui.button (lback) label="Rear"
       ui.button (lfront) label="Front"
-      ui.button (lsnap) label="Shutter"
+      ui.button (lsnap) label="Shutter" kind=primary
     }
-    ui.button (lhome) label="Home"
+    ui.button (lhome) label="Home" kind=tonal
   }
   cam.open (back)
   ui.on (lback) tap { cam.close; cam.open (back) }

@@ -86,3 +86,26 @@ import (SamaraHW)
 2. Register it in `samara.ashos`: `sys.app (note) name="Note" glyph="n" color=#ff2d55 entry=Note`, and add a launch button in Crown's `menu` screen (`sys.launch (note)`).
 3. Include the file in the `files` map given to `Seedpress.compile`; node and screen/widget ids must be unique across the node (use prefixes such as `n1`, `ti1`).
 4. Rules of thumb: separate same-line statements with `;`; persist with `store.get/set` using dotted keys prefixed by the app name; compute with `Research`; finish the node with `ui.screen (<first screen>)`; always provide a way back (`input.on (back)` and a Home button).
+
+## Visual design layer (STYLE pass)
+
+All styling lives in `css/canopy.css` (section "Samara OS design layer") and reads only theme variables (`--bg --surface --surface2 --text --dim --accent --on-accent --border --danger --ok`), so all six themes (Ash Dark, Ash Light, Ember, Moss, Mist, Midnight) stay legible. Spacing is an 8px scale; touch targets are >= 44px; `.cnp-input` is 16px+ and `flex:1; min-width:0`.
+
+Button `kind=` values used by the apps (the canopy `button` leaf turns `kind=x` into class `k-x`; `kind` is not yet in the syntax table's known keys, so Seedpress reports a harmless "unknown key" warning):
+
+| kind | look | used for |
+|---|---|---|
+| `primary` / `go` | accent gradient pill (`go` is a fixed 76px column) | Save, Shutter, Drift Go |
+| `tonal` | accent-tinted | Home / History / Back-to-list |
+| `danger` / `acc` | danger-tinted | Delete, Clear history, Tally AC |
+| `card` | left-aligned list row with accent bar and chevron | Leaf notes, Drift bookmarks |
+| `tool` | square 26px glyph button | Drift back/forward/reload/home |
+| `tab` | 13px pill | Drift footer |
+| `glass` | translucent blurred plate | Crown home shortcuts |
+| `fn` / `op` / `eq` | Tally keypad: function, operator (accent tint), equals (accent solid) | Tally |
+
+Layout hooks (no per-app class exists, so the CSS keys off structure): a `ui.text` with `size=40` / `22` inside a scroll that also contains a grid is the Tally display / result; `size=14` is the Drift reading card; `size=11` the status line; the first `ui.col` of a scroll is Drift's sticky toolbar. Tally keys use the unicode operators `÷ × − ⌫ ±` (labels only; the handlers still append ASCII).
+
+Drift: row 1 `‹ › ↻ ⌂`, row 2 full-width address field + Go, footer `Bookmark | Bookmarks | Exit`.
+
+Orientation: every layout has a `.cnp-device.landscape` re-flow: home is widgets-left / icon grid + dock right, Tally is display-left / keypad-right, Leaf and Rings go two-column, Lens is viewfinder-left / controls-right, Drift's toolbar becomes one row, the lock screen puts clock left and notifications right. Icon labels, the clock and widget plates use translucent blurred plates and text halos so they stay readable over any wallpaper. The wallpaper layer (`.cnp-wall`) is not touched.

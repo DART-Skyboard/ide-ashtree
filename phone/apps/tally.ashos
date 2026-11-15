@@ -21,38 +21,38 @@ import (SamaraHW)
 
   ui.screen (calc) title="Tally" {
     ui.text (disp) text=(expr) size=40 align=right
-    ui.text (out) text=(res) size=22 align=right color=#8e8e93
+    ui.text (out) text=(res) size=22 align=right color=dim
     ui.grid (pad) cols=4 gap=6 {
-      ui.button (kac) label="AC" color=#ff453a
-      ui.button (kbs) label="<-" color=#5e5ce6
-      ui.button (kpc) label="%" color=#5e5ce6
-      ui.button (kdv) label="/" color=#ff9500
+      ui.button (kac) label="AC" kind=acc
+      ui.button (kbs) label="⌫" kind=fn
+      ui.button (kpc) label="%" kind=fn
+      ui.button (kdv) label="÷" kind=op
       ui.button (k7) label="7"
       ui.button (k8) label="8"
       ui.button (k9) label="9"
-      ui.button (kmu) label="*" color=#ff9500
+      ui.button (kmu) label="×" kind=op
       ui.button (k4) label="4"
       ui.button (k5) label="5"
       ui.button (k6) label="6"
-      ui.button (kmi) label="-" color=#ff9500
+      ui.button (kmi) label="−" kind=op
       ui.button (k1) label="1"
       ui.button (k2) label="2"
       ui.button (k3) label="3"
-      ui.button (kpl) label="+" color=#ff9500
-      ui.button (ksg) label="+/-" color=#5e5ce6
+      ui.button (kpl) label="+" kind=op
+      ui.button (ksg) label="±" kind=fn
       ui.button (k0) label="0"
       ui.button (kdt) label="."
-      ui.button (keq) label="=" color=#34c759
+      ui.button (keq) label="=" kind=eq
     }
     ui.row (tools) gap=8 {
-      ui.button (hbtn) label="History"
-      ui.button (qbtn) label="Home"
+      ui.button (hbtn) label="History" kind=tonal
+      ui.button (qbtn) label="Home" kind=tonal
     }
   }
   ui.screen (histscr) title="Tally history" {
     ui.list (hl) items=(hist)
     ui.row (hrow) gap=8 {
-      ui.button (hclr) label="Clear history"
+      ui.button (hclr) label="Clear history" kind=danger
       ui.button (hback) label="Back"
     }
   }

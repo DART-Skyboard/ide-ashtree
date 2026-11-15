@@ -52,22 +52,22 @@ import (SamaraHW)
   thenplace (title8) placeto (t8)
 
   ui.screen (list) title="Leaf" {
-    ui.button (n1) label=(t1)
-    ui.button (n2) label=(t2)
-    ui.button (n3) label=(t3)
-    ui.button (n4) label=(t4)
-    ui.button (n5) label=(t5)
-    ui.button (n6) label=(t6)
-    ui.button (n7) label=(t7)
-    ui.button (n8) label=(t8)
-    ui.button (leafhome) label="Home"
+    ui.button (n1) label=(t1) kind=card
+    ui.button (n2) label=(t2) kind=card
+    ui.button (n3) label=(t3) kind=card
+    ui.button (n4) label=(t4) kind=card
+    ui.button (n5) label=(t5) kind=card
+    ui.button (n6) label=(t6) kind=card
+    ui.button (n7) label=(t7) kind=card
+    ui.button (n8) label=(t8) kind=card
+    ui.button (leafhome) label="Home" kind=tonal
   }
   ui.screen (edit1) title="Note 1" {
     ui.input (ti1) placeholder="Title" value=(title1)
     ui.input (bi1) placeholder="Write here" multiline=true value=(body1)
     ui.row (bar1) gap=8 {
-      ui.button (sv1) label="Save"
-      ui.button (dl1) label="Delete" color=#ff453a
+      ui.button (sv1) label="Save" kind=primary
+      ui.button (dl1) label="Delete" kind=danger
       ui.button (bk1) label="Back"
     }
   }
@@ -75,8 +75,8 @@ import (SamaraHW)
     ui.input (ti2) placeholder="Title" value=(title2)
     ui.input (bi2) placeholder="Write here" multiline=true value=(body2)
     ui.row (bar2) gap=8 {
-      ui.button (sv2) label="Save"
-      ui.button (dl2) label="Delete" color=#ff453a
+      ui.button (sv2) label="Save" kind=primary
+      ui.button (dl2) label="Delete" kind=danger
       ui.button (bk2) label="Back"
     }
   }
@@ -84,8 +84,8 @@ import (SamaraHW)
     ui.input (ti3) placeholder="Title" value=(title3)
     ui.input (bi3) placeholder="Write here" multiline=true value=(body3)
     ui.row (bar3) gap=8 {
-      ui.button (sv3) label="Save"
-      ui.button (dl3) label="Delete" color=#ff453a
+      ui.button (sv3) label="Save" kind=primary
+      ui.button (dl3) label="Delete" kind=danger
       ui.button (bk3) label="Back"
     }
   }
@@ -93,8 +93,8 @@ import (SamaraHW)
     ui.input (ti4) placeholder="Title" value=(title4)
     ui.input (bi4) placeholder="Write here" multiline=true value=(body4)
     ui.row (bar4) gap=8 {
-      ui.button (sv4) label="Save"
-      ui.button (dl4) label="Delete" color=#ff453a
+      ui.button (sv4) label="Save" kind=primary
+      ui.button (dl4) label="Delete" kind=danger
       ui.button (bk4) label="Back"
     }
   }
@@ -102,8 +102,8 @@ import (SamaraHW)
     ui.input (ti5) placeholder="Title" value=(title5)
     ui.input (bi5) placeholder="Write here" multiline=true value=(body5)
     ui.row (bar5) gap=8 {
-      ui.button (sv5) label="Save"
-      ui.button (dl5) label="Delete" color=#ff453a
+      ui.button (sv5) label="Save" kind=primary
+      ui.button (dl5) label="Delete" kind=danger
       ui.button (bk5) label="Back"
     }
   }
@@ -111,8 +111,8 @@ import (SamaraHW)
     ui.input (ti6) placeholder="Title" value=(title6)
     ui.input (bi6) placeholder="Write here" multiline=true value=(body6)
     ui.row (bar6) gap=8 {
-      ui.button (sv6) label="Save"
-      ui.button (dl6) label="Delete" color=#ff453a
+      ui.button (sv6) label="Save" kind=primary
+      ui.button (dl6) label="Delete" kind=danger
       ui.button (bk6) label="Back"
     }
   }
@@ -120,8 +120,8 @@ import (SamaraHW)
     ui.input (ti7) placeholder="Title" value=(title7)
     ui.input (bi7) placeholder="Write here" multiline=true value=(body7)
     ui.row (bar7) gap=8 {
-      ui.button (sv7) label="Save"
-      ui.button (dl7) label="Delete" color=#ff453a
+      ui.button (sv7) label="Save" kind=primary
+      ui.button (dl7) label="Delete" kind=danger
       ui.button (bk7) label="Back"
     }
   }
@@ -129,8 +129,8 @@ import (SamaraHW)
     ui.input (ti8) placeholder="Title" value=(title8)
     ui.input (bi8) placeholder="Write here" multiline=true value=(body8)
     ui.row (bar8) gap=8 {
-      ui.button (sv8) label="Save"
-      ui.button (dl8) label="Delete" color=#ff453a
+      ui.button (sv8) label="Save" kind=primary
+      ui.button (dl8) label="Delete" kind=danger
       ui.button (bk8) label="Back"
     }
   }
