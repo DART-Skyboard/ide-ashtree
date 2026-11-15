@@ -8,7 +8,7 @@ Compile all four together (entry `phone/os/samara.ashos`); they compile with zer
 Ash has no `if`, loops, string slicing or dynamic lists. Everything below is built from what exists: `thenplace` (copy / interpolate into a var), `Research` (real arithmetic), `store.*`, `net.fetch`, and `ui.*`. So:
 
 * **State shifting is explicit.** Undo stacks and history are chains of `thenplace (a) placeto (b)`.
-* **Fixed slots instead of lists** (Leaf has 8 notes, Drift 6 bookmarks and 4 history pages).
+* **Fixed slots instead of lists** (Leaf has 8 notes; Drift has 10 bookmarks, 10 recents and 8-deep back/forward stacks).
 * **Branch-free error handling** (Drift pre-loads an error page, a successful fetch overwrites it).
 * Repetitive sections of the three app files were expanded by a script; the committed source is plain Ash and can be edited by hand.
 
@@ -53,16 +53,19 @@ List screen `list` with 8 slot buttons labelled with each note's title (`+ New n
 
 ## Drift (browser)
 
-Screens `browser` and `marks`.
+A real browser: `ui.web` embeds each page in a sandboxed iframe, so the host browser engine renders everything (HTML5/CSS/SVG/WebGL/three.js/JS/wasm, video, audio, images). Source `phone/apps/drift.ashos` (generated from a template, committed as plain Ash; repetitive slot code is expanded). It needs three small kernel/syntax features that exist in the kernel: `call (Node)`, `if cond="..." { }` and `ui.on (web) load { }`; the syntax table now accepts them (see SYNTAX.md).
 
-* Top bar: Back `<`, Forward `>`, address input (submit = Go), Go, Reload `R`. Page area shows the text in var `page`. Footer: Home, Bookmark this, Bookmarks, Exit.
-* Navigation (`ui.on (url) submit`, Go, bookmark buttons) pushes the current page onto a 4-deep back stack (address `ba1..4` plus page text `bp1..4`, so Back is instant and offline), clears forward, then:
-  1. `thenplace "Could not load ${addr}. ... (CORS) ..." placeto (page)` pre-loads the in-app error page,
-  2. `net.fetch ($addr) placeto (page)` overwrites it on success.
-  So a CORS or offline failure shows a clear error page with advice, no crash, no blank screen.
-* `drift://home` is a built-in page held in var `homepage` (works offline) listing the bookmarks and how to use Drift. Home restores it; typing `drift://home` in the bar is not a fetchable URL and shows the error page that says "press Home".
-* Bookmarks: 6 slots `drift.bm.1..6` in `store.*`. "Bookmark this" shifts the list and puts the current address first. Defaults are CORS-friendly: GitHub zen/octocat, Wikipedia REST summary (Ash tree), catfact.ninja, httpbin uuid, and `https://example.com` (no CORS: demonstrates the error page).
-* Limit: Ash cannot parse HTML, so link following is by URL bar and bookmarks, not by clicking links inside a fetched page. Rendering is whatever text the host returns.
+One screen, `main`, whose content switches by CSS class (`dhide`, set with `ui.set (id) cls=(var)` and recomputed by `DriftSync`), so Samara's app-bar back arrow never appears and the page is not torn down when you open the bookmark editor:
+
+* **Toolbar row 1:** back, forward, reload (bumps the `reload=` counter), home (start page), mode toggle (`MOBILE ⇄` / `DESKTOP ⇄`, the label is the current mode), star (filled when the current address is bookmarked; tapping toggles the bookmark). **Row 2** (hidden on the start page): full-width address field, Go (Enter = `ui.on (urlin) submit`).
+* **Start page** (`cur` is empty): big search/address field, bookmark tiles (`ui.grid cols=2`, 4 columns in landscape via `.cnp-device.landscape`), Edit bookmarks, Recent (last 10 addresses, hidden when empty), Clear history.
+* **Browsing:** a one-time muted hint (persisted `drift.hint`) says links tapped inside a page navigate within the frame but the address bar cannot follow (cross-origin frames cannot report their URL or title), then the `ui.web` view fills the remaining height, then a slim footer status ("Loading ..." then "Loaded <address> - <mode> layout", set by `ui.on (view) load`). The frame's own chip opens a page that refuses embedding in a normal tab.
+* **Typed text is passed through as-is.** The host's `normalizeUrl` turns it into `https://...` or a web search (Bing: DuckDuckGo refuses to be framed). `javascript:` / `data:` are rejected.
+* **Mode:** `drift.mode` (`mobile` default, persisted with `drift.mode2`, `drift.modeL`, `drift.modeL2`, which are the swapped label/other-mode pair because Ash has no string compare to derive them). `mode=(mode)` on the web view re-lays out the page (desktop = 1280px layout scaled to fit) without reloading it.
+* **History:** URL-only var stacks, back `h1..h8`, forward `f1..f8` (`-` = empty). Go, tiles, recents and the edit list run `DriftGo`: push `cur` on the back stack, clear forward, set `cur`, push recents, `DriftShow`. `DriftBack` / `DriftFwd` shift the stacks and re-navigate by setting `cur`. The empty address is the start page, so Back from the first page returns to the start page. Hardware Back: leave the editor, else Back, else home.
+* **Bookmarks:** 10 slots `drift.bm.1..10`. Defaults: dartmeadow.com, radicaldeepscale.com, leatr.xyz, cube.leatr.xyz, then sites that allow framing (en.wikipedia.org, threejs.org/examples, developer.mozilla.org, archive.org, openstreetmap.org), one free slot. The star puts the current address in slot 1 (older ones shift down; the last falls off) or removes it if it is already bookmarked. "Edit bookmarks" lists the slots with a remove button each (`DriftRm1..10` shift the later ones up) and "Restore default bookmarks". Recents `drift.rc.1..10`.
+* **Routines** are extra nodes run with `call`: `DriftGo DriftBack DriftFwd DriftShow DriftSync DriftSaveB DriftSaveR DriftDefaults DriftRm1..10`. They share the app's vars and widgets.
+* **Limits, stated in the UI:** the address bar shows what you asked for, not where in-page links went; some sites refuse framing (blank page or "refused to connect", use the frame chip); desktop layout is scaled, not a different engine; opening the start page tears down the frame, so Forward re-loads the page.
 
 ## Writing another app
 
@@ -98,14 +101,15 @@ Button `kind=` values used by the apps (the canopy `button` leaf turns `kind=x` 
 | `primary` / `go` | accent gradient pill (`go` is a fixed 76px column) | Save, Shutter, Drift Go |
 | `tonal` | accent-tinted | Home / History / Back-to-list |
 | `danger` / `acc` | danger-tinted | Delete, Clear history, Tally AC |
-| `card` | left-aligned list row with accent bar and chevron | Leaf notes, Drift bookmarks |
-| `tool` | square 26px glyph button | Drift back/forward/reload/home |
+| `card` | left-aligned list row with accent bar and chevron (compact tile inside a `ui.grid` in Drift) | Leaf notes, Drift bookmarks and recents |
+| `tool` | square glyph button | Drift back/forward/reload/home/star |
+| `mode` / `x` / `hint` | Drift: accent pill mode toggle, fixed 52px remove button, muted hint strip | Drift (`canopy-web.css`) |
 | `tab` | 13px pill | Drift footer |
 | `glass` | translucent blurred plate | Crown home shortcuts |
 | `fn` / `op` / `eq` | Tally keypad: function, operator (accent tint), equals (accent solid) | Tally |
 
 Layout hooks (no per-app class exists, so the CSS keys off structure): a `ui.text` with `size=40` / `22` inside a scroll that also contains a grid is the Tally display / result; `size=14` is the Drift reading card; `size=11` the status line; the first `ui.col` of a scroll is Drift's sticky toolbar. Tally keys use the unicode operators `÷ × − ⌫ ±` (labels only; the handlers still append ASCII).
 
-Drift: row 1 `‹ › ↻ ⌂`, row 2 full-width address field + Go, footer `Bookmark | Bookmarks | Exit`.
+Drift: row 1 `‹ › ↻ ⌂ MODE ☆`, row 2 full-width address field + Go, then the web view and a status footer; Drift's own CSS is at the end of `css/canopy-web.css`.
 
 Orientation: every layout has a `.cnp-device.landscape` re-flow: home is widgets-left / icon grid + dock right, Tally is display-left / keypad-right, Leaf and Rings go two-column, Lens is viewfinder-left / controls-right, Drift's toolbar becomes one row, the lock screen puts clock left and notifications right. Icon labels, the clock and widget plates use translucent blurred plates and text halos so they stay readable over any wallpaper. The wallpaper layer (`.cnp-wall`) is not touched.

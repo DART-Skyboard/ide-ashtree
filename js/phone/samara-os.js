@@ -513,7 +513,7 @@
       if (op.children) { var saved = s.children; execOps(op.children, childCtx(ctx, s)); }
       if (op.handlers) Object.keys(op.handlers).forEach(function (ev) { registerHandler(ctx.proc, id, ev, op.handlers[ev]); });
     };
-    ['text', 'button', 'input', 'list', 'icon', 'menu', 'image'].forEach(function (k) {
+    ['text', 'button', 'input', 'list', 'icon', 'menu', 'image', 'web'].forEach(function (k) {
       OPS['ui.' + k] = function (op, ctx) { addNode(ctx, k, op); };
     });
     ['row', 'col', 'grid'].forEach(function (k) {
