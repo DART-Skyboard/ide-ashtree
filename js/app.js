@@ -365,6 +365,7 @@ function switchTab(name) {
     MazeUI._initRendererIfNeeded();
     requestAnimationFrame(() => MazeUI.renderer3d.resize());
   }
+  if (name === "grove" && window.Grove) window.Grove.onShow();
   if (name === "interface") {
     // Same WebGL-canvas-sizing issue as Maze — force a resize on every
     // visit since the panel may have been display:none until now.

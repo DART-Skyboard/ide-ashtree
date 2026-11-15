@@ -24,6 +24,8 @@
 <link rel="stylesheet" href="css/maze.css?v=1791430589">
 <link rel="stylesheet" href="css/gl-output.css?v=1791430589">
 <link rel="stylesheet" href="css/calculator.css?v=1791430589">
+<link rel="stylesheet" href="css/canopy.css?v=samara1">
+<link rel="stylesheet" href="css/grove.css?v=samara1">
 </head>
 <body>
 
@@ -80,6 +82,10 @@
     <button class="tab" data-tab="maze">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
       Maze
+    </button>
+    <button class="tab" data-tab="grove" title="Samara OS phone lab (web only)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+      Grove
     </button>
     <button class="tab" data-tab="help">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><line x1="12" y1="17.5" x2="12" y2="17.5"/></svg>
@@ -320,6 +326,9 @@
         </div>
       </div>
     </section>
+
+    <!-- ---------- GROVE (Samara OS phone lab, web only) ---------- -->
+    <section class="panel" id="panel-grove"></section>
 
     <!-- ---------- HELP ---------- -->
     <!-- ---------- MAZE + CRYPTOLOGY ---------- -->
@@ -586,6 +595,12 @@
 <script src="js/calculator-module.js?v=1791430589"></script>
 <script src="js/calculator-window.js?v=1791430589"></script>
 <script src="js/help-content.js?v=1791430589"></script>
+<script src="js/phone/samara-syntax.js?v=samara1"></script>
+<script src="js/phone/seedpress.js?v=samara1"></script>
+<script src="js/phone/samara-os.js?v=samara1"></script>
+<script src="js/phone/canopy.js?v=samara1"></script>
+<script src="js/github-auth.js?v=samara1"></script>
+<script src="js/phone/grove.js?v=samara1"></script>
 <script src="js/app.js?v=1791430589"></script>
 </body>
 </html>

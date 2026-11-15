@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Samara OS</title>
+<link rel="stylesheet" href="css/canopy.css?v=samara1">
+<style>
+  html,body{margin:0;height:100%;background:#05070a;color:#e9edf2;font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+  #mount{position:fixed;inset:0}
+  #msg{position:fixed;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;color:#8ab4cc}
+  #msg b{color:#ff9500}
+</style>
+</head>
+<body>
+<div id="mount"></div>
+<div id="msg"></div>
+<script src="js/phone/samara-syntax.js?v=samara1"></script>
+<script src="js/phone/seedpress.js?v=samara1"></script>
+<script src="js/phone/samara-os.js?v=samara1"></script>
+<script src="js/phone/canopy.js?v=samara1"></script>
+<script>
+(function () {
+  var msg = document.getElementById("msg"), mount = document.getElementById("mount");
+  function fail(t) { msg.style.display = "flex"; msg.innerHTML = "<div><b>Cannot start this seed.</b><br>" + t.replace(/</g, "&lt;") + "</div>"; }
+  function b64urlToBytes(s) {
+    s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "=";
+    var bin = atob(s), b = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
+    return b;
+  }
+  async function fragToText(frag) {
+    var b = b64urlToBytes(frag);
+    if (b[0] === 0x1f && b[1] === 0x8b) {
+      if (!window.DecompressionStream) throw new Error("This browser cannot decompress gzip links.");
+      var ds = new Blob([b]).stream().pipeThrough(new DecompressionStream("gzip"));
+      return new TextDecoder().decode(await new Response(ds).arrayBuffer());
+    }
+    return new TextDecoder().decode(b);
+  }
+  async function main() {
+    if (!window.Canopy || !Canopy.create) throw new Error("Canopy simulator is not available on this host.");
+    var qs = new URLSearchParams(location.search), src = qs.get("src"), hash = location.hash.replace(/^#/, ""), text;
+    var hm = /(?:^|&)seed=([^&]+)/.exec(hash);
+    if (hm) text = await fragToText(hm[1]);
+    else if (src) {
+      var u = new URL(src, location.href);
+      if (u.protocol !== "https:" && u.origin !== location.origin) throw new Error("Only https:// seed URLs are allowed.");
+      var r = await fetch(u.href, { credentials: "omit" });
+      if (!r.ok) throw new Error("Seed URL returned HTTP " + r.status + ". Private repo files cannot be fetched anonymously; publish a gist or use a #seed= link.");
+      text = await r.text();
+    } else throw new Error("Missing ?src=<seed URL> or #seed=<data>.");
+    var seed = window.Seedpress && Seedpress.parse ? Seedpress.parse(text) : JSON.parse(text);
+    if (!seed || seed.magic !== "SAMARA-SEED") throw new Error("Not a SAMARA-SEED file.");
+    if (window.Seedpress && Seedpress.verify) {
+      var v = Seedpress.verify(seed);
+      if (v === false || (v && v.ok === false)) throw new Error("Seed failed integrity verification.");
+    }
+    var sim = Canopy.create(mount, { seed: seed, onLog: function () {} });
+    await sim.boot();
+  }
+  main().catch(function (e) { fail(e.message || String(e)); });
+})();
+</script>
+</body>
+</html>
