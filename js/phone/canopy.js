@@ -387,7 +387,8 @@
     function syncLiveWallpaper(P, T) {
       var SW = global.SamaraWallpapers, want = P.wallpaperLive && SW && SW.mount ? P.wallpaperId : null;
       if (liveWp && liveId !== want) { try { liveWp.stop(); } catch (x) {} liveWp = null; liveId = null; wall.textContent = ''; }
-      if (want && !liveWp) { try { liveWp = SW.mount(want, wall, { dark: !!T.dark, accent: T.accent, bg: T.bg }); liveId = want; } catch (x) { liveWp = null; } }
+      if (liveWp && liveWp.setOptions) { var ok = (T.dark ? 1 : 0) + '|' + T.accent + '|' + T.bg; if (liveWp._ok !== ok) { liveWp._ok = ok; try { liveWp.setOptions({ dark: !!T.dark, accent: T.accent, bg: T.bg }); } catch (x) {} } }
+      if (want && !liveWp) { try { liveWp = SW.mount(want, wall, { dark: !!T.dark, accent: T.accent, bg: T.bg }); liveId = want; if (liveWp) liveWp._ok = (T.dark ? 1 : 0) + '|' + T.accent + '|' + T.bg; } catch (x) { liveWp = null; } }
       if (liveWp) { var live = P.powered && !P.screenOff; try { live ? liveWp.resume && liveWp.resume() : liveWp.pause && liveWp.pause(); } catch (x) {} }
     }
     function applyTheme(tree) {
