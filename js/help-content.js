@@ -61,11 +61,30 @@ const HELP_HTML = `
 
 <h2>Terminal commands</h2>
 <table>
-  <tr><td><code>run</code></td><td>Compile the current file</td></tr>
+  <tr><td><code>run</code></td><td>Compile and run the current file (Ash 2.1 programs run on the shared executor)</td></tr>
+  <tr><td><code>set &lt;var&gt; &lt;value&gt;</code></td><td>Set a declared variable, then <code>run</code> or <code>status</code></td></tr>
+  <tr><td><code>status</code></td><td>Show the current variable state of the compiled script</td></tr>
+  <tr><td><code>emit &lt;event&gt;</code></td><td>Fire a <code>net.listen</code> handler registered by the last run</td></tr>
+  <tr><td><code>shell64 load</code> / <code>shell64 info</code></td><td>Load the open <code>shell64.state.ash</code> file as the Shell 64 socket / show its counts</td></tr>
+  <tr><td><code>radian encode|decode|analyze &lt;text&gt;</code></td><td>Tool Radian (see below). Optional context: <code>emotion=worried shell=MAR</code></td></tr>
   <tr><td><code>info</code></td><td>Show compiler standard</td></tr>
   <tr><td><code>clear</code></td><td>Clear the terminal and output log</td></tr>
-  <tr><td><code>help</code></td><td>List commands</td></tr>
+  <tr><td><code>help</code></td><td>List commands and declared variables</td></tr>
+  <tr><td><code>exit</code></td><td>End the session message (the terminal stays open)</td></tr>
 </table>
+<p>When the editor language is not Ash, the terminal offers <code>run</code>, <code>list</code>, <code>clear</code>, <code>help</code> and <code>exit</code>.</p>
+
+<h2>Tool Radian</h2>
+<p>Tool Radian reflexes text or data points into variable states and a field sequence, entirely in your browser. Use <code>radian encode hello 42</code>, <code>radian decode (...)</code> or <code>radian analyze I am worried</code> in the terminal. Add <code>emotion=…</code> or <code>shell=GEO|MAR|AERO</code> to bias the 63 checks.</p>
+
+<h2>Languages and examples</h2>
+<p>The language picker in the editor toolbar switches between <strong>Ash Edge</strong> (LEATR compiler), <strong>Python 3</strong>, <strong>C / C++</strong>, <strong>JavaScript</strong> and <strong>SQL</strong>. Non-Ash languages run in a console beneath the editor. The <strong>Examples…</strong> menu loads Hello World, Counter App, Physics Sim, Network Node, Autumn Core, 3D Animation, Neural Scene, <strong>Arc Edge Vector</strong>, the Ash 2.1 Journal Listener, and the Reckon Calculator in Ash and C++.</p>
+
+<h2>Output, 3D and the Interface tab</h2>
+<p>Any script that has <code>import (GLDrivers)</code> or calls <code>gl.*</code> renders a live 3D scene automatically after <span class="kbd">RUN</span>; Arc Edge Vector scripts open the interactive Arc Edge viewer (axis toggles, influence and phase sliders, physics environment). The <strong>Interface</strong> tab builds a keypad or control panel from the variables a script declares. Arc Edge math: <code>doc = 3.0</code> replaces π; circumference = √(d×3)²; area = circumference²; volume = area³; sphere surface = volume × 0.25.</p>
+
+<h2>Maze and Lead Edge Cryptology</h2>
+<p>The <strong>Maze</strong> tab generates planar 2D or cubic 3D mazes (reflective or dither engine) and can show the shortest solution. Expand <strong>Lead Edge Cryptology</strong> beneath it to generate keys and encrypt or decrypt messages through the maze layers.</p>
 
 <h2>Ash Map</h2>
 <p>Ash Map is a visual mind-mapping canvas for planning or generating Ash code.</p>
