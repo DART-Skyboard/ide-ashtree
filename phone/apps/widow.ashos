@@ -1,0 +1,334 @@
+// Widow - the glanceable multitasking + widgets hub for Samara OS (Ash node syntax).
+// A command window (top-level blocks: whead, wwin, wpa, wpb): live header, a card-stack window switcher, quick controls wired to real kernel
+// settings, a peek at Leaf's notes, quick-launchers, and a stat strip. Nothing here is invented:
+// every readout comes from sys.setting reads / store.get, refreshed on open (resume), on Refresh and after each control.
+// Kernel read keys used: date power signal orientation theme wallpapername brightness volume dnd uptime openapps
+// storage windows recent1..4 recentlabel1..4 recentnote. Actions: theme/wallpaper/brightness/volume `next`,
+// orientation `toggle`, dnd `toggle`, close <app id>. store.get (leaf/leaf.title.N) peeks at Leaf (read-only).
+// The refresh groups below are repeated per handler (Ash has no subroutines), exactly like Tally and Leaf.
+import (SamaraHW)
+{{env:Samara}}
+[[script:widow-v1]]
+(Widow):-: {
+  [net: none] [poly: hub]
+  with var (s) var (now) var (date) var (up) var (nopen) var (sto) var (pw) var (sig) var (ori) var (thm) var (wpn) var (bri) var (bp) var (vol) var (dnd) var (nwin) var (wnote) var (r1) var (r2) var (r3) var (r4) var (l1) var (l2) var (l3) var (l4) var (nt1) var (nt2) var (nt3) {
+    irin ("Data: s=0")
+  }
+  sys.clock placeto (now)
+  sys.setting (date) placeto (date)
+  sys.setting (uptime) placeto (up)
+  sys.setting (openapps) placeto (nopen)
+  sys.setting (storage) placeto (sto)
+  sys.setting (power) placeto (pw)
+  sys.setting (signal) placeto (sig)
+  sys.setting (orientation) placeto (ori)
+  sys.setting (theme) placeto (thm)
+  sys.setting (wallpapername) placeto (wpn)
+  sys.setting (brightness) placeto (bri)
+  Research (bri * 100) placeto (bp)
+  sys.setting (volume) placeto (vol)
+  sys.setting (dnd) placeto (dnd)
+  sys.setting (windows) placeto (nwin)
+  sys.setting (recentnote) placeto (wnote)
+  sys.setting (recent1) placeto (r1)
+  sys.setting (recent2) placeto (r2)
+  sys.setting (recent3) placeto (r3)
+  sys.setting (recent4) placeto (r4)
+  sys.setting (recentlabel1) placeto (l1)
+  sys.setting (recentlabel2) placeto (l2)
+  sys.setting (recentlabel3) placeto (l3)
+  sys.setting (recentlabel4) placeto (l4)
+  thenplace "Empty slot" placeto (nt1)
+  store.get (leaf/leaf.title.1) placeto (nt1)
+  thenplace "Empty slot" placeto (nt2)
+  store.get (leaf/leaf.title.2) placeto (nt2)
+  thenplace "Empty slot" placeto (nt3)
+  store.get (leaf/leaf.title.3) placeto (nt3)
+
+  ui.screen (win) {
+    ui.row (whead) gap=12 {
+      ui.col (wtime) gap=2 {
+        ui.text (wclk) text=(now) size=xxl weight=300
+        ui.text (wdate) text=(date) size=sm color=dim
+      }
+      ui.grid (wchips) cols=2 gap=6 {
+        ui.text (wh1) text="${pw}"
+        ui.text (wh2) text="Signal ${sig}/4"
+        ui.text (wh3) text=(ori)
+        ui.text (wh4) text=(thm)
+      }
+    }
+    ui.col (wwin) gap=8 {
+      ui.row (wwh) gap=8 {
+        ui.text (wwt) text="Windows" size=sm weight=700
+        ui.text (wwc) text="${nwin} open" size=sm color=dim
+        ui.button (wref) label="↻" kind=tool
+      }
+      ui.row (wrow1) gap=8 {
+        ui.button (wc1) label=(l1) kind=glass
+        ui.button (wx1) label="✕" kind=ghost
+      }
+      ui.row (wrow2) gap=8 {
+        ui.button (wc2) label=(l2) kind=glass
+        ui.button (wx2) label="✕" kind=ghost
+      }
+      ui.row (wrow3) gap=8 {
+        ui.button (wc3) label=(l3) kind=glass
+        ui.button (wx3) label="✕" kind=ghost
+      }
+      ui.row (wrow4) gap=8 {
+        ui.button (wc4) label=(l4) kind=glass
+        ui.button (wx4) label="✕" kind=ghost
+      }
+      ui.text (wnote) text=(wnote) size=sm color=dim align=center
+    }
+    ui.col (wpa) gap=12 {
+      ui.text (wqt) text="Quick controls" size=sm weight=700
+      ui.grid (wtog) cols=3 gap=8 {
+        ui.button (wt1) label="◐\nTheme\n${thm}" kind=glass
+        ui.button (wt2) label="⟳\nRotate\n${ori}" kind=glass
+        ui.button (wt3) label="☀\nBrightness\n${bp}%" kind=glass
+        ui.button (wt4) label="▨\nWallpaper\n${wpn}" kind=glass
+        ui.button (wt5) label="☾\nDo not disturb\n${dnd}" kind=(dnd)
+        ui.button (wt6) label="♪\nSound\n${vol}%" kind=glass
+      }
+      ui.grid (wapps) cols=3 gap=8 {
+        ui.button (wa1) glyph="±" label="Calculator" kind=glass
+        ui.button (wa2) glyph="◎" label="Browser" kind=glass
+        ui.button (wa3) glyph="⚙" label="Settings" kind=glass
+      }
+    }
+    ui.col (wpb) gap=12 {
+      ui.button (wnotes) label="❦  Notes · Leaf\n· ${nt1}\n· ${nt2}\n· ${nt3}" kind=glass
+      ui.row (wstats) gap=8 {
+        ui.col (ws1) gap=2 {
+          ui.text (wsv1) text=(up) size=lg weight=600
+          ui.text (wsl1) text="Uptime" size=xs color=dim
+        }
+        ui.col (ws2) gap=2 {
+          ui.text (wsv2) text=(nopen) size=lg weight=600
+          ui.text (wsl2) text="Apps open" size=xs color=dim
+        }
+        ui.col (ws3) gap=2 {
+          ui.text (wsv3) text=(sto) size=lg weight=600
+          ui.text (wsl3) text="Store" size=xs color=dim
+        }
+      }
+      ui.text (wfoot) text="Live kernel readouts. Signal strength is simulated by the OS." size=xs color=dim align=center
+    }
+  }
+
+  ui.on (wref) tap {
+    sys.clock placeto (now)
+    sys.setting (date) placeto (date)
+    sys.setting (uptime) placeto (up)
+    sys.setting (openapps) placeto (nopen)
+    sys.setting (storage) placeto (sto)
+    sys.setting (power) placeto (pw)
+    sys.setting (signal) placeto (sig)
+    sys.setting (orientation) placeto (ori)
+    sys.setting (theme) placeto (thm)
+    sys.setting (wallpapername) placeto (wpn)
+    sys.setting (brightness) placeto (bri)
+    Research (bri * 100) placeto (bp)
+    sys.setting (volume) placeto (vol)
+    sys.setting (dnd) placeto (dnd)
+    sys.setting (windows) placeto (nwin)
+    sys.setting (recentnote) placeto (wnote)
+    sys.setting (recent1) placeto (r1)
+    sys.setting (recent2) placeto (r2)
+    sys.setting (recent3) placeto (r3)
+    sys.setting (recent4) placeto (r4)
+    sys.setting (recentlabel1) placeto (l1)
+    sys.setting (recentlabel2) placeto (l2)
+    sys.setting (recentlabel3) placeto (l3)
+    sys.setting (recentlabel4) placeto (l4)
+    thenplace "Empty slot" placeto (nt1)
+    store.get (leaf/leaf.title.1) placeto (nt1)
+    thenplace "Empty slot" placeto (nt2)
+    store.get (leaf/leaf.title.2) placeto (nt2)
+    thenplace "Empty slot" placeto (nt3)
+    store.get (leaf/leaf.title.3) placeto (nt3)
+  }
+  ui.on (resume) tap {
+    sys.clock placeto (now)
+    sys.setting (date) placeto (date)
+    sys.setting (uptime) placeto (up)
+    sys.setting (openapps) placeto (nopen)
+    sys.setting (storage) placeto (sto)
+    sys.setting (power) placeto (pw)
+    sys.setting (signal) placeto (sig)
+    sys.setting (orientation) placeto (ori)
+    sys.setting (theme) placeto (thm)
+    sys.setting (wallpapername) placeto (wpn)
+    sys.setting (brightness) placeto (bri)
+    Research (bri * 100) placeto (bp)
+    sys.setting (volume) placeto (vol)
+    sys.setting (dnd) placeto (dnd)
+    sys.setting (windows) placeto (nwin)
+    sys.setting (recentnote) placeto (wnote)
+    sys.setting (recent1) placeto (r1)
+    sys.setting (recent2) placeto (r2)
+    sys.setting (recent3) placeto (r3)
+    sys.setting (recent4) placeto (r4)
+    sys.setting (recentlabel1) placeto (l1)
+    sys.setting (recentlabel2) placeto (l2)
+    sys.setting (recentlabel3) placeto (l3)
+    sys.setting (recentlabel4) placeto (l4)
+    thenplace "Empty slot" placeto (nt1)
+    store.get (leaf/leaf.title.1) placeto (nt1)
+    thenplace "Empty slot" placeto (nt2)
+    store.get (leaf/leaf.title.2) placeto (nt2)
+    thenplace "Empty slot" placeto (nt3)
+    store.get (leaf/leaf.title.3) placeto (nt3)
+  }
+  ui.on (wt1) tap {
+    sys.setting (theme) next
+    sys.setting (power) placeto (pw)
+    sys.setting (signal) placeto (sig)
+    sys.setting (orientation) placeto (ori)
+    sys.setting (theme) placeto (thm)
+    sys.setting (wallpapername) placeto (wpn)
+    sys.setting (brightness) placeto (bri)
+    Research (bri * 100) placeto (bp)
+    sys.setting (volume) placeto (vol)
+    sys.setting (dnd) placeto (dnd)
+  }
+  ui.on (wt2) tap {
+    sys.setting (orientation) toggle
+    sys.setting (power) placeto (pw)
+    sys.setting (signal) placeto (sig)
+    sys.setting (orientation) placeto (ori)
+    sys.setting (theme) placeto (thm)
+  }
+  ui.on (wt3) tap {
+    sys.setting (brightness) next
+    sys.setting (wallpapername) placeto (wpn)
+    sys.setting (brightness) placeto (bri)
+    Research (bri * 100) placeto (bp)
+    sys.setting (volume) placeto (vol)
+    sys.setting (dnd) placeto (dnd)
+  }
+  ui.on (wt4) tap {
+    sys.setting (wallpaper) next
+    sys.setting (wallpapername) placeto (wpn)
+    sys.setting (brightness) placeto (bri)
+    Research (bri * 100) placeto (bp)
+    sys.setting (volume) placeto (vol)
+    sys.setting (dnd) placeto (dnd)
+  }
+  ui.on (wt5) tap {
+    sys.setting (dnd) toggle
+    sys.setting (wallpapername) placeto (wpn)
+    sys.setting (brightness) placeto (bri)
+    Research (bri * 100) placeto (bp)
+    sys.setting (volume) placeto (vol)
+    sys.setting (dnd) placeto (dnd)
+  }
+  ui.on (wt6) tap {
+    sys.setting (volume) next
+    sys.setting (wallpapername) placeto (wpn)
+    sys.setting (brightness) placeto (bri)
+    Research (bri * 100) placeto (bp)
+    sys.setting (volume) placeto (vol)
+    sys.setting (dnd) placeto (dnd)
+  }
+  ui.on (wc1) tap {
+    sys.launch ($r1)
+  }
+  ui.on (wx1) tap {
+    sys.setting (close) ($r1)
+    sys.setting (windows) placeto (nwin)
+    sys.setting (recentnote) placeto (wnote)
+    sys.setting (recent1) placeto (r1)
+    sys.setting (recent2) placeto (r2)
+    sys.setting (recent3) placeto (r3)
+    sys.setting (recent4) placeto (r4)
+    sys.setting (recentlabel1) placeto (l1)
+    sys.setting (recentlabel2) placeto (l2)
+    sys.setting (recentlabel3) placeto (l3)
+    sys.setting (recentlabel4) placeto (l4)
+    sys.clock placeto (now)
+    sys.setting (date) placeto (date)
+    sys.setting (uptime) placeto (up)
+    sys.setting (openapps) placeto (nopen)
+    sys.setting (storage) placeto (sto)
+  }
+  ui.on (wc2) tap {
+    sys.launch ($r2)
+  }
+  ui.on (wx2) tap {
+    sys.setting (close) ($r2)
+    sys.setting (windows) placeto (nwin)
+    sys.setting (recentnote) placeto (wnote)
+    sys.setting (recent1) placeto (r1)
+    sys.setting (recent2) placeto (r2)
+    sys.setting (recent3) placeto (r3)
+    sys.setting (recent4) placeto (r4)
+    sys.setting (recentlabel1) placeto (l1)
+    sys.setting (recentlabel2) placeto (l2)
+    sys.setting (recentlabel3) placeto (l3)
+    sys.setting (recentlabel4) placeto (l4)
+    sys.clock placeto (now)
+    sys.setting (date) placeto (date)
+    sys.setting (uptime) placeto (up)
+    sys.setting (openapps) placeto (nopen)
+    sys.setting (storage) placeto (sto)
+  }
+  ui.on (wc3) tap {
+    sys.launch ($r3)
+  }
+  ui.on (wx3) tap {
+    sys.setting (close) ($r3)
+    sys.setting (windows) placeto (nwin)
+    sys.setting (recentnote) placeto (wnote)
+    sys.setting (recent1) placeto (r1)
+    sys.setting (recent2) placeto (r2)
+    sys.setting (recent3) placeto (r3)
+    sys.setting (recent4) placeto (r4)
+    sys.setting (recentlabel1) placeto (l1)
+    sys.setting (recentlabel2) placeto (l2)
+    sys.setting (recentlabel3) placeto (l3)
+    sys.setting (recentlabel4) placeto (l4)
+    sys.clock placeto (now)
+    sys.setting (date) placeto (date)
+    sys.setting (uptime) placeto (up)
+    sys.setting (openapps) placeto (nopen)
+    sys.setting (storage) placeto (sto)
+  }
+  ui.on (wc4) tap {
+    sys.launch ($r4)
+  }
+  ui.on (wx4) tap {
+    sys.setting (close) ($r4)
+    sys.setting (windows) placeto (nwin)
+    sys.setting (recentnote) placeto (wnote)
+    sys.setting (recent1) placeto (r1)
+    sys.setting (recent2) placeto (r2)
+    sys.setting (recent3) placeto (r3)
+    sys.setting (recent4) placeto (r4)
+    sys.setting (recentlabel1) placeto (l1)
+    sys.setting (recentlabel2) placeto (l2)
+    sys.setting (recentlabel3) placeto (l3)
+    sys.setting (recentlabel4) placeto (l4)
+    sys.clock placeto (now)
+    sys.setting (date) placeto (date)
+    sys.setting (uptime) placeto (up)
+    sys.setting (openapps) placeto (nopen)
+    sys.setting (storage) placeto (sto)
+  }
+  ui.on (wa1) tap {
+    sys.launch (tally)
+  }
+  ui.on (wa2) tap {
+    sys.launch (drift)
+  }
+  ui.on (wa3) tap {
+    sys.launch (rings)
+  }
+  ui.on (wnotes) tap {
+    sys.launch (leaf)
+  }
+  input.on (back) { sys.home }
+  ui.screen (win)
+}|';'|

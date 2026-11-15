@@ -64,6 +64,31 @@ Screens `browser` and `marks`.
 * Bookmarks: 6 slots `drift.bm.1..6` in `store.*`. "Bookmark this" shifts the list and puts the current address first. Defaults are CORS-friendly: GitHub zen/octocat, Wikipedia REST summary (Ash tree), catfact.ninja, httpbin uuid, and `https://example.com` (no CORS: demonstrates the error page).
 * Limit: Ash cannot parse HTML, so link following is by URL bar and bookmarks, not by clicking links inside a fetched page. Rendering is whatever text the host returns.
 
+## Widow (windows + widgets hub)
+
+File `phone/apps/widow.ashos`, registered in `samara.ashos` (`sys.app (widow) ... glyph="◈" color=#5e5ce6`, plus a Crown "All apps" entry). One screen `win` with four top-level blocks (`whead`, `wwin`, `wpa`, `wpb`); styled by the `/* widow */` block at the end of `css/canopy.css` (scoped by `data-id`, theme variables only, portrait and a two-column landscape layout).
+
+* **Header**: live clock and date plus chips for battery (with charging bolt), signal, orientation and theme.
+* **Windows**: a card stack of the running apps other than the foreground one, most recent first (4 fixed slots; empty ones collapse). Tap a card to switch to that app, tap its close button to end the process. `↻` refreshes everything.
+* **Quick controls**: Theme, Rotate, Brightness, Wallpaper, Do not disturb, Sound, each a real kernel setting cycled on tap and showing its live value. Do-not-disturb lights up via `kind=(dnd)` (the var `On`/`Off` becomes class `k-On`). Quick launchers for Tally (Calculator), Drift (Browser) and Rings (Settings).
+* **Notes peek**: the first three Leaf titles via `store.get (leaf/leaf.title.N)` ("Empty slot" when unused); tap opens Leaf.
+* **Stat strip**: uptime, apps open, store usage (keys and size of this seed's storage). Only kernel facts; signal strength is simulated by the OS and the footer says so.
+
+Kernel additions Widow uses (all in `js/phone/samara-os.js`, tested in `tests/os.test.js`; no syntax-table change, they ride on `sys.setting` and `store.get`):
+
+| key | read (`sys.setting (k) placeto (v)`) | write (`sys.setting (k) value`) |
+|---|---|---|
+| `theme` `wallpaper` `brightness` `volume` | as before | `next` cycles presets (brightness 30/60/100, volume 0/50/100) |
+| `orientation` | `portrait`/`landscape` | `toggle`, `portrait`, `landscape` |
+| `dnd` | `On`/`Off` | `toggle`, `on`, `off` (suppresses banners; notifications still land in the shade; persisted) |
+| `close` | | app id: ends that running app |
+| `date` `power` `signal` `uptime` `openapps` `storage` `wallpapername` `windows` | read-only | |
+| `recent1..4`, `recentlabel1..4`, `recentnote` | id / "glyph  Name" / empty-state text of the Nth most recent running app (not the foreground one) | |
+
+Also: `store.get (app/key)` reads another app's stored value (read-only; `store.set` always writes the caller's namespace), and every launch fires the app's optional `ui.on (resume) tap { ... }` handler once it is the foreground app (Widow uses it to refresh its readouts).
+
+Limits: four window slots, three note titles; Ash has no subroutines, so the refresh groups are repeated per handler in the source (generated, plain Ash); readouts update on open, on `↻` and after each control, not on a timer; `grove.js` `DEMO_FILES` and the committed demo seed still need Widow added by the lead.
+
 ## Writing another app
 
 1. Create `phone/apps/<name>.ashos` with one node named like the app:
