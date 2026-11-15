@@ -343,7 +343,7 @@
     function destOf(op) { var a = op.args || {}; var d = a.placeto || a.dest || a.to; return d ? strip(d) : null; }
 
     // ---------- UI model ----------
-    var TAGS = { text: 'text', button: 'button', input: 'input', list: 'list', icon: 'icon', row: 'row', col: 'col', grid: 'grid', menu: 'menu', canvas: 'canvas', image: 'image', camera: 'camera' };
+    var TAGS = { text: 'text', button: 'button', input: 'input', list: 'list', icon: 'icon', row: 'row', col: 'col', grid: 'grid', menu: 'menu', canvas: 'canvas', image: 'image', camera: 'camera', web: 'web' };
     function curScreen(proc, create) {
       if (!proc.cur || !proc.screens[proc.cur]) {
         if (!create) return null;

@@ -55,6 +55,7 @@
   def('ui.text',   { pos: ['id'], keys: ['text', 'size', 'align', 'color', 'parent', 'kind', 'weight', 'glyph', 'span', 'wrap', 'justify'], doc: 'Static or bound text.' });
   def('ui.button', { pos: ['id'], keys: ['label', 'color', 'parent', 'w', 'h', 'kind', 'weight', 'glyph', 'span', 'wrap', 'justify'], doc: 'Push button; pair with ui.on (id) tap.' });
   def('ui.input',  { pos: ['id'], keys: ['placeholder', 'multiline', 'value', 'parent', 'mode', 'hint', 'kind'], doc: 'Text field.' });
+  def('ui.web',    { pos: ['id'], keys: ['url', 'mode', 'reload', 'h', 'kind', 'parent'], doc: 'Real web view (sandboxed iframe in the browser host). url=(var) mode=desktop|mobile reload=(counter); ui.on (id) load { }.' });
   def('ui.list',   { pos: ['id'], keys: ['items', 'parent'], doc: 'List of items (comma list or var).' });
   def('ui.icon',   { pos: ['id'], keys: ['glyph', 'color', 'size', 'parent'], doc: 'Glyph icon.' });
   def('ui.row',    { pos: ['id'], keys: ['gap', 'parent', 'kind', 'weight', 'span', 'wrap', 'justify'], block: 'children', doc: 'Horizontal container.' });

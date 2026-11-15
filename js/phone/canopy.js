@@ -88,7 +88,7 @@
   var CONTAINERS = { device: 1, view: 1, homeview: 1, scroll: 1, row: 1, col: 1, grid: 1, list: 1, menu: 1, homegrid: 1, dock: 1, widgets: 1, shade: 1, lock: 1, section: 1 };
   var LEAF_TAGS = {};
   Object.keys(LEAF).forEach(function (k) { if (LEAF[k]) LEAF_TAGS[k] = 1; });
-  LEAF_TAGS.input = 1; LEAF_TAGS.canvas = 1; LEAF_TAGS.camera = 1;
+  LEAF_TAGS.input = 1; LEAF_TAGS.canvas = 1; LEAF_TAGS.camera = 1; LEAF_TAGS.web = 1;
 
   // ---------- canvas 2D commands ----------
   function drawCmds(cv, v) {
@@ -132,7 +132,7 @@
     }
     frame(); e._camStop = function () { stop = true; if (e._anim && global.cancelAnimationFrame) global.cancelAnimationFrame(e._anim); };
   }
-  function cleanup(e) { if (e._camStop) { e._camStop(); e._camStop = null; } e._camMode = null; }
+  function cleanup(e) { if (e._wro) { e._wro.disconnect(); e._wro = null; } clearTimeout(e._wto); if (e._camStop) { e._camStop(); e._camStop = null; } e._camMode = null; }
   function cleanupTree(e) { if (e._camStop) cleanup(e); if (e.children) for (var i = 0; i < e.children.length; i++) cleanupTree(e.children[i]); }
 
   // text fields inside the phone must stay selectable/focusable even though the screen itself disables selection
@@ -143,6 +143,73 @@
       '.cnp-input[type=range]{touch-action:pan-x}.cnp-screen .cnp-tappable,.cnp-screen button{cursor:pointer}';
     (doc.head || doc.documentElement).appendChild(st);
   })();
+
+
+  // ---------- web view (Drift): a real, sandboxed browsing context ----------
+  // The host browser engine does all decoding/rendering (HTML5, CSS, SVG, WebGL/three.js, WebAssembly, JS, MP4/MOV/MP3, PNG/JPEG/GIF/WebP/AVIF/JXL where the host supports them).
+  var WEB_ALLOW = 'autoplay; fullscreen; picture-in-picture; encrypted-media; camera; microphone; geolocation; clipboard-read; clipboard-write; web-share; xr-spatial-tracking; accelerometer; gyroscope; magnetometer; gamepad; midi; display-capture; screen-wake-lock; storage-access; cross-origin-isolated';
+  var WEB_SANDBOX = 'allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads allow-pointer-lock allow-presentation allow-orientation-lock allow-storage-access-by-user-activation';
+  var SEARCH_URL = 'https://duckduckgo.com/?q=';
+  function normalizeUrl(raw) {
+    var t = String(raw == null ? '' : raw).trim();
+    if (!t) return '';
+    if (/^(javascript|data|vbscript|blob|file):/i.test(t)) return '';          // never navigate to script/data URLs
+    if (/^https?:\/\//i.test(t)) return t.replace(/^http:\/\//i, 'https://');   // http upgraded: this page is https, so http frames would be blocked as mixed content
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(t)) return '';                          // other schemes unsupported
+    if (/^(localhost|[\w-]+(\.[\w-]+)+)(:\d+)?([\/?#].*)?$/i.test(t) && !/\s/.test(t)) return 'https://' + t;
+    return SEARCH_URL + encodeURIComponent(t);
+  }
+  function webCreate(e) {
+    e.textContent = '';
+    var f = el('iframe', 'cnp-web-frame', e);
+    f.setAttribute('allow', WEB_ALLOW); f.setAttribute('allowfullscreen', ''); f.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin'); f.setAttribute('title', 'Drift page');
+    var bar = el('div', 'cnp-web-bar', e); var prog = el('i', 'cnp-web-prog', bar);
+    var open = el('button', 'cnp-web-open', e); open.type = 'button'; open.textContent = '↗'; open.title = 'Open this page in a normal browser tab (some sites refuse to be embedded)';
+    var note = el('div', 'cnp-web-note', e); note.textContent = 'Blank or "refused to connect"? That site forbids embedding. Tap ↗ to open it in a browser tab.';
+    e._wf = f; e._wprog = prog; e._wopen = open; e._wnote = note;
+    f.addEventListener('load', function () {
+      e._wprog.parentNode.classList.remove('on'); e.classList.add('loaded');
+      if (e._cnp && e._v) e._cnp.kernel.dispatch(e._v.id, 'load', { url: e._wurl || '' });
+    });
+    open.addEventListener('click', function (ev) { ev.stopPropagation(); if (e._wurl) global.open(e._wurl, '_blank', 'noopener'); });
+    open.addEventListener('pointerdown', function (ev) { ev.stopPropagation(); });
+    if (global.ResizeObserver) { e._wro = new global.ResizeObserver(function () { webFit(e); }); e._wro.observe(e); }
+  }
+  function webNavigate(e, url) {
+    var f = e._wf, u = normalizeUrl(url);
+    e._wurl = u;
+    if (!u) { f.removeAttribute('src'); e.classList.remove('loaded'); return; }
+    var sb = WEB_SANDBOX, same = false;
+    try { same = new URL(u, global.location.href).origin === global.location.origin; } catch (x) { same = true; }
+    if (!same) sb += ' allow-same-origin';                    // never combine scripts + same-origin for OUR origin: that would let a framed page script the IDE
+    f.setAttribute('sandbox', sb);
+    e.classList.remove('loaded'); e._wprog.parentNode.classList.add('on');
+    clearTimeout(e._wto); e._wto = setTimeout(function () { e.classList.add('slow'); }, 6000); e.classList.remove('slow');
+    f.src = u;
+  }
+  function webFit(e) {
+    var f = e._wf; if (!f) return;
+    var desktop = e._wmode === 'desktop', w = e.clientWidth || 320;
+    // height: fill whatever is left in the scroll container under the toolbars
+    var par = e.parentNode, hh = parseFloat(e._wh) || 0;
+    if (!hh && par && par.clientHeight) {
+      var used = 0, i, sib; for (i = 0; i < par.children.length; i++) { sib = par.children[i]; if (sib !== e) used += sib.offsetHeight + 8; }
+      hh = Math.max(180, par.clientHeight - used - 8);
+    }
+    hh = hh || 420; e.style.height = hh + 'px';
+    if (desktop) {
+      var DW = 1280, sc = w / DW;
+      f.style.width = DW + 'px'; f.style.height = Math.ceil(hh / sc) + 'px'; f.style.transform = 'scale(' + sc + ')'; f.style.transformOrigin = '0 0';
+    } else { f.style.width = '100%'; f.style.height = '100%'; f.style.transform = ''; }
+  }
+  function webUpdate(e, v) {
+    if (!e._wf) webCreate(e);
+    var p = v.props, mode = p.mode === 'desktop' ? 'desktop' : 'mobile';
+    e._wh = p.h; if (e._wmode !== mode) { e._wmode = mode; e.classList.toggle('desktop', mode === 'desktop'); }
+    var key = String(p.url == null ? '' : p.url) + '|' + String(p.reload == null ? '' : p.reload);
+    if (e._wkey !== key) { e._wkey = key; webNavigate(e, p.url); }
+    webFit(e);
+  }
 
   // ---------- DOM creation / patching ----------
   function create(v, inst) {
@@ -167,6 +234,7 @@
       });
     } else if (tag === 'canvas') { e = el('canvas', 'cnp-canvas'); }
     else if (tag === 'camera') { e = el('div', 'cnp-camera'); }
+    else if (tag === 'web') { e = el('div', 'cnp-web'); }
     else if (tag === 'button' || tag === 'key') { e = el('button', 'cnp-' + tag); e.type = 'button'; }
     else e = el('div', 'cnp-' + tag);
     e._cnp = inst; e._tag = tag;
@@ -205,7 +273,8 @@
         var val = String(v.props.value == null ? '' : v.props.value);
         if (e.value !== val && doc.activeElement !== e) e.value = val;
         else if (e.value !== val && v.props.type !== 'range' && doc.activeElement === e && val === '') e.value = val;
-      } else if (v.tag === 'canvas') drawCmds(e, v);
+      } else if (v.tag === 'web') webUpdate(e, v);
+      else if (v.tag === 'canvas') drawCmds(e, v);
       else if (v.tag === 'camera') fillCamera(e, v, inst);
       else if (LEAF[v.tag]) LEAF[v.tag](e, v);
       else if (v.tag === 'section') { /* title handled below */ }
