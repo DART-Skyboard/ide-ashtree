@@ -193,6 +193,9 @@
   function sig(v) { try { return JSON.stringify(v.props); } catch (x) { return String(Math.random()); } }
   function update(e, v, inst) {
     e._v = v;
+    if (v.id != null) e.setAttribute('data-id', v.id);
+    var cls = v.props && v.props.cls ? String(v.props.cls) : '';
+    if (e._cls !== cls) { if (e._cls) e._cls.split(/\s+/).forEach(function (c) { if (c) e.classList.remove(c); }); cls.split(/\s+/).forEach(function (c) { if (c) e.classList.add(c); }); e._cls = cls; }
     var s = sig(v);
     if (e._sig !== s) {
       e._sig = s; applyStyle(e, v);

@@ -52,13 +52,13 @@
   def('sys.setting', { pos: ['key', 'value'], req: 1, dest: 'opt', doc: 'Get (placeto) or set a system setting.' });
   // ui
   def('ui.screen', { pos: ['id'], keys: ['title', 'parent'], block: 'children', host: 'ui.screen', doc: 'Declare / show a screen.' });
-  def('ui.text',   { pos: ['id'], keys: ['text', 'size', 'align', 'color', 'parent'], doc: 'Static or bound text.' });
-  def('ui.button', { pos: ['id'], keys: ['label', 'color', 'parent', 'w', 'h'], doc: 'Push button; pair with ui.on (id) tap.' });
-  def('ui.input',  { pos: ['id'], keys: ['placeholder', 'multiline', 'value', 'parent'], doc: 'Text field.' });
+  def('ui.text',   { pos: ['id'], keys: ['text', 'size', 'align', 'color', 'parent', 'kind', 'weight', 'glyph', 'span', 'wrap', 'justify'], doc: 'Static or bound text.' });
+  def('ui.button', { pos: ['id'], keys: ['label', 'color', 'parent', 'w', 'h', 'kind', 'weight', 'glyph', 'span', 'wrap', 'justify'], doc: 'Push button; pair with ui.on (id) tap.' });
+  def('ui.input',  { pos: ['id'], keys: ['placeholder', 'multiline', 'value', 'parent', 'mode', 'hint', 'kind'], doc: 'Text field.' });
   def('ui.list',   { pos: ['id'], keys: ['items', 'parent'], doc: 'List of items (comma list or var).' });
   def('ui.icon',   { pos: ['id'], keys: ['glyph', 'color', 'size', 'parent'], doc: 'Glyph icon.' });
-  def('ui.row',    { pos: ['id'], keys: ['gap', 'parent'], block: 'children', doc: 'Horizontal container.' });
-  def('ui.col',    { pos: ['id'], keys: ['gap', 'parent'], block: 'children', doc: 'Vertical container.' });
+  def('ui.row',    { pos: ['id'], keys: ['gap', 'parent', 'kind', 'weight', 'span', 'wrap', 'justify'], block: 'children', doc: 'Horizontal container.' });
+  def('ui.col',    { pos: ['id'], keys: ['gap', 'parent', 'kind', 'weight', 'span', 'wrap', 'justify'], block: 'children', doc: 'Vertical container.' });
   def('ui.grid',   { pos: ['id'], keys: ['cols', 'gap', 'parent'], block: 'children', doc: 'Grid container.' });
   def('ui.set',    { pos: ['id'], any: true, doc: 'Set widget properties: ui.set (id) text=.. color=..' });
   def('ui.on',     { pos: ['id', 'event'], block: 'handlers', events: ['tap', 'change', 'submit'], doc: 'Event handler block.' });

@@ -61,18 +61,34 @@
     var m = mount(); if (!m || !F.on) return;
     var dev = m.querySelector(".cnp-device");
     var W = (dev && parseFloat(dev.style.width)) || 388, H = (dev && parseFloat(dev.style.height)) || 808;
+    F.lastDev = W + "x" + H + "@" + F.size + "@" + (root.innerWidth || 0) + "x" + (root.innerHeight || 0);
     var maxH = Math.max(240, (root.innerHeight || 800) - 130), maxW = Math.max(160, (root.innerWidth || 400) - 16);
     var sc = Math.min(SCALES[F.size].v, maxH / H, maxW / W);
     m.style.width = Math.ceil(W * sc) + 2 + "px"; m.style.height = Math.ceil(H * sc) + 2 + "px";
     if (el.size) el.size.textContent = SCALES[F.size].k;
-    clamp();
+    clamp(true);
   }
 
-  function clamp() {
+  // Follow the phone itself: any rotation (header button, kernel, keyboard shortcut, gesture) re-fits the overlay.
+  function watchDevice() {
+    var m = mount(), dev = m && m.querySelector(".cnp-device");
+    if (F.mo) { F.mo.disconnect(); F.mo = null; }
+    if (!dev || !root.MutationObserver) return;
+    F.mo = new MutationObserver(function () {
+      var W = parseFloat(dev.style.width), H = parseFloat(dev.style.height);
+      var key = W + "x" + H + "@" + F.size + "@" + (root.innerWidth || 0) + "x" + (root.innerHeight || 0);
+      if (key !== F.lastDev) fit();
+    });
+    F.mo.observe(dev, { attributes: true, attributeFilter: ["style", "class"] });
+  }
+
+  function clamp(fromFit) {
     var d = el.root; if (!d) return;
     var w = d.offsetWidth, h = d.offsetHeight, vw = root.innerWidth, vh = root.innerHeight;
     if (F.x == null) { F.x = Math.max(8, vw - w - 24); F.y = Math.max(8, 70); }
-    F.x = Math.min(Math.max(8 - w + 120, F.x), vw - 120);      // always keep part of the header reachable
+    if (fromFit && w <= vw - 16) F.x = Math.min(Math.max(8, F.x), vw - w - 8);   // resized/rotated: keep it fully on screen
+    else F.x = Math.min(Math.max(8 - w + 120, F.x), vw - 120);                    // dragging: always keep part of the header reachable
+    if (fromFit && h <= vh - 8) F.y = Math.min(Math.max(4, F.y), vh - h - 4);
     F.y = Math.min(Math.max(0, F.y), vh - 48);
     d.style.left = F.x + "px"; d.style.top = F.y + "px";
   }
@@ -119,11 +135,12 @@
     document.getElementById("panel-grove").classList.add("gv-popped");
     F.on = true; el.root.style.display = "";
     var pb = document.getElementById("gvPop"); if (pb) pb.textContent = "Snap back";
-    fit(); setTimeout(fit, 120);
+    fit(); setTimeout(fit, 120); watchDevice();
   }
 
   function dock() {
     if (!F.on) return;
+    if (F.mo) { F.mo.disconnect(); F.mo = null; }
     var m = mount();
     if (m && F.home) { F.home.insertBefore(m, F.ph); m.classList.remove("gvf-mount"); m.style.width = ""; m.style.height = ""; }
     if (F.ph && F.ph.parentNode) F.ph.parentNode.removeChild(F.ph);
