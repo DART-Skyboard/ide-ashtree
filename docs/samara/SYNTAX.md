@@ -99,13 +99,16 @@ Positional slots in `( )` are required, `[ ]` optional. `?` after `placeto` mean
 | `ui.text` | (id) text= size= align= color= parent= | `host.ui.text` | Static or bound text. |
 | `ui.button` | (id) label= color= parent= w= h= | `host.ui.button` | Push button; pair with ui.on (id) tap. |
 | `ui.input` | (id) placeholder= multiline= value= parent= | `host.ui.input` | Text field. |
+| `ui.web` | (id) url= mode= reload= h= | `host.ui.web` | Real web view (sandboxed iframe): url=(var) mode=(var)\|desktop\|mobile reload=(counter var, bump to reload) h=N; `ui.on (id) load { }`. |
 | `ui.list` | (id) items= parent= | `host.ui.list` | List of items (comma list or var). |
 | `ui.icon` | (id) glyph= color= size= parent= | `host.ui.icon` | Glyph icon. |
 | `ui.row` | (id) gap= parent= { children }? | `host.ui.row` | Horizontal container. |
 | `ui.col` | (id) gap= parent= { children }? | `host.ui.col` | Vertical container. |
 | `ui.grid` | (id) cols= gap= parent= { children }? | `host.ui.grid` | Grid container. |
 | `ui.set` | (id) any key=value | `host.ui.set` | Set widget properties: ui.set (id) text=.. color=.. |
-| `ui.on` | (id) (event) { handlers } | `host.ui.on` | Event handler block. |
+| `ui.on` | (id) (event) { handlers } | `host.ui.on` | Event handler block. Events: tap, change, submit, load (ui.web finished loading). |
+| `call` | (node) | kernel `call` | Run another node's ops in this app (shared vars and widgets), like a subroutine (depth <= 16). |
+| `if` | cond="..." { children } | kernel `if` | Conditional block: `if cond="${a}==${b}" { ... }` with `== != < > <= >=` after `${var}` interpolation; no else, use a second `if`. |
 | `ui.menu` | (id) items= parent= | `host.ui.menu` | Menu of items. |
 | `gfx.canvas` | (id) w= h= | `host.gfx.canvas` | 2D canvas surface. |
 | `gfx.rect` | [id] x= y= w= h= color= fill= radius= | `host.gfx.rect` | Filled rectangle. |

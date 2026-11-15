@@ -247,6 +247,25 @@ t('status/action settings: recents, next-cycling, dnd, orientation, close, cross
   var k2 = OS.createKernel(s2, {}); k2.boot(); k2.dispatch('@unlock'); k2.launch('tally'); assert.strictEqual(k2.vars('tally').r, 'back'); k2.vars('tally').r = ''; k2.launch('leaf'); k2.launch('tally'); assert.strictEqual(k2.vars('tally').r, 'back');
 });
 
+t('Drift (built demo seed): ui.web view, history stacks, bookmarks, mode toggle', function () {
+  var fs = require('fs'), path = require('path'), f = path.join(__dirname, '../phone/build/samara-demo.seed');
+  if (!fs.existsSync(f)) return;
+  var k = OS.createKernel(JSON.parse(fs.readFileSync(f, 'utf8')), {}); k.boot(); k.dispatch('@unlock'); k.launch('drift');
+  var V = function () { return k.vars('drift'); }, web = function () { return k.find(function (n) { return n.tag === 'web'; }); };
+  assert.strictEqual(V().cur, ''); assert(/dhide/.test(web().props.cls), 'web view hidden on the start page');
+  k.dispatch('t1', 'tap'); assert.strictEqual(V().cur, 'dartmeadow.com'); assert.strictEqual(web().props.url, 'dartmeadow.com'); assert.strictEqual(web().props.cls, '');
+  k.dispatch('urlin', 'change', { value: 'example.com' }); k.dispatch('urlin', 'submit', { value: 'example.com' });
+  assert.strictEqual(V().h1, 'dartmeadow.com'); assert.strictEqual(V().rc1, 'example.com');
+  k.dispatch('bback', 'tap'); assert.strictEqual(V().cur, 'dartmeadow.com'); assert.strictEqual(V().f1, 'example.com');
+  k.dispatch('bfwd', 'tap'); assert.strictEqual(V().cur, 'example.com');
+  k.dispatch('bmode', 'tap'); assert.strictEqual(web().props.mode, 'desktop'); assert.strictEqual(web().props.url, 'example.com');
+  var r0 = web().props.reload; k.dispatch('brel', 'tap'); assert.strictEqual(web().props.reload, r0 + 1);
+  k.dispatch('bstar', 'tap'); assert.strictEqual(V().bm1, 'example.com'); assert.strictEqual(V().starL, '\u2605');
+  k.dispatch('bstar', 'tap'); assert.strictEqual(V().bm1, 'dartmeadow.com');
+  k.dispatch('bhome', 'tap'); assert.strictEqual(V().cur, ''); k.dispatch('bback', 'tap'); assert.strictEqual(V().cur, 'example.com');
+  k.dispatch('bhome', 'tap'); k.dispatch('hclear', 'tap'); assert.strictEqual(V().rc1, ''); assert(/dhide/.test(k.find(function (n) { return n.id === 'r1'; }).props.cls));
+});
+
 Promise.all(pending).then(function () {
   console.log('\n' + passed + ' passed' + (process.exitCode ? ', FAILURES' : ''));
 });

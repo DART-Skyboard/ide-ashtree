@@ -53,7 +53,7 @@
     },
     button: function (e, v) {
       var p = v.props; e.textContent = (p.glyph ? p.glyph + ' ' : '') + (p.label == null ? '' : p.label);
-      e.className = 'cnp-button' + (p.kind ? ' k-' + p.kind : '');
+      e.className = 'cnp-button' + (p.kind ? ' k-' + p.kind : '') + (e._cls ? ' ' + e._cls : '');   // keep ui.set cls= (update() applied it just before this leaf ran)
       if (p.color) e.style.background = p.color; else e.style.background = '';
       if (p.span) e.style.gridColumn = 'span ' + p.span; else e.style.gridColumn = '';
       if (p.w) e.style.width = /^\d+$/.test(p.w) ? p.w + 'px' : p.w; if (p.h) e.style.height = /^\d+$/.test(p.h) ? p.h + 'px' : p.h;
@@ -149,7 +149,7 @@
   // The host browser engine does all decoding/rendering (HTML5, CSS, SVG, WebGL/three.js, WebAssembly, JS, MP4/MOV/MP3, PNG/JPEG/GIF/WebP/AVIF/JXL where the host supports them).
   var WEB_ALLOW = 'autoplay; fullscreen; picture-in-picture; encrypted-media; camera; microphone; geolocation; clipboard-read; clipboard-write; web-share; xr-spatial-tracking; accelerometer; gyroscope; magnetometer; gamepad; midi; display-capture; screen-wake-lock; storage-access; cross-origin-isolated';
   var WEB_SANDBOX = 'allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads allow-pointer-lock allow-presentation allow-orientation-lock allow-storage-access-by-user-activation';
-  var SEARCH_URL = 'https://duckduckgo.com/?q=';
+  var SEARCH_URL = 'https://www.bing.com/search?q=';   // DuckDuckGo sends frame-ancestors 'self' (refuses embedding); Bing allows it
   function normalizeUrl(raw) {
     var t = String(raw == null ? '' : raw).trim();
     if (!t) return '';
@@ -195,8 +195,14 @@
     // height: fill whatever is left in the scroll container under the toolbars
     var par = e.parentNode, hh = parseFloat(e._wh) || 0;
     if (!hh && par && par.clientHeight) {
-      var used = 0, i, sib; for (i = 0; i < par.children.length; i++) { sib = par.children[i]; if (sib !== e) used += sib.offsetHeight + 8; }
-      hh = Math.max(180, par.clientHeight - used - 8);
+      // content box of the scroller minus every visible sibling (height + margins) and the flex gaps between them
+      var cs = global.getComputedStyle(par), gap = parseFloat(cs.rowGap) || 0, used = 0, n = 1, i, sib, sc2;
+      for (i = 0; i < par.children.length; i++) {
+        sib = par.children[i]; if (sib === e) continue;
+        sc2 = global.getComputedStyle(sib); if (sc2.display === 'none') continue;
+        used += sib.offsetHeight + (parseFloat(sc2.marginTop) || 0) + (parseFloat(sc2.marginBottom) || 0); n++;
+      }
+      hh = Math.max(180, par.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0) - used - gap * (n - 1));
     }
     hh = hh || 420; e.style.height = hh + 'px';
     if (desktop) {
