@@ -154,6 +154,8 @@
     var t = String(raw == null ? '' : raw).trim();
     if (!t) return '';
     if (/^(javascript|data|vbscript|blob|file):/i.test(t)) return '';          // never navigate to script/data URLs
+    var yt = t.match(/^(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|shorts\/|live\/)|youtu\.be\/)([\w-]{11})(?:[?&#].*)?$/i);
+    if (yt) return 'https://www.youtube-nocookie.com/embed/' + yt[1] + '?autoplay=1&playsinline=1&rel=0';   // youtube.com pages forbid framing; its own player allows it
     if (/^https?:\/\//i.test(t)) return t.replace(/^http:\/\//i, 'https://');   // http upgraded: this page is https, so http frames would be blocked as mixed content
     if (/^[a-z][a-z0-9+.-]*:\/\//i.test(t)) return '';                          // other schemes unsupported
     if (/^(localhost|[\w-]+(\.[\w-]+)+)(:\d+)?([\/?#].*)?$/i.test(t) && !/\s/.test(t)) return 'https://' + t;
