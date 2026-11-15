@@ -525,6 +525,19 @@ function downloadTextFile(filename, content) {
 // ── Language switching ─────────────────────────────────────
 const LANG_EXT = { ash: ".ash", python: ".py", cpp: ".cpp", javascript: ".js", sql: ".sql" };
 const LANG_LABEL = { python: "PYTHON 3", cpp: "C / C++", javascript: "JAVASCRIPT", sql: "SQL" };
+// Parity with the iOS app: all 21 language environments (data in lang-envs.js, runners in lang-runners.js).
+LangEnvs.all.forEach((e) => {
+  if (!(e.id in LANG_EXT)) LANG_EXT[e.id] = e.ext;
+  if (!LANG_LABEL[e.id]) LANG_LABEL[e.id] = e.name.toUpperCase();
+  if (!(e.id in LANG_TEMPLATES)) LANG_TEMPLATES[e.id] = LangRunners.STARTERS[e.id] || e.template;
+});
+function langForExt(ext) {
+  ext = String(ext).toLowerCase();
+  if (ext === ".cc" || ext === ".c") return "cpp";
+  if (ext === ".txt") return "ash";
+  const env = LangEnvs.byExt(ext);
+  return env ? env.id : "ash";
+}
 
 function setLanguage(lang) {
   currentLang = lang;
@@ -533,7 +546,7 @@ function setLanguage(lang) {
   document.getElementById("ashFooter").hidden = !isAsh;
   document.getElementById("langConsole").hidden = isAsh;
   if (!isAsh) {
-    document.getElementById("langConsoleTitle").textContent = LANG_LABEL[lang];
+    document.getElementById("langConsoleTitle").textContent = LANG_LABEL[lang] || lang.toUpperCase();
   }
   // Ash keeps its own Output-tab flow; other languages don't use it.
   document.getElementById("glOutputSection").hidden = true;
@@ -541,6 +554,7 @@ function setLanguage(lang) {
 }
 
 function langConsoleClear() {
+  const lf = document.getElementById("langFrame"); if (lf) { lf.hidden = true; lf.srcdoc = ""; }
   document.getElementById("langConsoleOutput").innerHTML = "";
   document.getElementById("langCanvas").hidden = true;
 }
@@ -620,7 +634,16 @@ function runOtherLanguage() {
     langConsoleStatus("running", "Loading runtime… (first run only)");
   };
 
-  if (currentLang === "python") {
+  const env = LangEnvs.all.find((x) => x.id === currentLang);
+  if (env && env.run === "web" && currentLang !== "javascript") {
+    const lf = document.getElementById("langFrame");
+    lf.srcdoc = LangRunners.buildWebHTML(currentLang, source);
+    lf.hidden = false;
+    onOutput("Rendered in the sandboxed preview below.\n");
+    onDone(0);
+  } else if (env && (env.run === "judge0" || env.run === "piston") && currentLang !== "cpp") {
+    (env.run === "judge0" ? LangRunners.runJudge0 : LangRunners.runPiston)(env, source, { onOutput, onDone, onError, onLoading });
+  } else if (currentLang === "python" || currentLang === "python_ml") {
     PythonCompiler.run(source, { onOutput, onDone, onError, onLoading });
   } else if (currentLang === "javascript") {
     JsCompiler.run(source, { onOutput, onDone, onError });
@@ -876,9 +899,8 @@ function renderFilesList() {
 function openLocalFile(name) {
   const content = IDEStorage.loadFile(name);
   if (content === null) return;
-  const extToLang = { ".ash": "ash", ".py": "python", ".cpp": "cpp", ".cc": "cpp", ".c": "cpp", ".js": "javascript", ".sql": "sql" };
   const ext = "." + name.split(".").pop().toLowerCase();
-  openTab(name, content, extToLang[ext] || "ash");
+  openTab(name, content, langForExt(ext));
   renderFilesList();
   switchTab("editor");
 }
@@ -1204,6 +1226,8 @@ function initEditorToolbar() {
     sel.value = "";
   });
 
+  document.getElementById("langSelect").innerHTML = LangEnvs.all.map((e) => `<option value="${e.id}">${e.name}</option>`).join("");
+  document.getElementById("langSelect").value = currentLang;
   document.getElementById("langSelect").addEventListener("change", (e) => {
     const lang = e.target.value;
     setLanguage(lang);
@@ -1234,8 +1258,7 @@ function initEditorToolbar() {
     const reader = new FileReader();
     reader.onload = () => {
       const ext = "." + file.name.split(".").pop().toLowerCase();
-      const extToLang = { ".ash": "ash", ".py": "python", ".cpp": "cpp", ".cc": "cpp", ".c": "cpp", ".js": "javascript", ".sql": "sql" };
-      openTab(file.name, reader.result, extToLang[ext] || "ash");
+      openTab(file.name, reader.result, langForExt(ext));
       markDirty(false);
     };
     reader.readAsText(file);

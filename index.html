@@ -125,7 +125,7 @@
         <label class="icon-btn" for="uploadInput" title="Open file">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         </label>
-        <input type="file" id="uploadInput" accept=".ash,.txt,.py,.cpp,.cc,.c,.js,.sql" hidden>
+        <input type="file" id="uploadInput" accept=".ash,.txt,.py,.cpp,.cc,.c,.js,.sql,.html,.css,.ts,.jsx,.vue,.php,.sh,.rb,.r,.swift,.rs,.go,.kt,.dart" hidden>
       </div>
 
       <div class="editor-wrap">
@@ -147,6 +147,7 @@
           </button>
         </div>
         <canvas class="lang-canvas" id="langCanvas" hidden></canvas>
+        <iframe id="langFrame" title="Output preview" sandbox="allow-scripts" hidden style="width:100%;height:280px;border:0;background:#fff;border-radius:8px;margin-bottom:8px"></iframe>
         <div class="lang-console-output" id="langConsoleOutput"></div>
       </div>
 
@@ -594,6 +595,8 @@
 <script src="js/cpp-compiler.js?v=1791430589"></script>
 <script src="js/calculator-module.js?v=1791430589"></script>
 <script src="js/calculator-window.js?v=1791430589"></script>
+<script src="js/lang-envs.js?v=samara2"></script>
+<script src="js/lang-runners.js?v=samara2"></script>
 <script src="js/help-content.js?v=1791430589"></script>
 <script src="js/phone/samara-syntax.js?v=samara1"></script>
 <script src="js/phone/seedpress.js?v=samara1"></script>
