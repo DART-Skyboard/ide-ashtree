@@ -135,6 +135,15 @@
   function cleanup(e) { if (e._camStop) { e._camStop(); e._camStop = null; } e._camMode = null; }
   function cleanupTree(e) { if (e._camStop) cleanup(e); if (e.children) for (var i = 0; i < e.children.length; i++) cleanupTree(e.children[i]); }
 
+  // text fields inside the phone must stay selectable/focusable even though the screen itself disables selection
+  (function () {
+    if (!doc || doc.getElementById('cnp-input-fix')) return;
+    var st = doc.createElement('style'); st.id = 'cnp-input-fix';
+    st.textContent = '.cnp-screen input,.cnp-screen textarea,.cnp-input{-webkit-user-select:text;user-select:text;touch-action:manipulation;pointer-events:auto;-webkit-tap-highlight-color:rgba(0,255,204,.2)}' +
+      '.cnp-input[type=range]{touch-action:pan-x}.cnp-screen .cnp-tappable,.cnp-screen button{cursor:pointer}';
+    (doc.head || doc.documentElement).appendChild(st);
+  })();
+
   // ---------- DOM creation / patching ----------
   function create(v, inst) {
     var tag = v.tag, e;
@@ -142,6 +151,14 @@
       var multi = v.props.multiline;
       e = multi ? el('textarea', 'cnp-input') : el('input', 'cnp-input');
       if (!multi) e.type = v.props.type || 'text';
+      // real native field: Android/iOS soft keyboard (Gboard etc.), IME, paste, autofill all work
+      e.setAttribute('autocomplete', 'off'); e.setAttribute('autocapitalize', 'none'); e.setAttribute('autocorrect', 'off'); e.spellcheck = false;
+      e.setAttribute('enterkeyhint', multi ? 'enter' : (v.props.hint || 'go'));
+      if (v.props.mode) e.setAttribute('inputmode', String(v.props.mode));          // e.g. mode=url | numeric | decimal | email
+      else if (/url|address|search/i.test(v.id + ' ' + (v.props.placeholder || ''))) e.setAttribute('inputmode', 'url');
+      var focusNow = function (ev) { if (v.props.type === 'range') return; ev.stopPropagation(); if (doc.activeElement !== e) { try { e.focus({ preventScroll: true }); } catch (x) { e.focus(); } } };
+      e.addEventListener('pointerdown', function (ev) { ev.stopPropagation(); });   // never let the phone's swipe/focus logic steal the tap
+      e.addEventListener('pointerup', focusNow); e.addEventListener('click', focusNow);
       e.addEventListener('input', function () {
         var val = e._v.props.type === 'range' ? +e.value : e.value; inst.kernel.dispatch(e._v.id, 'change', { value: val });
       });
@@ -362,12 +379,21 @@
       if (raf) return; var f = global.requestAnimationFrame || function (fn) { return setTimeout(fn, 16); };
       raf = f(function () { raf = null; render(); });
     }
+    // animated / procedural wallpapers: SamaraWallpapers.mount(id, el, opts) -> {stop,pause,resume,resize}
+    var liveWp = null, liveId = null;
+    function syncLiveWallpaper(P, T) {
+      var SW = global.SamaraWallpapers, want = P.wallpaperLive && SW && SW.mount ? P.wallpaperId : null;
+      if (liveWp && liveId !== want) { try { liveWp.stop(); } catch (x) {} liveWp = null; liveId = null; wall.textContent = ''; }
+      if (want && !liveWp) { try { liveWp = SW.mount(want, wall, { dark: !!T.dark, accent: T.accent, bg: T.bg }); liveId = want; } catch (x) { liveWp = null; } }
+      if (liveWp) { var live = P.powered && !P.screenOff; try { live ? liveWp.resume && liveWp.resume() : liveWp.pause && liveWp.pause(); } catch (x) {} }
+    }
     function applyTheme(tree) {
       var P = tree.props, T = P.theme || {};
       var vars = { '--bg': T.bg, '--surface': T.surface, '--surface2': T.surface2, '--text': T.text, '--dim': T.dim, '--accent': T.accent, '--on-accent': T.onAccent, '--border': T.border, '--danger': T.danger, '--ok': T.ok };
       Object.keys(vars).forEach(function (k) { if (vars[k]) screen.style.setProperty(k, vars[k]); });
       screen.classList.toggle('dark', !!T.dark); screen.classList.toggle('light', !T.dark);
       wall.style.background = P.wallpaper || T.bg;
+      syncLiveWallpaper(P, T);
       dim.style.opacity = String(Math.max(0, Math.min(0.85, 1 - (P.brightness == null ? 1 : P.brightness))));
       screen.classList.toggle('is-off', !P.powered || P.screenOff);
       screen.classList.toggle('is-locked', !!P.locked);
@@ -426,18 +452,28 @@
       screen.addEventListener('pointerup', end); screen.addEventListener('pointercancel', function () { st = null; });
     })();
 
+    function visibleField() {
+      var f = root.querySelectorAll('.cnp-input'), i;
+      for (i = 0; i < f.length; i++) if (f[i].type !== 'range' && f[i].offsetParent !== null && !f[i].disabled) return f[i];
+      return null;
+    }
     // --- keyboard shortcuts ---
     root.addEventListener('keydown', function (e) {
       var typing = /^(INPUT|TEXTAREA)$/.test((e.target && e.target.tagName) || '');
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (typing && e.key !== 'Escape') return;
+      // Bluetooth / physical keyboard: a printable key with a text field on screen types into it
+      if (!typing && e.key && e.key.length === 1) {
+        var fld = visibleField();
+        if (fld) { try { fld.focus({ preventScroll: true }); } catch (x) { fld.focus(); } return; }   // keystroke then lands in the field
+      }
       var map = { Escape: 'back', Home: 'home', h: 'home', b: 'back', p: 'power', ArrowUp: 'volup', ArrowDown: 'voldown', n: 'shade' };
       if (map[e.key]) { e.preventDefault(); inst.press(map[e.key]); }
       else if (e.key === 'r') { e.preventDefault(); inst.rotate(); }
       else if (e.key === 's') { e.preventDefault(); inst.screenshot({ download: true }); }
       else if (e.key === 'l') { e.preventDefault(); logOpen = !logOpen; logEl.classList.toggle('open', logOpen); }
     });
-    screen.addEventListener('pointerdown', function () { if (root.focus) root.focus({ preventScroll: true }); });
+    screen.addEventListener('pointerdown', function (e) { if (e.target.closest && e.target.closest('input,textarea')) return; if (root.focus) root.focus({ preventScroll: true }); });
 
     // --- timers ---
     var timer = setInterval(function () { if (inst.kernel) inst.kernel.tick(1000); }, 1000);
@@ -477,6 +513,7 @@
     };
     inst.log = function () { return logLines.slice(); };
     inst.destroy = function () {
+      if (liveWp) { try { liveWp.stop(); } catch (x) {} liveWp = null; }
       clearInterval(timer); if (ro) ro.disconnect(); else global.removeEventListener('resize', layout);
       if (inst.kernel && inst.kernel.state().powered) inst.kernel.shutdown();
       if (camStream) inst.host.camera.close(); cleanupTree(view);

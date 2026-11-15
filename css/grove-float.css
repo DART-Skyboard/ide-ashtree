@@ -1,0 +1,28 @@
+/* grove-float.css — draggable phone-shaped Canopy overlay for the Grove tab */
+.gvf{ position:fixed; z-index:900; display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none; max-width:100vw; }
+.gvf.dragging{ cursor:grabbing; }
+.gvf-head,.gvf-foot{ pointer-events:auto; display:flex; align-items:center; gap:5px; padding:5px 8px; background:rgba(16,21,28,.94); border:1px solid #2a3441; border-radius:999px; box-shadow:0 8px 28px rgba(0,0,0,.5); backdrop-filter:blur(8px); }
+.gvf-head{ cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; }
+.gvf.dragging .gvf-head{ cursor:grabbing; border-color:#00ffcc; }
+.gvf-grip{ color:#00ffcc; font-size:16px; padding:0 4px; }
+.gvf-title{ font:700 11px ui-monospace,Menlo,Consolas,monospace; color:#9fb0c0; margin-right:4px; white-space:nowrap; }
+.gvf-head button,.gvf-foot button{ min-width:32px; height:30px; padding:0 9px; border-radius:15px; border:1px solid #2a3441; background:#1a222c; color:#d7e0ea; font:600 12px ui-monospace,Menlo,Consolas,monospace; cursor:pointer; touch-action:manipulation; }
+.gvf-head button:hover,.gvf-foot button:hover{ border-color:#00ffcc; color:#00ffcc; }
+.gvf-head button:active,.gvf-foot button:active{ transform:scale(.94); }
+.gvf-dock{ background:rgba(0,255,204,.12)!important; color:#00ffcc!important; border-color:rgba(0,255,204,.4)!important; }
+.gvf-body{ pointer-events:none; line-height:0; }
+
+/* the mount becomes a transparent stage: only the phone itself (bezel, buttons) is visible and clickable */
+.gvf-mount.gv-sim{ margin:0; min-height:0; background:transparent; border:0; border-radius:0; overflow:visible; pointer-events:none; opacity:1!important; }
+.gvf .cnp{ padding:0; gap:0; background:transparent; overflow:visible; pointer-events:none; }
+.gvf .cnp-toolbar,.gvf .cnp-hw,.gvf .cnp-label{ display:none; }
+.gvf .cnp-stage{ padding:0; overflow:visible; pointer-events:none; }
+.gvf .cnp-fit{ pointer-events:none; }
+.gvf .cnp-device{ pointer-events:auto; filter:drop-shadow(0 18px 30px rgba(0,0,0,.6)); }
+.gvf .cnp-log{ pointer-events:auto; line-height:1.4; }
+
+/* docked placeholder + editor expansion while floating */
+.gvf-ph{ margin:10px; padding:14px; border:1px dashed #2a3441; border-radius:10px; text-align:center; font:500 11.5px ui-monospace,Menlo,Consolas,monospace; color:#8b98a5; display:flex; flex-direction:column; gap:8px; align-items:center; }
+#panel-grove.gv-popped .gv-body{ grid-template-columns:190px minmax(0,1fr) 230px; }
+#panel-grove.gv-popped .gv-simbar{ display:none; }
+@media (max-width:900px){ #panel-grove.gv-popped .gv-body{ grid-template-columns:1fr; } }

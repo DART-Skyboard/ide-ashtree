@@ -67,7 +67,7 @@
           '<div class="gv-h">DIAGNOSTICS<span class="sp"></span><span id="gvDiagN"></span></div><div class="gv-diag" id="gvDiag"></div></div>' +
         '<div class="gv-col gv-side"><div class="gv-h">ROM</div><div class="gv-card" id="gvRom">Not built yet.</div>' +
           '<div class="gv-h">CANOPY</div><div class="gv-sim" id="gvSim"></div>' +
-          '<div class="gv-simbar"><button class="gv-btn" id="gvPower">Power</button><button class="gv-btn" id="gvReset">Reset</button><button class="gv-btn" id="gvShot">Screenshot</button></div>' +
+          '<div class="gv-simbar"><button class="gv-btn" id="gvPower">Power</button><button class="gv-btn" id="gvReset">Reset</button><button class="gv-btn" id="gvShot">Screenshot</button><button class="gv-btn primary" id="gvPop" title="Float the phone in a draggable overlay">Pop out</button></div>' +
           '<div class="gv-log" id="gvLog">Simulator log.</div></div>' +
       '</div></div>';
 
@@ -91,6 +91,7 @@
     $("#gvPower").onclick = power;
     $("#gvReset").onclick = reset;
     $("#gvShot").onclick = screenshot;
+    $("#gvPop").onclick = function () { if (root.GroveFloat) GroveFloat.toggle(); else toastMsg("Overlay module not loaded"); };
     $("#gvSave").onclick = saveToGitHub;
     $("#gvLoadGh").onclick = loadFromGitHub;
     $("#gvEmbed").onclick = embedFlow;
@@ -465,6 +466,8 @@
     var cur = lsGet(K_CUR) || S.project; loadProject(cur);
     renderAuth(); refreshAll();
   }
+  Grove.getSim = function () { return S.sim; };
+  Grove.simMount = function () { return S.ui && S.ui.gvSim; };
   root.Grove = Grove;
   if (typeof document === "undefined") { /* node: no DOM */ } else if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
   if (typeof module !== "undefined" && module.exports) module.exports = Grove;

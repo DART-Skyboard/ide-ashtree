@@ -237,6 +237,9 @@
     // ---------- settings (theme / wallpaper / layout / brightness) ----------
     function wallpapers() {
       var out = WALLPAPERS.slice();
+      // preloaded procedural / animated wallpapers (js/phone/wallpapers.js), if that module is present
+      var ext = (global.SamaraWallpapers && global.SamaraWallpapers.list) || [];
+      ext.forEach(function (w) { if (w && w.id) out.push({ id: w.id, name: w.name, css: w.css || null, live: true, animated: !!w.animated }); });
       (manifest.wallpapers || []).forEach(function (w) {
         if (w && w.id) { out = out.filter(function (x) { return x.id !== w.id; }); out.push(w); }
       });
@@ -1011,7 +1014,7 @@
     K.tree = function () {
       var T = themeTokens(S.theme), w = wallpapers().filter(function (x) { return x.id === S.wallpaper; })[0] || WALLPAPERS[0];
       var wall = w.plain ? T.bg : (w.css || T.wall);
-      var root = V('device', '@device', { powered: S.powered, screenOff: S.screenOff, locked: S.locked, theme: T, themeName: S.theme, wallpaper: wall,
+      var root = V('device', '@device', { powered: S.powered, screenOff: S.screenOff, locked: S.locked, theme: T, themeName: S.theme, wallpaper: wall, wallpaperId: w.id, wallpaperLive: !!w.live,
         brightness: S.brightness, orientation: S.orientation, volume: S.volume, fg: S.fg }, [], []);
       if (!S.powered || S.screenOff) return root;
       root.children.push(statusV());

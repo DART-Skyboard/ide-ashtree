@@ -38,11 +38,11 @@
 .gv-d .loc{ color:var(--text-dim); white-space:nowrap; }
 .gv-ok{ padding:8px 10px; font:500 11.5px var(--font-mono); color:var(--accent); }
 .gv-muted{ padding:8px 10px; font:400 11.5px/1.5 var(--font-mono); color:var(--text-dim); }
-.gv-side{ overflow:auto; }
+.gv-side{ overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; touch-action:pan-y; }
 .gv-card{ margin:10px; padding:10px; border:1px solid var(--line); border-radius:var(--radius-m); background:var(--bg-1); font:400 11.5px/1.6 var(--font-mono); color:var(--text-mid); }
 .gv-card b{ color:var(--text-hi); }
 .gv-card code{ color:var(--accent); word-break:break-all; }
-.gv-sim{ margin:10px auto; width:300px; max-width:calc(100% - 20px); min-height:200px; background:#000; border:1px solid var(--line); border-radius:var(--radius-m); position:relative; overflow:hidden; }
+.gv-sim{ margin:10px auto; width:300px; max-width:calc(100% - 20px); height:clamp(400px,calc(100vh - 340px),780px); min-height:200px; background:#000; border:1px solid var(--line); border-radius:var(--radius-m); position:relative; overflow:hidden; }
 .gv-simbar{ display:flex; gap:6px; padding:0 10px; flex-wrap:wrap; }
 .gv-log{ margin:10px; max-height:110px; overflow:auto; background:var(--bg-0); border:1px solid var(--line); border-radius:6px; padding:6px 8px; font:400 10.5px/1.5 var(--font-mono); color:var(--text-dim); white-space:pre-wrap; }
 .gv-modal{ position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; padding:14px; }
@@ -59,4 +59,10 @@
   .gv-body{ grid-template-columns:1fr; grid-template-rows:auto minmax(260px,1fr) auto; overflow:auto; }
   .gv-col{ border-right:none; border-bottom:1px solid var(--line); }
   .gv-tree{ max-height:120px; display:flex; flex-wrap:wrap; }
+  .gv-root{ overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; }
+  .gv-body{ flex:none; overflow:visible; }
+  .gv-col{ min-height:auto; }
+  .gv-wrap{ min-height:240px; }
+  .gv-side{ overflow:visible; }
+  .gv-sim{ width:min(420px,calc(100% - 20px)); height:clamp(640px,88vh,980px); }
 }
