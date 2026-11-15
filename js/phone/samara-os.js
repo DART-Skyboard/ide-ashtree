@@ -526,9 +526,10 @@
       Object.keys(props).forEach(function (k) {
         var v = props[k];
         if (typeof v === 'string' || (v && v.bind === undefined)) v = (typeof v === 'string') ? rv(ctx, v) : v;
-        if (v && v.bind !== undefined) v = rv(ctx, { $var: v.bind });
+        // keep variable bindings live (so async results like net.fetch refresh bound text); inputs need the concrete value
+        if (v && v.bind !== undefined && k === 'value' && n.kind === 'input') v = rv(ctx, { $var: v.bind });
         n.props[k] = v;
-        if (k === 'value' && n.kind === 'input') ctx.proc.vars[id] = v;
+        if (k === 'value' && n.kind === 'input') ctx.proc.vars[id] = (v && v.bind !== undefined) ? rv(ctx, { $var: v.bind }) : v;
       });
     };
     OPS['ui.get'] = function (op, ctx) {
@@ -614,7 +615,7 @@
     }
     OPS['net.fetch'] = function (op, ctx) {
       var url = String(arg(op, ctx, 'url') || ''), d = destOf(op), proc = ctx.proc, scope = ctx.scope;
-      proc.net = 'loading'; if (d) assignVar(ctx, d, '');
+      proc.net = 'loading';
       var run = function (ops, extra) {
         if (!ops || proc.dead) return;
         var c2 = { proc: proc, scope: Object.assign({}, scope, extra), container: null, depth: 0, shared: { n: 0, halt: false } };
@@ -660,7 +661,7 @@
     function skey(ctx, k) { return ctx.proc.id + ':' + k; }
     OPS['store.get'] = function (op, ctx) {
       var v = sysStore.get(skey(ctx, arg(op, ctx, 'key'))), d = destOf(op);
-      if (d) assignVar(ctx, d, v == null ? '' : numify(v));
+      if (d && v != null) assignVar(ctx, d, numify(v));   // missing key leaves the variable (and its default) unchanged
     };
     OPS['store.set'] = function (op, ctx) {
       var a = op.args || {}, w = a['with'] !== undefined ? strip(a['with']) : null, v;
@@ -858,7 +859,11 @@
       var scope = { id: base, evt: evt }, ops;
       if (evt === 'change' || evt === 'submit') {
         var val = payload.value !== undefined ? payload.value : (node.props.value || '');
-        if (node.kind === 'input') { node.props.value = val; proc.vars[base] = numify(val); }
+        if (node.kind === 'input') {
+          var pv = node.props.value;   // two-way binding: value=(var) writes back to that variable and stays bound
+          if (pv && pv.bind !== undefined) proc.vars[pv.bind] = numify(val); else if (pv && pv.$var !== undefined) proc.vars[pv.$var] = numify(val); else node.props.value = val;
+          proc.vars[base] = numify(val);
+        }
         scope.value = numify(val);
       }
       if (idx >= 0) { var items = itemsOf(resolveProp(proc, node.props.items)); scope.index = idx; scope.item = items[idx]; proc.vars[base + '_index'] = idx; proc.vars[base + '_item'] = items[idx]; }

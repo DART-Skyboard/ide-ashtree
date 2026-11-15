@@ -51,6 +51,7 @@
       text = await r.text();
     } else throw new Error("Missing ?src=<seed URL> or #seed=<data>.");
     var seed = window.Seedpress && Seedpress.parse ? Seedpress.parse(text) : JSON.parse(text);
+    if (seed && seed.seed && seed.magic === undefined) { if (seed.ok === false) throw new Error(seed.error || "Invalid seed file."); seed = seed.seed; }
     if (!seed || seed.magic !== "SAMARA-SEED") throw new Error("Not a SAMARA-SEED file.");
     if (window.Seedpress && Seedpress.verify) {
       var v = Seedpress.verify(seed);

@@ -248,7 +248,7 @@
       var text = String(rd.result);
       if (/\.ashos$/.test(f.name)) { var p = "phone/apps/" + f.name; S.files[p] = text; saveProject(); openFile(p); return; }
       var seed;
-      try { seed = root.Seedpress && Seedpress.parse ? Seedpress.parse(text) : JSON.parse(text); } catch (e) { toastMsg("Not a valid .seed: " + e.message); return; }
+      try { seed = root.Seedpress && Seedpress.parse ? Seedpress.parse(text) : JSON.parse(text); if (seed && seed.seed && seed.magic === undefined) { if (seed.ok === false) throw new Error(seed.error || "invalid seed"); seed = seed.seed; } } catch (e) { toastMsg("Not a valid .seed: " + e.message); return; }
       if (!seed || seed.magic !== "SAMARA-SEED") { toastMsg("Not a SAMARA-SEED file"); return; }
       S.seed = seed; S.seedText = text; S.verified = null;
       try { if (root.Seedpress && Seedpress.verify) { var v = Seedpress.verify(seed); S.verified = v && typeof v === "object" ? v.ok !== false : !!v; } } catch (e) { S.verified = false; }

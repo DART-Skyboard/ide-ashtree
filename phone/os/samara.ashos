@@ -7,7 +7,7 @@ import (SamaraHW)
 
 // ---- manifest (lifted into seed.manifest by Seedpress) ----
 // Default theme. Themes the OS ships (switch live in Rings via sys.setting (theme)):
-//   ash (default dark) | birch (light) | dusk | ember | ink
+//   ash (default, Ash Dark) | Ash Light | Ember | Moss | Mist | Midnight
 sys.theme (ash)
 sys.layout grid=4x5 dock=4
 sys.boot (Crown)
@@ -77,7 +77,7 @@ sys.app (rings) name="Rings" glyph="*" color=#8e8e93 entry=Rings
   ui.on (hlock) tap {
     sys.clock placeto (now)
     ui.set (bclk) text=(now)
-    ui.screen (bark)
+    ui.screen (home)
   }
   ui.on (bunlock) tap {
     sys.clock placeto (now)
@@ -114,12 +114,12 @@ sys.app (rings) name="Rings" glyph="*" color=#8e8e93 entry=Rings
     power.sleep
     sys.clock placeto (now)
     ui.set (bclk) text=(now)
-    ui.screen (bark)
+    ui.screen (home)
   }
   input.on (volup) { snd.volume (1) }
   input.on (voldown) { snd.volume (0.3) }
 
-  ui.screen (bark)
+  ui.screen (home)
 }|';'|
 
 // ---- Rings: settings ----
