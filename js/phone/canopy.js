@@ -341,6 +341,21 @@
     ctx.fillText('(browsers block reading other sites’ pixels)', x + w / 2, y + h / 2 + 24);
     ctx.textAlign = 'start';
   }
+  // Fallback when the browser has no screen-capture API (Android): a hosted headless browser (Microlink) loads the same URL
+  // at the same viewport (mobile or desktop mode) and returns a PNG. It is a fresh load: top of page, not signed in.
+  function serviceShot(frame) {
+    var web = frame.parentNode, url = web && web._wurl; if (!url) return Promise.reject(new Error('no url'));
+    var desktop = web._wmode === 'desktop', fw = frame.clientWidth || web.clientWidth || 360, fh = web.clientHeight || 600;
+    var vw = desktop ? 1280 : Math.round(fw), vh = Math.round(desktop ? fh * 1280 / Math.max(fw, 1) : fh);
+    var q = 'https://api.microlink.io/?url=' + encodeURIComponent(url) + '&screenshot=true&meta=false&waitUntil=networkidle2&waitForTimeout=1500' +
+      '&viewport.width=' + vw + '&viewport.height=' + vh + '&viewport.deviceScaleFactor=2&viewport.isMobile=' + (desktop ? 'false' : 'true') + '&viewport.hasTouch=' + (desktop ? 'false' : 'true');
+    return fetch(q).then(function (r) { return r.json(); }).then(function (j) {
+      var u = j && j.data && j.data.screenshot && j.data.screenshot.url; if (!u) throw new Error((j && j.message) || 'service returned no image');
+      return fetch(u, { mode: 'cors' });
+    }).then(function (r) { if (!r.ok) throw new Error('image HTTP ' + r.status); return r.blob(); }).then(function (b) {
+      return new Promise(function (res, rej) { var u = URL.createObjectURL(b), im = new Image(); im.onload = function () { res(im); }; im.onerror = function () { rej(new Error('bad image')); }; im.src = u; });
+    });
+  }
   function visibleWebFrame(screen) {
     var fs = screen.querySelectorAll('.cnp-web-frame');
     for (var i = 0; i < fs.length; i++) if (fs[i].getAttribute('src') && fs[i].offsetParent !== null) return fs[i];
@@ -368,7 +383,7 @@
       }).catch(function (e) { stop(); throw e; });
     });
   }
-  function paintScreen(screen) {
+  function paintScreen(screen, frameImg) {
     var R = screen.getBoundingClientRect(), k = R.width / screen.offsetWidth || 1, W = screen.offsetWidth, H = screen.offsetHeight, DPR = 2;
     var cv = doc.createElement('canvas'); cv.width = W * DPR; cv.height = H * DPR; var ctx = cv.getContext('2d'); ctx.scale(DPR, DPR);
     rrect(ctx, 0, 0, W, H, 34); ctx.clip();
@@ -384,7 +399,12 @@
         var bw = parseFloat(cs.borderTopWidth) || 0;
         if (bw > 0 && cs.borderTopStyle !== 'none') { ctx.strokeStyle = cs.borderTopColor; ctx.lineWidth = bw; rrect(ctx, x + bw / 2, y + bw / 2, w - bw, h - bw, rad); ctx.stroke(); }
         if (node.tagName === 'CANVAS' || node.tagName === 'VIDEO' || node.tagName === 'IMG') { try { ctx.drawImage(node, x, y, w, h); } catch (e) { /* tainted */ } }
-        if (node.tagName === 'IFRAME') framePlaceholder(ctx, x, y, w, h, node.parentNode && node.parentNode._wurl);
+        if (node.tagName === 'IFRAME') {
+          if (frameImg) { ctx.save(); ctx.fillStyle = '#fff'; ctx.fillRect(x, y, w, h); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+            var sc = Math.max(w / frameImg.width, h / frameImg.height) ; var iw = frameImg.width * sc, ih = frameImg.height * sc;
+            ctx.drawImage(frameImg, x, y, iw, ih); ctx.restore(); }                       // top-aligned, like a freshly loaded page
+          else framePlaceholder(ctx, x, y, w, h, node.parentNode && node.parentNode._wurl);
+        }
       }
       for (var c = node.firstChild; c; c = c.nextSibling) {
         if (c.nodeType === 1) { if (c.tagName !== 'CANVAS' && c.tagName !== 'VIDEO' && c.tagName !== 'IMG') walk(c); else walk(c); }
@@ -638,16 +658,22 @@
         if (url && o && o.download) { var a = doc.createElement('a'); a.href = url; a.download = 'samara-' + Date.now() + '.png'; doc.body.appendChild(a); a.click(); doc.body.removeChild(a); }
         return url;
       };
-      var paint = function () { try { return paintScreen(screen); } catch (e) { onLog('[error] screenshot failed: ' + e.message, 'error'); return null; } };
-      if (!visibleWebFrame(screen)) return finish(paint());                  // no embedded page on screen: plain synchronous capture
+      var paint = function (img) { try { return paintScreen(screen, img); } catch (e) { onLog('[error] screenshot failed: ' + e.message, 'error'); return null; } };
+      var frame = visibleWebFrame(screen);
+      if (!frame) return finish(paint());                                    // no embedded page on screen: plain synchronous capture
       var canReal = !(o && o.real === false) && !!(global.navigator && global.navigator.mediaDevices && global.navigator.mediaDevices.getDisplayMedia);
       var p = canReal ? grabTab(screen).catch(function (e) { onLog('[warn] screen capture unavailable: ' + (e && e.message), 'warn'); return null; }) : Promise.resolve(null);
       return p.then(function (real) {
         if (real) return finish(real);
-        var url = paint();
-        shotToast(canReal ? 'Screen capture was cancelled, so the web page area is a placeholder. Allow "this tab" to include the live page.'
-          : 'This browser cannot capture other sites’ content (Android browsers have no screen-capture API). The page area is a placeholder; use your device screenshot for the live page.');
-        return finish(url);
+        if (!(o && o.service === false)) shotToast('Capturing the page…');
+        return serviceShot(frame).then(function (img) {
+          shotToast('Page area rendered by a screenshot service: a fresh load of the page (top of page, not signed in).');
+          return finish(paint(img));
+        }, function (e) {
+          onLog('[warn] page screenshot service failed: ' + (e && e.message), 'warn');
+          shotToast('Could not capture the page content (' + ((e && e.message) || 'offline') + '). The page area is a placeholder.');
+          return finish(paint());
+        });
       });
     };
     inst.log = function () { return logLines.slice(); };
