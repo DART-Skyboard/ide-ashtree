@@ -392,6 +392,9 @@ import (SamaraHW)
   ui.on (r8) tap { thenplace (rc8) placeto (target); call (DriftGo) }
   ui.on (r9) tap { thenplace (rc9) placeto (target); call (DriftGo) }
   ui.on (r10) tap { thenplace (rc10) placeto (target); call (DriftGo) }
+  input.on (forward) {
+    if cond="${ed}==0" { call (DriftFwd) }
+  }
   input.on (back) {
     if cond="${ed}==0" {
       if cond="${cur}!=" { call (DriftBack) }
