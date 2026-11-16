@@ -226,6 +226,46 @@ t('rotate changes orientation in tree; ops cannot loop forever', function () {
   var k = OS.createKernel(s2, {}); k.boot(); k.dispatch('@unlock'); assert.doesNotThrow(function () { k.launch('loop'); });
 });
 
+t('status/action settings: recents, next-cycling, dnd, orientation, close, cross-app store peek, resume hook', function () {
+  var m = unlocked(), k = m.k, S = k.state();
+  k.launch('tally'); k.launch('leaf'); k.launch('drift');
+  var get = function (key) { return k.proc('drift') && (k._exec([{ op: 'sys.setting', args: { key: key, placeto: 'q' } }], 'drift'), k.vars('drift').q); };
+  assert.strictEqual(get('recent1'), 'leaf'); assert.strictEqual(get('recent2'), 'tally'); assert.strictEqual(get('recent3'), '');
+  assert.strictEqual(get('windows'), 2); assert.strictEqual(get('openapps'), 3); assert.strictEqual(get('recentlabel2'), 'L  Tally'.replace('L', S.appIndex.tally.glyph));
+  var set = function (key, v) { k._exec([{ op: 'sys.setting', args: { key: key, value: v } }], 'drift'); };
+  var th = S.theme; set('theme', 'next'); assert.notStrictEqual(S.theme, th);
+  set('brightness', 'next'); assert.strictEqual(S.brightness, 0.3); set('brightness', 'next'); assert.strictEqual(S.brightness, 0.6); set('brightness', 'next'); assert.strictEqual(S.brightness, 1); set('brightness', 'next'); assert.strictEqual(S.brightness, 0.3);
+  set('dnd', 'toggle'); assert.strictEqual(get('dnd'), 'On'); k.notify('x', 'T'); assert.strictEqual(S.notifs[0].fresh, false); assert.strictEqual(k.tree().children.filter(function (n) { return n.tag === 'banner'; }).length, 0);
+  set('dnd', 'toggle'); assert.strictEqual(get('dnd'), 'Off');
+  set('orientation', 'toggle'); assert.strictEqual(S.orientation, 'landscape'); set('orientation', 'portrait'); assert.strictEqual(S.orientation, 'portrait');
+  set('close', 'tally'); assert(!S.procs.tally); assert.strictEqual(get('windows'), 1);
+  // cross-app read-only store peek + resume handler
+  k._exec([{ op: 'store.set', args: { key: 'note', value: 'peek-me' } }], 'leaf');
+  k._exec([{ op: 'store.get', args: { key: 'leaf/note', placeto: 'p' } }], 'drift'); assert.strictEqual(k.vars('drift').p, 'peek-me');
+  assert(/key/.test(get('storage')));
+  var s2 = JSON.parse(JSON.stringify(seed)); s2.program.Tally.push({ op: 'ui.on', args: { id: 'resume', event: 'tap' }, handlers: { tap: [{ op: 'thenplace', args: { src: 'back', placeto: 'r' } }] } });
+  var k2 = OS.createKernel(s2, {}); k2.boot(); k2.dispatch('@unlock'); k2.launch('tally'); assert.strictEqual(k2.vars('tally').r, 'back'); k2.vars('tally').r = ''; k2.launch('leaf'); k2.launch('tally'); assert.strictEqual(k2.vars('tally').r, 'back');
+});
+
+t('Drift (built demo seed): ui.web view, history stacks, bookmarks, mode toggle', function () {
+  var fs = require('fs'), path = require('path'), f = path.join(__dirname, '../phone/build/samara-demo.seed');
+  if (!fs.existsSync(f)) return;
+  var k = OS.createKernel(JSON.parse(fs.readFileSync(f, 'utf8')), {}); k.boot(); k.dispatch('@unlock'); k.launch('drift');
+  var V = function () { return k.vars('drift'); }, web = function () { return k.find(function (n) { return n.tag === 'web'; }); };
+  assert.strictEqual(V().cur, ''); assert(/dhide/.test(web().props.cls), 'web view hidden on the start page');
+  k.dispatch('t1', 'tap'); assert.strictEqual(V().cur, 'dartmeadow.com'); assert.strictEqual(web().props.url, 'dartmeadow.com'); assert.strictEqual(web().props.cls, '');
+  k.dispatch('urlin', 'change', { value: 'example.com' }); k.dispatch('urlin', 'submit', { value: 'example.com' });
+  assert.strictEqual(V().h1, 'dartmeadow.com'); assert.strictEqual(V().rc1, 'example.com');
+  k.dispatch('bback', 'tap'); assert.strictEqual(V().cur, 'dartmeadow.com'); assert.strictEqual(V().f1, 'example.com');
+  k.dispatch('bfwd', 'tap'); assert.strictEqual(V().cur, 'example.com');
+  k.dispatch('bmode', 'tap'); assert.strictEqual(web().props.mode, 'desktop'); assert.strictEqual(web().props.url, 'example.com');
+  var r0 = web().props.reload; k.dispatch('brel', 'tap'); assert.strictEqual(web().props.reload, r0 + 1);
+  k.dispatch('bstar', 'tap'); assert.strictEqual(V().bm1, 'example.com'); assert.strictEqual(V().starL, '\u2605');
+  k.dispatch('bstar', 'tap'); assert.strictEqual(V().bm1, 'dartmeadow.com');
+  k.dispatch('bhome', 'tap'); assert.strictEqual(V().cur, ''); k.dispatch('bback', 'tap'); assert.strictEqual(V().cur, 'example.com');
+  k.dispatch('bhome', 'tap'); k.dispatch('hclear', 'tap'); assert.strictEqual(V().rc1, ''); assert(/dhide/.test(k.find(function (n) { return n.id === 'r1'; }).props.cls));
+});
+
 Promise.all(pending).then(function () {
   console.log('\n' + passed + ' passed' + (process.exitCode ? ', FAILURES' : ''));
 });
