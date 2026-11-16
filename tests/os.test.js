@@ -112,7 +112,7 @@ t('unlock, home grid + dock respect layout', function () {
   assert.strictEqual(home.props.cols, 4); assert.strictEqual(home.props.rows, 4);
   var ids = home.children.map(function (c) { return c.id; });
   assert(ids.indexOf('@app:drift') >= 0 && ids.indexOf('@app:rings') >= 0 && ids.indexOf('@app:tally') < 0, ids.join());
-  var dock = m.k.find(function (n) { return n.tag === 'dock'; }); assert.deepStrictEqual(dock.children.map(function (c) { return c.id; }), ['@app:tally', '@app:leaf']);
+  var dock = m.k.find(function (n) { return n.tag === 'dock'; }); assert.deepStrictEqual(dock.children.map(function (c) { return c.id; }), ['@app:tally', '@app:leaf', '@drawer:open']);   // the App Drawer button is always the last dock item
   assert.strictEqual(m.k.find(function (n) { return n.tag === 'widgets'; }).children[0].props.text, 'Hello Samara');
 });
 
@@ -169,8 +169,8 @@ t('notification shade: notify, open app from notification, clear', function () {
 t('Rings: theme, wallpaper, layout, dock, brightness persist across reboot', function () {
   var store = {}; var host = { storage: { getItem: function (k) { return k in store ? store[k] : null; }, setItem: function (k, v) { store[k] = v; }, removeItem: function (k) { delete store[k]; } } };
   var m = unlocked(host); m.k.launch('rings');
-  var rings = m.k.find('app:rings'); assert(rings);
-  var sw = m.k.find('@set:theme:Ember'); assert(sw, 'theme swatch');
+  var rings = m.k.find('app:rings'); assert(rings); m.k.dispatch('@rings:page:themes');   // theme swatches live on the Wallpapers & themes page
+  var sw = m.k.find('@set:theme:Ember'); assert(sw, 'theme card');
   m.k.dispatch('@set:theme:Ember'); m.k.dispatch('@set:wallpaper:aurora'); m.k.dispatch('@set:layout:5x6'); m.k.dispatch('@set:dock:3');
   m.k.dispatch('@set:brightness', 'change', { value: 40 });
   var T = m.k.tree(); assert.strictEqual(T.props.themeName, 'Ember'); assert(/linear-gradient/.test(T.props.wallpaper)); assert.strictEqual(T.props.brightness, 0.4);

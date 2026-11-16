@@ -303,6 +303,5 @@ import (SamaraHW)
   }
   ui.on (bk8) tap { ui.screen (list) }
   ui.on (leafhome) tap { sys.home }
-  input.on (back) { ui.screen (list) }
   ui.screen (list)
 }|';'|

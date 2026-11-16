@@ -218,7 +218,7 @@ t('kernel.system: honest info, device id stable, hardware labelled simulated', f
   assert(/^SMR-[0-9A-F]{4}-[0-9A-F]{4}$/.test(s.device.id)); assert.strictEqual(boot(SEED100, st, null).k.system.device.id, s.device.id);
   assert.throws(function () { 'use strict'; b.k.system = 1; });
 });
-function texts(k) { var o = []; (function w(n) { if (n.props && n.props.text) o.push(String(n.props.text)); if (n.props && n.props.label) o.push(String(n.props.label)); n.children.forEach(w); })(k.tree()); return o.join('\n'); }
+function texts(k) { var o = []; (function w(n) { if (n.props && n.props.text) o.push(String(n.props.text)); if (n.props && n.props.label) o.push(String(n.props.label)); if (n.props && n.props.title) o.push(String(n.props.title)); n.children.forEach(w); })(k.tree()); return o.join('\n'); }
 t('Rings pages: About / System update / Developer options render; tap build x7 enables developer options', function () {
   var b = boot(SEED100, memStore(), null), k = b.k; k.launch('rings');
   k.dispatch('@rings:about'); var tx = texts(k); assert(/Samara One \(simulated\)/.test(tx)); assert(/Samara OS 1\.0\.0/.test(tx)); assert(/schema/i.test(tx)); assert(!/Developer options$/m.test(tx));

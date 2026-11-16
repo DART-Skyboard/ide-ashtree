@@ -1,0 +1,75 @@
+/* canopy-rings.css — Rings (settings) widgets, App Drawer, accessibility modes. Pairs with js/phone/canopy-rings.js. All selectors .cnp- prefixed. */
+
+/* header: Back (left, existing) + Home/Done (right) */
+.cnp-ab-home{ position:absolute; right:8px; top:4px; width:44px; height:44px; display:flex; align-items:center; justify-content:center; border:0; border-radius:50%; background:transparent; color:var(--accent); font-size:24px; line-height:1; padding:0 0 2px; cursor:pointer; }
+.cnp-ab-home:hover,.cnp-ab-home:active{ background:color-mix(in srgb,var(--accent) 16%,transparent); }
+.cnp-device.landscape .cnp-ab-home{ top:0; }
+
+/* settings rows */
+.cnp-listrow,.cnp-approw{ display:flex; align-items:center; gap:12px; min-height:52px; padding:6px 4px; border-radius:var(--r); cursor:pointer; min-width:0; }
+.cnp-listrow:active,.cnp-approw:active,.cnp-switch:active{ background:color-mix(in srgb,var(--accent) 10%,transparent); }
+.cnp-lr-g{ position:relative; overflow:hidden; flex:none; width:36px; height:36px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:600; color:#fff; background:var(--surface2); }
+.cnp-approw .cnp-lr-g{ width:44px; height:44px; border-radius:30%; font-size:22px; }
+.cnp-lr-t,.cnp-sw2-t{ display:flex; flex-direction:column; min-width:0; flex:1 1 auto; line-height:1.25; }
+.cnp-lr-t b,.cnp-sw2-t b{ font-weight:600; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cnp-lr-t i,.cnp-sw2-t i{ font-style:normal; font-size:12px; color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cnp-sw2-t i{ white-space:normal; }
+.cnp-lr-c{ flex:none; color:var(--dim); font-size:22px; padding:0 4px; }
+.cnp-listrow.chk .cnp-lr-c{ color:var(--accent); font-size:18px; font-weight:700; }
+.cnp-section>.cnp-listrow+.cnp-listrow,.cnp-section>.cnp-approw+.cnp-approw,.cnp-section>.cnp-switch+.cnp-switch{ border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent); border-radius:0; }
+.cnp-drawer-letter{ font-size:12px; font-weight:700; letter-spacing:.12em; color:var(--dim); padding:8px 6px 0; }
+.cnp-scroll>.cnp-approw{ background:var(--surface); border:1px solid var(--border); padding:6px 12px; }
+
+/* toggle */
+.cnp-switch{ display:flex; align-items:center; gap:12px; min-height:48px; padding:4px; cursor:pointer; border-radius:var(--r); }
+.cnp-sw2-k{ flex:none; position:relative; width:46px; height:28px; border-radius:14px; background:color-mix(in srgb,var(--text) 22%,var(--surface2)); transition:background .18s; }
+.cnp-sw2-k i{ position:absolute; left:3px; top:3px; width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.4); transition:transform .18s; }
+.cnp-switch.on .cnp-sw2-k{ background:var(--accent); }
+.cnp-switch.on .cnp-sw2-k i{ transform:translateX(18px); }
+
+/* theme cards (illustration picker) */
+.cnp-grid>.cnp-themecard{ min-width:0; }
+.cnp-themecard{ display:flex; flex-direction:column; overflow:hidden; border-radius:var(--r); border:2px solid var(--border); cursor:pointer; transition:transform .1s; background:var(--surface2); }
+.cnp-themecard:active{ transform:scale(.97); }
+.cnp-themecard.sel{ box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 35%,transparent); }
+.cnp-tc-art{ display:block; width:100%; aspect-ratio:8/5; background-size:cover; background-position:center; }
+.cnp-tc-bar{ display:flex; align-items:center; gap:6px; padding:6px 8px; }
+.cnp-tc-em{ width:20px; height:20px; flex:none; }
+.cnp-tc-n{ flex:1; min-width:0; font-size:12px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cnp-tc-d{ width:10px; height:10px; border-radius:50%; flex:none; }
+
+/* storage bars + key/value */
+.cnp-bar{ display:flex; flex-direction:column; gap:4px; }
+.cnp-bar-h{ display:flex; justify-content:space-between; gap:8px; font-size:13px; }
+.cnp-bar-h b{ font-weight:600; } .cnp-bar-h i{ display:none; } .cnp-bar-h em{ font-style:normal; color:var(--dim); font-size:12px; }
+.cnp-bar-t{ height:8px; border-radius:4px; background:color-mix(in srgb,var(--text) 12%,var(--surface2)); overflow:hidden; }
+.cnp-bar-t i{ display:block; height:100%; background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 60%,#fff)); border-radius:4px; }
+.cnp-kv{ display:flex; justify-content:space-between; gap:12px; font-size:14px; padding:2px 4px; }
+.cnp-kv-k{ color:var(--dim); } .cnp-kv-v{ text-align:right; min-width:0; overflow-wrap:anywhere; }
+.cnp-filebtn{ display:flex; } .cnp-filebtn>.cnp-button{ flex:1; }
+.cnp-section .cnp-input{ width:100%; }
+.cnp-section .cnp-button{ width:100%; }
+.cnp-section .cnp-row>.cnp-button{ width:auto; }
+.cnp-section>.cnp-image,.cnp-section .cnp-image{ display:flex; align-items:center; justify-content:center; }
+
+/* on-screen navigation buttons (Accessibility > Navigation buttons) */
+.cnp-navbar{ display:none; position:absolute; left:0; right:0; bottom:6px; z-index:40; justify-content:center; gap:46px; pointer-events:none; }
+.a11y-nav .cnp-navbar{ display:flex; }
+.cnp-nb{ pointer-events:auto; width:46px; height:46px; border-radius:50%; border:1px solid var(--border); background:var(--plate,var(--surface)); color:var(--text); font-size:20px; cursor:pointer; -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
+
+/* text size: scales text-bearing widgets with CSS zoom (Chromium, Safari, Firefox 126+) */
+.cnp-screen.ts-s .cnp-text,.cnp-screen.ts-s .cnp-button,.cnp-screen.ts-s .cnp-chip,.cnp-screen.ts-s .cnp-lr-t,.cnp-screen.ts-s .cnp-sw2-t,.cnp-screen.ts-s .cnp-kv{ zoom:.9; }
+.cnp-screen.ts-l .cnp-text,.cnp-screen.ts-l .cnp-button,.cnp-screen.ts-l .cnp-chip,.cnp-screen.ts-l .cnp-lr-t,.cnp-screen.ts-l .cnp-sw2-t,.cnp-screen.ts-l .cnp-kv,.cnp-screen.ts-l .cnp-ab-title,.cnp-screen.ts-l .cnp-icon-name,.cnp-screen.ts-l .cnp-listitem{ zoom:1.18; }
+.cnp-screen.ts-xl .cnp-text,.cnp-screen.ts-xl .cnp-button,.cnp-screen.ts-xl .cnp-chip,.cnp-screen.ts-xl .cnp-lr-t,.cnp-screen.ts-xl .cnp-sw2-t,.cnp-screen.ts-xl .cnp-kv,.cnp-screen.ts-xl .cnp-ab-title,.cnp-screen.ts-xl .cnp-icon-name,.cnp-screen.ts-xl .cnp-listitem{ zoom:1.4; }
+.cnp-screen.ts-l .cnp-widgets .cnp-clock,.cnp-screen.ts-xl .cnp-widgets .cnp-clock,.cnp-screen.ts-l .cnp-lock>.cnp-clock,.cnp-screen.ts-xl .cnp-lock>.cnp-clock{ zoom:1; }
+/* bold / high contrast */
+.cnp-screen.a11y-bold,.cnp-screen.a11y-bold .cnp-text,.cnp-screen.a11y-bold .cnp-button,.cnp-screen.a11y-bold .cnp-chip,.cnp-screen.a11y-bold .cnp-icon-name,.cnp-screen.a11y-bold .cnp-lr-t i,.cnp-screen.a11y-bold .cnp-sw2-t i{ font-weight:700!important; }
+.cnp-screen.a11y-hc{ --dim:var(--text); --border:color-mix(in srgb,var(--text) 70%,transparent); }
+.cnp-screen.a11y-hc .cnp-button,.cnp-screen.a11y-hc .cnp-chip,.cnp-screen.a11y-hc .cnp-section,.cnp-screen.a11y-hc .cnp-input{ border-width:2px; border-color:var(--text); }
+.cnp-screen.a11y-hc .cnp-icon-name{ background:var(--bg); color:var(--text); }
+/* reduce motion */
+.cnp-screen.a11y-rm *,.cnp-screen.a11y-rm *::before,.cnp-screen.a11y-rm *::after{ transition:none!important; animation:none!important; }
+/* one-handed: content sits in the lower 72% */
+.cnp-screen.a11y-one .cnp-view{ top:28%; border-radius:26px 26px 0 0; box-shadow:0 -8px 24px rgba(0,0,0,.35); overflow:hidden; }
+.cnp-screen.a11y-one .cnp-wall{ filter:brightness(.8); }
+.cnp-device.landscape .cnp-screen.a11y-one .cnp-view{ top:0; left:28%; }

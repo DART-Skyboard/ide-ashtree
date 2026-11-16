@@ -38,6 +38,26 @@
   ];
   var LAYOUTS = ['4x5', '4x6', '5x6', '3x5'];
 
+  // ---------- user preferences (Rings pages). Flat map "key" -> value; only values that differ from the default are stored. ----------
+  // Dynamic keys default to true:  notif.app.<appId> (notifications allowed)  and  perm.<appId>.<cam|mic|loc|net> (permission granted).
+  var PREF_DEFAULTS = {
+    textSize: 'm', orientationLock: false, autoDark: false, timeout: 0,                                  // display
+    wifi: true, mobile: true, airplane: false, netmode: 'auto', ssid: 'Samara-Lab', vpn: '', dns: '', proxy: '',   // network
+    silent: false, haptics: true, touchSounds: false,                                                    // sound & haptics
+    'notif.lock': true,                                                                                  // notifications (DND is the kernel setting `dnd`)
+    'a11y.large': false, 'a11y.bold': false, 'a11y.contrast': false, 'a11y.motion': false, 'a11y.filter': 'none', 'a11y.reader': false,
+    'a11y.switch': false, 'a11y.onehand': false, 'a11y.hold': 400, 'a11y.mono': false, 'a11y.captions': false,   // accessibility
+    'bat.saver': false, 'bat.pct': true,                                                                 // battery (simulated)
+    lang: 'en', region: 'US', datefmt: 'MDY', tz: 'auto',                                                // language / region / time
+    'sec.pin': '', autosave: true                                                                        // security / backup
+  };
+  var PREF_ENUMS = {
+    textSize: ['s', 'm', 'l', 'xl'], 'a11y.filter': ['none', 'grayscale', 'invert', 'deuter', 'protan', 'tritan'],
+    netmode: ['auto', '5g', 'lte', '3g', '2g'], datefmt: ['MDY', 'DMY', 'ISO'], timeout: [0, 15, 30, 60, 300], 'a11y.hold': [200, 400, 700, 1000],
+    lang: ['en', 'es', 'fr', 'de', 'ja'], region: ['US', 'GB', 'ES', 'FR', 'DE', 'JP', 'IN', 'BR']
+  };
+  var PERMS = ['cam', 'mic', 'loc', 'net'];
+
   // ---------- small utils ----------
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function isNumStr(v) { return typeof v === 'string' && /^\s*-?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?\s*$/i.test(v); }
@@ -120,24 +140,31 @@
 
   // ---------- storage ----------
   function makeStore(host, prefix) {
-    var mem = {}, ls = null;
-    function idxGet() { try { var r = ls ? ls.getItem(prefix + '__idx') : null; if (r == null) r = mem[prefix + '__idx']; return JSON.parse(r || '[]'); } catch (e) { return []; } }
-    function idxPut(a) { var t = JSON.stringify(a); mem[prefix + '__idx'] = t; try { if (ls) ls.setItem(prefix + '__idx', t); } catch (e) { /* memory only */ } }
-    function idxAdd(k) { if (k === '__idx') return; var a = idxGet(); if (a.indexOf(k) < 0) { a.push(k); idxPut(a); } }
-    function idxDel(k) { var a = idxGet(), i = a.indexOf(k); if (i >= 0) { a.splice(i, 1); idxPut(a); } }
+    var mem = {}, ls = null, IDX = prefix + '__idx';
     try { ls = host.storage || (typeof localStorage !== 'undefined' ? localStorage : null); } catch (e) { ls = null; }
-    return {
+    function idx() { try { var r = ls && ls.getItem(IDX); return r ? JSON.parse(r) : []; } catch (e) { return []; } }
+    function saveIdx(a) { try { if (ls) ls.setItem(IDX, JSON.stringify(a)); } catch (e) { /* ignore */ } }
+    var S_ = {
       get: function (k) {
         try { if (ls) { var v = ls.getItem(prefix + k); if (v != null) return v; } } catch (e) { /* fall back to memory */ }
         return Object.prototype.hasOwnProperty.call(mem, prefix + k) ? mem[prefix + k] : null;
       },
       set: function (k, v) {
-        mem[prefix + k] = String(v); idxAdd(k);
-        try { if (ls) ls.setItem(prefix + k, String(v)); } catch (e) { /* memory only */ }
+        mem[prefix + k] = String(v);
+        try { if (ls) { ls.setItem(prefix + k, String(v)); var a = idx(); if (a.indexOf(k) < 0) { a.push(k); saveIdx(a); } } } catch (e) { /* memory only */ }
       },
-      remove: function (k) { delete mem[prefix + k]; idxDel(k); try { if (ls) ls.removeItem(prefix + k); } catch (e) { /* ignore */ } },
-      // updates: key index (storage has no portable enumeration) so migrations / snapshots / factory reset can see every key
-      keys: function () { return idxGet(); },
+      remove: function (k) {
+        delete mem[prefix + k];
+        try { if (ls) { ls.removeItem(prefix + k); var a = idx(), i = a.indexOf(k); if (i >= 0) { a.splice(i, 1); saveIdx(a); } } } catch (e) { /* ignore */ }
+      },
+      // every key this store knows (index + memory + a scan of storages that support key(i))
+      keys: function () {
+        var out = {}, a = idx(), i;
+        a.forEach(function (k) { out[k] = 1; });
+        Object.keys(mem).forEach(function (k) { if (k.indexOf(prefix) === 0) out[k.slice(prefix.length)] = 1; });
+        try { if (ls && typeof ls.length === 'number' && ls.key) for (i = 0; i < ls.length; i++) { var kk = ls.key(i); if (kk && kk.indexOf(prefix) === 0) out[kk.slice(prefix.length)] = 1; } } catch (e) { /* ignore */ }
+        return Object.keys(out).filter(function (k) { return k !== '__idx' && S_.get(k) !== null; });
+      },
       // real usage of this seed's namespace: number of keys and characters held (localStorage when it can be enumerated, else this session's memory)
       usage: function () {
         var seen = {}, n = 0, bytes = 0, i, k, v;
@@ -147,6 +174,7 @@
         return { keys: n, bytes: bytes };
       }
     };
+    return S_;
   }
 
   // ---------- synthetic camera frame (SVG data URI, works without DOM) ----------
@@ -182,6 +210,7 @@
       apps: [], appIndex: {}, procs: {}, recents: [], fg: null,
       notifs: [], pin: '', pinError: false, toast: null,
       battery: 87, charging: false, signal: 4, uptime: 0, drainAcc: 0, dnd: false,
+      prefs: {}, custom: null, drawer: false, drawerQuery: '', lastActive: 0, autoMode: null, lastDark: 'Ash Dark', lastLight: 'Ash Light',
       cam: { open: false, facing: 'back', synthetic: false, frames: 0, last: null },
       tilt: { x: 0, y: 0, z: 9.8 }, loc: { lat: 37.7749, lon: -122.4194 },
       clockSkew: 0, buildTaps: 0, buildTapAt: 0, sysPages: {}, logLines: [], bootNode: manifest.boot || 'Crown', netListeners: {}
@@ -218,6 +247,8 @@
     }
     function launch(id) {
       if (!S.powered || S.locked || !id) return false;
+      if (id === 'drawer') { openDrawer(); return true; }          // pseudo-app: sys.launch (drawer) opens the App Drawer
+      S.drawer = false; S.drawerQuery = ''; S.lastActive = now();
       var info = appInfo(id);
       if (!info) { log('error', 'launch: unknown app ' + id); return false; }
       var p = S.procs[id];
@@ -244,21 +275,108 @@
       if (S.cam.open && S.cam.owner === id) camClose();
       log('info', 'kill ' + id);
     }
-    function home() { if (!S.powered) return; if (S.fg) S.fwd = S.fg; /* GESTURES: forward target */ S.fg = null; S.shade = false; S.page = 0; changed(); }
+    function home() { if (!S.powered) return; if (S.fg) S.fwd = S.fg; /* GESTURES: forward target */ if (S.fg === 'rings' && S.procs.rings) S.procs.rings.ringsPage = 'main'; S.fg = null; S.shade = false; S.page = 0; S.drawer = false; S.drawerQuery = ''; S.lastActive = now(); changed(); }
+    function openDrawer() { if (!S.powered || S.locked) return; S.fg = null; S.shade = false; S.drawer = true; S.drawerQuery = ''; changed(); }
     function back() {
       if (!S.powered || S.screenOff) return;
       if (S.shade) { S.shade = false; changed(); return; }
       if (S.locked) return;
+      S.lastActive = now();
+      if (S.drawer) { S.drawer = false; S.drawerQuery = ''; changed(); return; }
       if (!S.fg) { if (S.page > 0) { S.page = 0; changed(); } return; }   // GESTURES: Back on a later home page returns to page 1
       var p = S.procs[S.fg];
+      // Rings: sub-page -> parent page -> (main) -> home. The page tree lives in js/phone/rings.js.
+      if (S.fg === 'rings' && p && p.ringsPage && p.ringsPage !== 'main') { var RG = rings(); p.ringsPage = (RG && RG.parent(p.ringsPage)) || 'main'; changed(); return; }
       if (p && p.hist.length > 1) { p.hist.pop(); p.cur = p.hist[p.hist.length - 1]; changed(); return; }
-      if (S.fg === 'rings' && p && p.ringsPage && p.ringsPage !== 'main') { p.ringsPage = 'main'; changed(); return; }
       kill(S.fg); S.fg = null; changed();
     }
+
+    // ---------- prefs (Rings) ----------
+    function rings() { return global.SamaraRings || (typeof require === 'function' ? (function () { try { return require('./rings.js'); } catch (e) { return null; } })() : null); }
+    function prefDefault(k) {
+      if (Object.prototype.hasOwnProperty.call(PREF_DEFAULTS, k)) return PREF_DEFAULTS[k];
+      if (/^notif\.app\.[\w-]+$/.test(k) || /^perm\.[\w-]+\.(cam|mic|loc|net)$/.test(k)) return true;
+      return undefined;
+    }
+    function getPref(k) { return Object.prototype.hasOwnProperty.call(S.prefs, k) ? S.prefs[k] : prefDefault(k); }
+    function setPref(k, value, silent) {
+      var def = prefDefault(k); if (def === undefined) { log('warn', 'unknown pref ' + k); return false; }
+      var v;
+      if (typeof def === 'boolean') v = String(value) === 'toggle' ? !getPref(k) : (value === true || /^(true|1|on|yes)$/i.test(String(value)));
+      else if (typeof def === 'number') v = toNum(value, def);
+      else v = String(value == null ? '' : value);
+      if (PREF_ENUMS[k] && PREF_ENUMS[k].indexOf(v) < 0) { if (typeof def === 'string' && PREF_ENUMS[k].indexOf(String(v).toLowerCase()) >= 0) v = String(v).toLowerCase(); else return false; }
+      if (k === 'sec.pin' && v !== '' && !/^\d{4,6}$/.test(v)) return false;
+      if (v === def) delete S.prefs[k]; else S.prefs[k] = v;
+      if (k === 'autoDark') { S.autoMode = null; applyAutoDark(); }
+      if (!silent) { if (booted) persistSettings(); changed(); }
+      return true;
+    }
+    function permOk(app, perm) { return getPref('perm.' + app + '.' + perm) !== false; }
+    function online() { return !getPref('airplane') && (!!getPref('wifi') || !!getPref('mobile')); }
+    function netBlock(app) {
+      if (getPref('airplane')) return "Airplane mode is on. Turn it off in Rings > Network.";
+      if (!getPref('wifi') && !getPref('mobile')) return "You're offline: Wi-Fi and mobile data are off (Rings > Network).";
+      if (app && !permOk(app, 'net')) return 'Network access is blocked for this app (Rings > Privacy & permissions).';
+      return '';
+    }
+    function passcode() { var pp = getPref('sec.pin'); return pp ? String(pp) : (manifest.passcode == null ? '' : String(manifest.passcode)); }
+    function dparts() {
+      var t = now(), tz = getPref('tz'), d, u = tz !== 'auto' && tz !== undefined && isFinite(+tz);
+      d = new Date(u ? t + (+tz) * 60000 : t);
+      return u ? { y: d.getUTCFullYear(), mo: d.getUTCMonth(), day: d.getUTCDate(), dow: d.getUTCDay(), h: d.getUTCHours(), m: d.getUTCMinutes() }
+               : { y: d.getFullYear(), mo: d.getMonth(), day: d.getDate(), dow: d.getDay(), h: d.getHours(), m: d.getMinutes() };
+    }
+    function applyAutoDark() {
+      if (!getPref('autoDark') || !S.powered) return;
+      var h = dparts().h, mode = (h < 7 || h >= 19) ? 'night' : 'day';
+      if (mode === S.autoMode) return;
+      S.autoMode = mode; var want = mode === 'night' ? S.lastDark : S.lastLight;
+      if (want && want !== S.theme && resolveThemeName(want)) { S.theme = resolveThemeName(want); if (booted) persistSettings(); }
+    }
+    // ---- custom wallpaper (image lives in memory here; js/phone/persist.js stores it in IndexedDB) ----
+    var customCache = { key: '', css: '' };
+    function customCss() {
+      var c = S.custom; if (!c) return null;
+      var key = c.rev + '|' + c.fit + '|' + c.dim, W = global.SamaraWallpapers;
+      if (customCache.key !== key) {
+        var css = W && W.custom && W.custom.css ? W.custom.css(c, themeTokens(S.theme).bg) : 'url("' + c.dataUrl + '") center/cover no-repeat';
+        customCache = { key: key, css: css };
+      }
+      return customCache.css;
+    }
+    function themeArtCss(T) { var A = global.SamaraThemeArt; return A ? A.css(S.theme, { tokens: T }) : T.wall; }
+    function customMeta() { var c = S.custom; return c ? { present: true, mime: c.mime, w: c.w, h: c.h, fit: c.fit, dim: c.dim, blur: c.blur, bytes: Math.round(String(c.dataUrl).length * 0.75), rev: c.rev } : null; }
+    K.setCustomWallpaper = function (o, silent) {
+      if (!o || !o.dataUrl) return false;
+      var old = S.custom;
+      S.custom = { dataUrl: o.dataUrl, mime: o.mime || 'image/jpeg', w: o.w || 0, h: o.h || 0,
+        fit: /^(fill|fit|center)$/.test(o.fit) ? o.fit : (old ? old.fit : 'fill'), dim: o.dim !== undefined ? clamp(toNum(o.dim, 0), 0, 0.85) : (old ? old.dim : 0.15),
+        blur: o.blur !== undefined ? clamp(toNum(o.blur, 0), 0, 24) : (old ? old.blur : 0), rev: (old ? old.rev : 0) + 1 };
+      customCache.key = '';
+      if (!silent) setSetting('wallpaper', 'custom'); else changed();
+      return true;
+    };
+    K.setCustomOptions = function (o) {
+      if (!S.custom) return false; o = o || {};
+      if (/^(fill|fit|center)$/.test(o.fit)) S.custom.fit = o.fit;
+      if (o.dim !== undefined) S.custom.dim = clamp(toNum(o.dim, 0), 0, 0.85);
+      if (o.blur !== undefined) S.custom.blur = clamp(toNum(o.blur, 0), 0, 24);
+      if (booted) persistSettings(); changed(); return true;
+    };
+    K.clearCustomWallpaper = function () {
+      S.custom = null; customCache.key = '';
+      if (S.wallpaper === 'custom') S.wallpaper = 'theme';
+      if (booted) persistSettings(); changed(); return true;
+    };
+    K.customWallpaperData = function () { return S.custom; };
+    K.customWallpaperMeta = customMeta;
 
     // ---------- settings (theme / wallpaper / layout / brightness) ----------
     function wallpapers() {
       var out = WALLPAPERS.slice();
+      out.push({ id: 'themeart', name: 'Theme Art', css: null, art: true });                       // original illustration of the current theme (js/phone/theme-art.js)
+      if (S.custom) out.push({ id: 'custom', name: 'Custom', css: null, custom: true, rev: S.custom.rev });   // the user's imported image
       // preloaded procedural / animated wallpapers (js/phone/wallpapers.js), if that module is present
       var ext = (global.SamaraWallpapers && global.SamaraWallpapers.list) || [];
       ext.forEach(function (w) { if (w && w.id) out.push({ id: w.id, name: w.name, css: w.css || null, live: true, animated: !!w.animated }); });
@@ -285,7 +403,7 @@
       return null;
     }
     function persistSettings() {
-      sysStore.set('settings', JSON.stringify({ theme: S.theme, wallpaper: S.wallpaper, cols: S.cols, rows: S.rows, dock: S.dock, brightness: S.brightness, volume: S.volume, clock24: S.clock24, dnd: S.dnd }));
+      sysStore.set('settings', JSON.stringify({ theme: S.theme, wallpaper: S.wallpaper, cols: S.cols, rows: S.rows, dock: S.dock, brightness: S.brightness, volume: S.volume, clock24: S.clock24, dnd: S.dnd, prefs: S.prefs, customOpts: S.custom ? { fit: S.custom.fit, dim: S.custom.dim, blur: S.custom.blur } : null }));
     }
     // 'next' cycles a setting through its presets (themes, wallpapers, brightness, volume)
     function nextOf(list, cur) { var i = list.indexOf(cur); return list[(i + 1) % list.length]; }
@@ -298,7 +416,7 @@
         else if (key === 'volume') { var vs = [0, 50, 100]; value = vs.filter(function (x) { return x > S.volume; })[0]; if (value === undefined) value = vs[0]; }
       }
       switch (key) {
-        case 'theme': { var n = resolveThemeName(value); if (!n) { log('warn', 'unknown theme ' + value); return false; } S.theme = n; break; }
+        case 'theme': { var n = resolveThemeName(value); if (!n) { log('warn', 'unknown theme ' + value); return false; } S.theme = n; if (themeTokens(n).dark) S.lastDark = n; else S.lastLight = n; break; }
         case 'wallpaper': {
           var w = wallpapers().filter(function (x) { return x.id === String(value) || x.name === String(value); })[0];
           if (!w) { log('warn', 'unknown wallpaper ' + value); return false; } S.wallpaper = w.id; break;
@@ -318,7 +436,7 @@
         case 'orientation': {
           var ov = String(value).toLowerCase(), want = ov === 'toggle' ? (S.orientation === 'portrait' ? 'landscape' : 'portrait') : ov;
           if (want !== 'portrait' && want !== 'landscape') return false;
-          if (want !== S.orientation) { S.orientation = want; S.page = 0; } break;
+          if (want !== S.orientation) { if (getPref('orientationLock') && !silent) { toast('Orientation is locked (Rings > Display)'); changed(); return false; } S.orientation = want; S.page = 0; } break;
         }
         case 'close': { var cid = String(value); if (cid && cid !== 'crown' && S.procs[cid]) kill(cid); else return false; break; }   // action: close a running app
         default: log('warn', 'unknown setting ' + key); return false;
@@ -418,7 +536,7 @@
       var s = proc.screens[id];
       if (!s) { s = proc.screens[id] = { kind: 'screen', id: id, props: {}, children: [] }; proc.order.push(id); proc.nodes[id] = s; }
       Object.assign(s.props, props || {});
-      if (proc.cur !== id) { proc.cur = id; if (proc.hist[proc.hist.length - 1] !== id) proc.hist.push(id); }
+      if (proc.cur !== id) { proc.cur = id; var hi = proc.hist.indexOf(id); if (hi >= 0) proc.hist.length = hi + 1; else proc.hist.push(id); }   // going to an earlier screen pops the stack back to it
       return s;
     }
     function rawProps(op, ctx, skip) {
@@ -646,6 +764,7 @@
     }
     OPS['cam.open'] = function (op, ctx) {
       var f = String(arg(op, ctx, 'facing') || 'back'); if (f !== 'front') f = 'back';
+      if (!permOk(ctx.proc.id, 'cam')) { log('warn', 'cam.open blocked: camera permission denied for ' + ctx.proc.id); toast('Camera blocked for ' + (appInfo(ctx.proc.id) ? appInfo(ctx.proc.id).name : ctx.proc.id)); return; }
       S.cam.open = true; S.cam.facing = f; S.cam.synthetic = true; S.cam.owner = ctx.proc.id;
       try {
         if (host.camera && host.camera.open) {
@@ -673,6 +792,7 @@
 
     // --- net.* ---
     function friendlyNetError(url, e) {
+      if (e && e.offline) return e.message;
       var host_ = ''; try { host_ = /^[a-z]+:\/\/([^\/?#]+)/i.exec(url)[1]; } catch (x) { host_ = url; }
       var m = e && e.message ? e.message : String(e);
       if (/failed to fetch|networkerror|load failed|fetch failed|cors|network request failed/i.test(m) || (e && e.name === 'TypeError'))
@@ -695,6 +815,8 @@
         run(h.error || h.fail, { error: msg }); changed();
       };
       var p;
+      var blocked = netBlock(proc.id);
+      if (blocked) { var oe = new Error(blocked); oe.offline = true; p = Promise.resolve(); fail(oe); proc.net = 'offline'; pendingNet.push(p); p.then(function () { var i = pendingNet.indexOf(p); if (i >= 0) pendingNet.splice(i, 1); }); return; }
       try {
         var f = host.fetch || (typeof fetch === 'function' ? fetch : null);
         if (!f) throw new Error('no network available');
@@ -741,53 +863,60 @@
     OPS['snd.play'] = function (op, ctx) { log('info', 'snd.play ' + (arg(op, ctx, 'src') || '')); try { host.snd && host.snd.play && host.snd.play(arg(op, ctx, 'src')); } catch (e) { /* ignore */ } };
     OPS['snd.stop'] = function () { try { host.snd && host.snd.stop && host.snd.stop(); } catch (e) { /* ignore */ } };
     OPS['snd.volume'] = function (op, ctx) { setSetting('volume', toNum(arg(op, ctx, 'level'), 0.5) * (toNum(arg(op, ctx, 'level'), 0.5) <= 1 ? 100 : 1)); };
-    OPS['snd.beep'] = function (op, ctx) { log('info', 'beep'); try { host.snd && host.snd.beep && host.snd.beep(arg(op, ctx, 'freq'), arg(op, ctx, 'ms')); } catch (e) { /* ignore */ } };
+    OPS['snd.beep'] = function (op, ctx) {
+      if (getPref('silent') || S.volume === 0) { log('info', 'beep (muted)'); return; }
+      log('info', 'beep'); if (getPref('a11y.captions')) toast('\u266A Beep');   // captions: sounds are announced on screen
+      try { host.snd && host.snd.beep && host.snd.beep(arg(op, ctx, 'freq'), arg(op, ctx, 'ms'), { mono: !!getPref('a11y.mono') }); } catch (e) { /* ignore */ }
+    };
     OPS['sensor.tilt'] = function (op, ctx) {
       var t = (host.sensors && host.sensors.tilt && host.sensors.tilt()) || S.tilt, d = destOf(op);
       if (d) assignVar(ctx, d, [t.x, t.y, t.z].map(function (n) { return +toNum(n).toFixed(2); }).join(','));
     };
     OPS['sensor.location'] = function (op, ctx) {
       var l = (host.sensors && host.sensors.location && host.sensors.location()) || S.loc, d = destOf(op);
+      if (!permOk(ctx.proc.id, 'loc')) { log('warn', 'sensor.location blocked for ' + ctx.proc.id); if (d) assignVar(ctx, d, ''); return; }
       if (d) assignVar(ctx, d, l.lat + ',' + l.lon);
     };
     OPS['input.on'] = function (op, ctx) {
       var k = posId(op, ctx), h = op.handlers && (op.handlers.press || op.handlers[Object.keys(op.handlers)[0]]);
       if (k && h) ctx.proc.keyHandlers[k] = h;
     };
-    OPS['input.haptic'] = function (op, ctx) { try { host.haptic && host.haptic(toNum(arg(op, ctx, 'ms'), 20)); } catch (e) { /* ignore */ } };
+    OPS['input.haptic'] = function (op, ctx) { if (!getPref('haptics')) return; try { host.haptic && host.haptic(toNum(arg(op, ctx, 'ms'), 20)); } catch (e) { /* ignore */ } };
 
     // ---------- system actions ----------
     function clockText() {
-      var d = new Date(now()), h = d.getHours(), m = d.getMinutes();
+      var d = dparts(), h = d.h, m = d.m;
       if (S.clock24) return pad2(h) + ':' + pad2(m);
       return ((h % 12) || 12) + ':' + pad2(m);
     }
     function dateText() {
-      var d = new Date(now());
-      return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getDay()] + ', ' +
-        ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][d.getMonth()] + ' ' + d.getDate();
+      var d = dparts(), f = getPref('datefmt'), dow = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.dow],
+          mon = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][d.mo];
+      if (f === 'ISO') return dow + ', ' + d.y + '-' + pad2(d.mo + 1) + '-' + pad2(d.day);
+      return f === 'DMY' ? dow + ', ' + d.day + ' ' + mon : dow + ', ' + mon + ' ' + d.day;
     }
     function notify(appId, text, title) {
+      if (getPref('notif.app.' + appId) === false) { log('info', 'notification from ' + appId + ' suppressed (Rings > Notifications)'); return null; }
       var info = appInfo(appId), n = { id: seq++, app: appId, title: title || (info ? info.name : appId), text: String(text == null ? '' : text), t: now(), fresh: !S.dnd, age: 0 };
       S.notifs.unshift(n); if (S.notifs.length > 50) S.notifs.pop();
       log('info', 'notify [' + n.title + '] ' + n.text); changed(); return n;
     }
-    function toast(text) { S.toast = { text: text, age: 0 }; }
+    function toast(text, ms) { S.toast = { text: text, age: 0, ms: ms || 1600 }; }
     function lock() { S.locked = true; S.pin = ''; S.shade = false; changed(); }
     function sleep() { S.screenOff = true; lock(); }
-    function wake() { S.screenOff = false; changed(); }
+    function wake() { S.screenOff = false; S.lastActive = now(); changed(); }
     function unlock() {
       S.locked = false; S.pin = ''; S.pinError = false; S.page = 0; log('info', 'unlocked'); changed();
     }
     function pinKey(d) {
-      var code = manifest.passcode == null ? '' : String(manifest.passcode);
+      var code = passcode();
       if (d === 'del') S.pin = S.pin.slice(0, -1); else S.pin += d;
       S.pinError = false;
       if (code && S.pin.length >= code.length) { if (S.pin === code) { unlock(); return; } S.pin = ''; S.pinError = true; }
       changed();
     }
     function press(key) {
-      key = String(key).toLowerCase();
+      key = String(key).toLowerCase(); S.lastActive = now();
       if (key === 'power') {
         if (!S.powered) { K.boot(); return true; }
         if (S.screenOff) wake(); else sleep();
@@ -989,7 +1118,7 @@
     function sysOnRings(page) { if (SYS_PAGES[page]) ensureSysPage(page); }
     function sysPageV(proc, page) {
       var s = proc.screens[proc.cur], body = s ? s.children.map(function (c) { return nodeToV(c, proc); }) : [];
-      return V('view', 'app:rings', { app: 'rings', screen: page }, [V('appbar', '@appbar', { title: SYS_TITLES[page], back: true, glyph: '⚙' }, [], ['tap']), V('scroll', 'scroll:rings-' + page, {}, body)]);
+      return V('view', 'app:rings', { app: 'rings', screen: page }, [V('appbar', '@appbar', { title: SYS_TITLES[page], back: true, home: true, glyph: '⚙' }, [], ['tap']), V('scroll', 'scroll:rings-' + page, {}, body)]);
     }
     function sysRingsSection(kids, section) {
       var items = [V('button', '@rings:sysupdate', { label: 'System update', kind: 'card' }, [], ['tap']), V('button', '@rings:about', { label: 'About phone', kind: 'card' }, [], ['tap'])];
@@ -1131,7 +1260,7 @@
       if (S.powered) return K;
       S.powered = true; S.screenOff = false; S.locked = manifest.lock === false ? false : true; S.fg = null;
       S.apps = []; S.appIndex = {}; S.procs = {}; S.sysPages = {}; S.recents = []; S.notifs = []; S.page = 0; S.shade = false; S.fwd = null; S.sampled = false;
-      Object.assign(S, { theme: 'Ash Dark', wallpaper: 'theme', cols: 4, rows: 5, dock: 4, brightness: 1, volume: 50, clock24: false, dnd: false });
+      Object.assign(S, { theme: 'Ash Dark', wallpaper: 'theme', cols: 4, rows: 5, dock: 4, brightness: 1, volume: 50, clock24: false, dnd: false, prefs: {}, drawer: false, drawerQuery: '', autoMode: null, lastActive: now() });
       booted = false;
       sysLoadFlags(); sysMigrate();                                 // updates: flags + versioned state migration, BEFORE settings are read
       var savedRaw = sysStore.get('settings');
@@ -1156,6 +1285,9 @@
         if (saved) {
           ['theme', 'wallpaper', 'dock', 'brightness', 'volume', 'clock24', 'dnd'].forEach(function (k) { if (saved[k] !== undefined) setSetting(k, saved[k], true); });
           if (saved.cols && saved.rows) { S.cols = saved.cols; S.rows = saved.rows; }
+          if (saved.prefs && typeof saved.prefs === 'object') Object.keys(saved.prefs).forEach(function (k) { setPref(k, saved.prefs[k], true); });
+          if (saved.customOpts && S.custom) K.setCustomOptions(saved.customOpts);
+          if (saved.wallpaper === 'custom' && S.custom) S.wallpaper = 'custom';
         }
       } catch (e) { /* ignore corrupt settings */ }
       booted = true; sysAfterBoot();
@@ -1174,17 +1306,132 @@
     K.tick = function (dtMs) {
       dtMs = dtMs || 0; if (!S.powered) return;
       S.uptime += dtMs;
-      var per = S.screenOff ? 600000 : 120000;                // ms per 1% drain
+      var per = (S.screenOff ? 600000 : 120000) * (getPref('bat.saver') ? 1.6 : 1);                // ms per 1% drain (battery saver: 60% slower, simulated)
       if (S.charging) { S.battery = Math.min(100, S.battery + dtMs / 30000); }
       else { S.battery = Math.max(0, S.battery - dtMs / per); }
       if (S.battery <= 0 && !S.charging) { K.shutdown(); return; }
       var ch = false;
       S.notifs.forEach(function (n) { if (n.fresh) { n.age += dtMs; if (n.age > 3500) { n.fresh = false; ch = true; } } });
-      if (S.toast) { S.toast.age += dtMs; if (S.toast.age > 1600) { S.toast = null; ch = true; } }
+      if (S.toast) { S.toast.age += dtMs; if (S.toast.age > (S.toast.ms || 1600)) { S.toast = null; ch = true; } }
       S.updAcc = (S.updAcc || 0) + dtMs; if (S.updAcc >= 60000) { S.updAcc = 0; sysAutoTick(); }
       S.signal = 3 + Math.floor((Math.sin(S.uptime / 60000) + 1) * 0.99);
+      applyAutoDark();
+      var to = +getPref('timeout');   // Rings > Display > Screen timeout (uses the host clock, so it is testable)
+      if (to > 0 && !S.screenOff && S.lastActive && now() - S.lastActive > to * 1000) sleep();
       changed();
     };
+
+    // ---------- storage / session (used by Rings pages and js/phone/persist.js) ----------
+    function appStoreKeys(id) { return sysStore.keys().filter(function (k) { return k.indexOf(id + ':') === 0; }); }
+    K.storageUsage = function () {
+      var per = {}, total = 0;
+      sysStore.keys().forEach(function (k) {
+        var i = k.indexOf(':'); if (i < 0) return;
+        var app = k.slice(0, i), v = sysStore.get(k); v = v == null ? '' : String(v);
+        var e = per[app] = per[app] || { keys: 0, bytes: 0 }; e.keys++; e.bytes += k.length + v.length; total += k.length + v.length;
+      });
+      var rows = S.apps.filter(function (a) { return !a.hidden; }).map(function (a) { var e = per[a.id] || { keys: 0, bytes: 0 }; return { id: a.id, name: a.name, keys: e.keys, bytes: e.bytes }; });
+      var sys = String(sysStore.get('settings') || '').length, wp = S.custom ? Math.round(String(S.custom.dataUrl).length * 0.75) : 0;
+      return { apps: rows, system: sys, wallpaper: wp, total: total + sys + wp };
+    };
+    K.clearAppData = function (id) {
+      if (!appInfo(id)) return false;
+      appStoreKeys(id).forEach(function (k) { sysStore.remove(k); });
+      if (S.procs[id]) { var was = S.fg === id; kill(id); if (was) S.fg = null; }
+      log('info', 'cleared data of ' + id); changed(); return true;
+    };
+    K.exportSession = function () {
+      var store = {}; sysStore.keys().forEach(function (k) { if (k.indexOf(':') > 0) store[k] = sysStore.get(k); });
+      var fgp = S.fg && S.procs[S.fg];
+      return {
+        settings: { theme: S.theme, wallpaper: S.wallpaper, cols: S.cols, rows: S.rows, dock: S.dock, brightness: S.brightness, volume: S.volume, clock24: S.clock24, dnd: S.dnd, orientation: S.orientation },
+        prefs: JSON.parse(JSON.stringify(S.prefs)),
+        session: { fg: S.fg, screen: fgp && S.fg !== 'rings' ? fgp.cur : null, ringsPage: fgp && S.fg === 'rings' ? (fgp.ringsPage || 'main') : null, recents: S.recents.slice(-8), page: S.page, locked: S.locked },
+        store: store,
+        customWallpaper: customMeta()
+      };
+    };
+    K.importSession = function (snap) {
+      if (!snap || !S.powered) return false;
+      var st = snap.settings || {}, ss = snap.session || {};
+      Object.keys(snap.store || {}).forEach(function (k) { if (k.indexOf(':') > 0 && typeof snap.store[k] === 'string') sysStore.set(k, snap.store[k]); });
+      ['theme', 'dock', 'brightness', 'volume', 'clock24', 'dnd'].forEach(function (k) { if (st[k] !== undefined) setSetting(k, st[k], true); });
+      if (st.cols && st.rows) { S.cols = clamp(+st.cols, 2, 6); S.rows = clamp(+st.rows, 2, 8); }
+      if (st.wallpaper && (st.wallpaper !== 'custom' || S.custom)) setSetting('wallpaper', st.wallpaper, true);
+      if (st.orientation === 'portrait' || st.orientation === 'landscape') S.orientation = st.orientation;
+      S.prefs = {}; Object.keys(snap.prefs || {}).forEach(function (k) { setPref(k, snap.prefs[k], true); });
+      var cm = snap.customWallpaper; if (cm && S.custom) K.setCustomOptions({ fit: cm.fit, dim: cm.dim, blur: cm.blur });
+      persistSettings();
+      // session: last app / screen / recents / lock state
+      S.page = Math.max(0, parseInt(ss.page, 10) || 0);
+      if (ss.fg && appInfo(ss.fg)) {
+        S.locked = false; launch(ss.fg);
+        var p = S.procs[ss.fg];
+        if (p && ss.screen && p.screens[ss.screen] && ss.fg !== 'rings') { p.cur = ss.screen; p.hist = p.order[0] && p.order[0] !== ss.screen ? [p.order[0], ss.screen] : [ss.screen]; }
+        if (p && ss.fg === 'rings' && ss.ringsPage && (!rings() || rings().has(ss.ringsPage, ringsCtx(p)))) p.ringsPage = ss.ringsPage;
+      }
+      S.recents = (ss.recents || []).filter(function (id) { return appInfo(id) && id !== S.fg; }).concat(S.fg ? [S.fg] : []);
+      S.locked = (ss.locked === false && !passcode()) ? false : true;
+      S.lastActive = now(); changed(); return true;
+    };
+    K.factoryReset = function () {
+      var was = S.powered; K.shutdown();
+      sysStore.keys().forEach(function (k) { sysStore.remove(k); }); sysStore.remove('settings');
+      S.prefs = {}; S.custom = null; customCache.key = ''; S.orientation = 'portrait'; S.lastDark = 'Ash Dark'; S.lastLight = 'Ash Light'; S.autoMode = null;
+      log('info', 'factory reset');
+      if (was) K.boot(); return true;
+    };
+
+    // ---------- Rings actions ----------
+    function ringsProc() { return S.procs.rings || null; }
+    function ringsField(key, value) {
+      var rp = ringsProc();
+      switch (key) {
+        case 'wp.dim': K.setCustomOptions({ dim: toNum(value, 0) / 100 }); return true;
+        case 'wp.blur': K.setCustomOptions({ blur: toNum(value, 0) }); return true;
+        case 'draft.pin': if (rp) { rp.draft = rp.draft || {}; rp.draft.pin = String(value).replace(/\D/g, '').slice(0, 6); } return true;
+        case 'vpn': case 'dns': case 'proxy': setPref(key, String(value).slice(0, 200)); return true;
+      }
+      return false;
+    }
+    function ringsAct(name, a) {
+      var rp = ringsProc(), sess = host.session || null;
+      rp && (rp.draft = rp.draft || {});
+      switch (name) {
+        case 'clear-data': K.clearAppData(a); toast('Cleared data of ' + (appInfo(a) ? appInfo(a).name : a)); return true;
+        case 'stop-app': if (a !== 'rings' && S.procs[a]) { kill(a); toast('Stopped ' + a); } changed(); return true;
+        case 'open-app': launch(a); return true;
+        case 'lock-now': lock(); return true;
+        case 'beep': OPS['snd.beep']({ args: { freq: 660, ms: 120 } }, { proc: { id: 'rings' }, scope: {} }); changed(); return true;
+        case 'pin-set': {
+          var pin = rp && rp.draft.pin || '';
+          if (!/^\d{4,6}$/.test(pin)) { toast('Enter a 4 to 6 digit PIN first'); changed(); return true; }
+          setPref('sec.pin', pin); rp.draft.pin = ''; toast('PIN set. Bark now asks for it.'); return true;
+        }
+        case 'pin-clear': setPref('sec.pin', ''); toast('PIN removed'); return true;
+        case 'wifi-join': setPref('wifi', true); setPref('airplane', false); setPref('ssid', a); toast('Joined ' + a + ' (simulated)'); return true;
+        case 'wp-remove': K.clearCustomWallpaper(); toast('Custom wallpaper removed'); return true;
+        case 'wp-fit': K.setCustomOptions({ fit: a }); return true;
+        case 'perm-reset': PERMS.forEach(function (pp) { setPref('perm.' + a + '.' + pp, true, true); }); persistSettings(); changed(); return true;
+        case 'notif-test': notify(a, 'Test notification from ' + a, (appInfo(a) ? appInfo(a).name : a)); return true;
+        case 'save-now': if (sess && sess.saveNow) { sess.saveNow(); toast('Session saved'); } else { persistSettings(); toast('Settings saved'); } changed(); return true;
+        case 'restore-now': if (sess && sess.restoreNow) sess.restoreNow(); else toast('Nothing to restore here'); changed(); return true;
+        case 'factory-reset':
+          if (!rp) return true;
+          if (rp.draft.confirm !== 'reset') { rp.draft.confirm = 'reset'; toast('Tap Erase everything again to confirm'); changed(); return true; }
+          rp.draft.confirm = null;
+          if (sess && sess.factoryReset) sess.factoryReset(); else K.factoryReset();
+          return true;
+        case 'cancel-reset': if (rp) rp.draft.confirm = null; changed(); return true;
+        case 'github-backup': if (sess && sess.github) { toast('Backing up to GitHub...'); Promise.resolve(sess.github.backup()).then(function (m) { toast(m || 'Backed up'); changed(); }, function (e) { toast('Backup failed: ' + (e && e.message || e), 3200); changed(); }); } changed(); return true;
+        case 'github-restore': if (sess && sess.github) { toast('Restoring from GitHub...'); Promise.resolve(sess.github.restore()).then(function (m) { toast(m || 'Restored'); changed(); }, function (e) { toast('Restore failed: ' + (e && e.message || e), 3200); changed(); }); } changed(); return true;
+      }
+      return false;
+    }
+    K.toast = function (t, ms) { toast(t, ms); changed(); };
+    K.getPref = getPref; K.setPref = setPref; K.online = online; K.netBlock = netBlock; K.hasPasscode = function () { return !!passcode(); };
+    K.PREF_DEFAULTS = PREF_DEFAULTS; K.PREF_ENUMS = PREF_ENUMS; K.PERMS = PERMS;
+    K.openDrawer = openDrawer; K.closeDrawer = function () { S.drawer = false; S.drawerQuery = ''; changed(); };
 
     // ---------- event dispatch ----------
     function findProcFor(id) {
@@ -1197,7 +1444,7 @@
       switch (k) {
         case '@app': launch(parts[1]); return true;
         case '@page': S.page = Math.max(0, parseInt(parts[1], 10) || 0); changed(); return true;
-        case '@unlock': if (!manifest.passcode) unlock(); return true;
+        case '@unlock': if (!passcode()) unlock(); return true;
         case '@pin': pinKey(parts[1]); return true;
         case '@shade': toggleShade(); return true;
         case '@back': back(); return true;
@@ -1213,6 +1460,7 @@
           if (n && appInfo(n.app) && !S.locked) launch(n.app); else changed();
           return true;
         case '@set':
+          if (payload && payload.value !== undefined && parts.length === 2 && parts[1] !== 'charge' && parts[1] !== 'clock24') { setSetting(parts[1], payload.value); return true; }   // range inputs
           if (parts[1] === 'brightness') { setSetting('brightness', payload && payload.value !== undefined ? payload.value : parts[2]); return true; }
           if (parts[1] === 'charge') { S.charging = !S.charging; changed(); return true; }
           if (parts[1] === 'clock24') { S.clock24 = !S.clock24; persistSettings(); changed(); return true; }
@@ -1220,13 +1468,25 @@
             var dark = themeTokens(S.theme).dark; setSetting('theme', dark ? 'Ash Light' : 'Ash Dark'); return true;
           }
           setSetting(parts[1], parts.slice(2).join(':')); return true;
-        case '@rings': { var rp = S.procs.rings; if (rp) { rp.ringsPage = parts[1]; sysOnRings(parts[1]); changed(); } return true; }
+        case '@rings': {   // @rings:page:<id> navigates; (legacy) @rings:<id> too
+          var rp = S.procs.rings; if (rp) { rp.ringsPage = parts[1] === 'page' ? parts.slice(2).join(':') : parts[1]; sysOnRings(rp.ringsPage); changed(); } return true;
+        }
+        case '@pref': setPref(parts[1], parts.slice(2).join(':')); return true;                     // @pref:<key>:<value|toggle>
+        case '@field': return ringsField(parts[1], payload && payload.value !== undefined ? payload.value : parts.slice(2).join(':'));   // text/range inputs
+        case '@act': return ringsAct(parts[1], parts.slice(2).join(':'));                           // buttons that do something
+        case '@drawer':
+          if (parts[1] === 'q') { S.drawerQuery = String(payload && payload.value !== undefined ? payload.value : ''); changed(); return true; }
+          if (parts[1] === 'close') { S.drawer = false; S.drawerQuery = ''; changed(); return true; }
+          openDrawer(); return true;
       }
       return false;
     }
     K.dispatch = function (id, evt, payload) {
       if (!S.powered || S.screenOff) return false;
       id = String(id); evt = evt || 'tap'; payload = payload || {};
+      S.lastActive = now();
+      if (evt === 'back') { back(); return true; }        // gestures: any widget id + 'back' event == the Back action (Rings: sub-page -> parent -> home)
+      if (evt === 'home') { home(); return true; }
       if (id.charAt(0) === '@') {
         if (S.locked && !/^@(unlock|pin|shade|notif)/.test(id)) return false;
         return dispatchSys(id, evt, payload);
@@ -1269,7 +1529,10 @@
     };
     K.toggleShade = toggleShade; K.notify = function (text, title, appId) { return notify(appId || 'rings', text, title); };
     K.setSetting = setSetting; K.getSetting = getSetting;
-    K.rotate = function () { S.orientation = S.orientation === 'portrait' ? 'landscape' : 'portrait'; S.page = 0; changed(); return S.orientation; };
+    K.rotate = function () {
+      if (getPref('orientationLock')) { toast('Orientation is locked (Rings > Display)'); changed(); return S.orientation; }
+      S.orientation = S.orientation === 'portrait' ? 'landscape' : 'portrait'; S.page = 0; changed(); return S.orientation;
+    };
     K.setCharging = function (v) { S.charging = !!v; changed(); };
     K.setBattery = function (v) { S.battery = clamp(toNum(v, 50), 0, 100); changed(); };
     K.setTilt = function (x, y, z) { S.tilt = { x: x, y: y, z: z === undefined ? 9.8 : z }; };
@@ -1315,51 +1578,46 @@
     function uiScreenV(proc) {
       var s = proc.screens[proc.cur], info = appInfo(proc.id), kids = [];
       if (!s) return V('view', 'app:' + proc.id, { app: proc.id }, [V('text', null, { text: '(' + (info ? info.name : proc.id) + ' has no screen)', color: 'dim', align: 'center' })]);
-      var title = s.props.title !== undefined ? fmt(resolveProp(proc, s.props.title)) : null;
-      if (title !== null) kids.push(V('appbar', '@appbar', { title: title, back: proc.hist.length > 1, glyph: info && info.glyph }, [], ['tap']));
+      // Every app screen gets a header with Back (sub-screen -> parent, root -> Home) and a Home button, so no app can trap the user.
+      var title = s.props.title !== undefined ? fmt(resolveProp(proc, s.props.title)) : (info ? info.name : proc.id);
+      kids.push(V('appbar', '@appbar', { title: title, back: true, home: true, glyph: info && info.glyph }, [], ['tap']));
       var body = s.children.map(function (c) { return nodeToV(c, proc); });
       kids.push(V('scroll', 'scroll:' + s.id, {}, body, (proc.evts[s.id] || []).slice()));   // GESTURES: screen-level handlers (ui.on (main) swipeleft ...)
       return V('view', 'app:' + proc.id, { app: proc.id, screen: s.id }, kids);
     }
+    // Rings is built by js/phone/rings.js (a data-driven page table). The kernel only supplies this context object.
+    function ringsCtx(proc) {
+      var sess = host.session || null;
+      return {
+        V: V, S: S, page: proc.ringsPage || 'main', draft: proc.draft || {}, version: VERSION, seed: seed, seedId: seedId, manifest: manifest,
+        apps: S.apps.filter(function (a) { return !a.hidden; }), appInfo: appInfo, procs: S.procs,
+        pref: getPref, defaults: PREF_DEFAULTS, perms: PERMS, themeNames: themeNames, themeTokens: themeTokens, wallpapers: wallpapers,
+        online: online, netBlock: netBlock, usage: K.storageUsage, custom: customMeta(), art: global.SamaraThemeArt || null, session: sess,
+        clockText: clockText, dateText: dateText, dparts: dparts, hasPin: !!getPref('sec.pin'), hasPasscode: !!passcode(), layouts: LAYOUTS, devEnabled: !!flags.dev
+      };
+    }
     function ringsV(proc) {
-      var page = proc.ringsPage || 'main', kids = [], i;
+      var RG = rings();
+      if (!RG) return V('view', 'app:rings', { app: 'rings' }, [V('appbar', '@appbar', { title: 'Rings', back: true, home: true }, [], ['tap']), V('scroll', 'scroll:rings', {}, [V('text', null, { text: 'Rings pages module (js/phone/rings.js) is not loaded.', color: 'dim' })])]);
+      var R = ringsCtx(proc), page = RG.resolve(proc.ringsPage || 'main', R); proc.ringsPage = page;
       if (activeSysProc()) return sysPageV(activeSysProc(), page);   // updates: About / System update / Developer options
-      function section(title, children) { kids.push(V('section', null, { title: title }, children)); }
-      var themes = themeNames().map(function (n) {
-        var t = themeTokens(n); return V('swatch', '@set:theme:' + n, { name: n, bg: t.bg, surface: t.surface, accent: t.accent, text: t.text, selected: n === S.theme }, [], ['tap']);
-      });
-      section('Theme', [V('row', null, { wrap: true, gap: 10 }, themes)]);
-      section('Wallpaper', [V('row', null, { wrap: true, gap: 8 }, wallpapers().map(function (w) {
-        return V('chip', '@set:wallpaper:' + w.id, { label: w.name, selected: w.id === S.wallpaper, preview: w.css }, [], ['tap']);
-      }))]);
-      section('Home layout', [
-        V('row', null, { wrap: true, gap: 8 }, LAYOUTS.map(function (l) { return V('chip', '@set:layout:' + l, { label: l.replace('x', ' × '), selected: l === S.cols + 'x' + S.rows }, [], ['tap']); })),
-        V('text', null, { text: 'Dock slots', size: 'sm', color: 'dim' }),
-        V('row', null, { wrap: true, gap: 8 }, [2, 3, 4, 5].map(function (d) { return V('chip', '@set:dock:' + d, { label: String(d), selected: d === S.dock }, [], ['tap']); }))
-      ]);
-      section('Display', [
-        V('text', null, { text: 'Brightness ' + Math.round(S.brightness * 100) + '%', size: 'sm', color: 'dim' }),
-        V('input', '@set:brightness', { type: 'range', min: 10, max: 100, value: Math.round(S.brightness * 100) }, [], ['change']),
-        V('row', null, { wrap: true, gap: 8 }, [
-          V('chip', '@set:clock24', { label: '24-hour clock', selected: S.clock24 }, [], ['tap']),
-          V('chip', '@set:charge', { label: S.charging ? 'Charging' : 'Not charging', selected: S.charging }, [], ['tap'])
-        ])
-      ]);
-      section('About', [
-        V('text', null, { text: 'Samara OS ' + osInfo().version, size: 'md' }),
-        V('text', null, { text: ((seed.os && seed.os.name) || 'Samara OS') + ' · seed ' + seedId + ' · ' + S.apps.length + ' apps', size: 'sm', color: 'dim' }),
-        V('text', null, { text: 'Battery ' + Math.round(S.battery) + '% · Volume ' + S.volume + '%', size: 'sm', color: 'dim' })
-      ]);
-      sysRingsSection(kids, section);   // updates: System entries
-      return V('view', 'app:rings', { app: 'rings' }, [V('appbar', '@appbar', { title: 'Rings', back: false, glyph: '⚙' }, [], ['tap']), V('scroll', 'scroll:rings', {}, kids)]);
+      var b = RG.build(R, page);
+      return V('view', 'app:rings', { app: 'rings', page: page }, [V('appbar', '@appbar', { title: b.title, back: true, home: true, glyph: '\u2699' }, [], ['tap']), V('scroll', 'scroll:rings:' + page, {}, b.kids)]);
     }
     function homeV() {
       var cols = S.orientation === 'landscape' ? Math.max(S.rows, 4) : S.cols, rows = S.orientation === 'landscape' ? Math.min(S.cols, 3) : S.rows;
       var per = cols * rows, apps = S.apps.filter(function (a) { return !a.hidden; });
-      var dockApps = apps.filter(function (a) { return a.dock; });
-      if (!dockApps.length && S.dock > 0 && apps.length > S.dock) dockApps = apps.slice(0, S.dock);
-      dockApps = dockApps.slice(0, S.dock);
-      var grid = apps.filter(function (a) { return dockApps.indexOf(a) < 0; });
+      // Dock: the ROM's dock apps, then Settings (Rings) and the App Drawer button are always pinned at the end.
+      var ringsApp = apps.filter(function (a) { return a.id === 'rings'; })[0], rest = apps.filter(function (a) { return a !== ringsApp; });
+      var dockApps = rest.filter(function (a) { return a.dock; });
+      if (!dockApps.length && S.dock > 0 && rest.length > S.dock) dockApps = rest.slice(0, S.dock);
+      var reserve = ringsApp && S.dock >= 3 ? 2 : 0;   // with 3+ slots Settings and the drawer share the dock; with fewer, only the drawer button is added
+      dockApps = dockApps.slice(0, Math.max(0, S.dock - reserve));
+      var grid = rest.filter(function (a) { return dockApps.indexOf(a) < 0; });
+      if (ringsApp && S.dock < 3) grid.push(ringsApp);
+      var dockIcons = dockApps.map(appIconV);
+      if (ringsApp && S.dock >= 3) dockIcons.push(appIconV(ringsApp));
+      dockIcons.push(V('appicon', '@drawer:open', { name: 'Apps', glyph: '\u2630', color: '#4b5b6e' }, [], ['tap']));
       var pages = Math.max(1, Math.ceil(grid.length / per)), page = clamp(S.page, 0, pages - 1); S.page = page;
       var kids = [];
       if (crown && crown.cur && crown.screens[crown.cur] && crown.screens[crown.cur].children.length) {
@@ -1367,15 +1625,15 @@
       }
       kids.push(V('homegrid', '@homegrid', { cols: cols, rows: rows, page: page, pages: pages }, grid.slice(page * per, page * per + per).map(appIconV)));
       if (pages > 1) kids.push(V('dots', 'dots', { n: pages, page: page }, [], []));
-      if (dockApps.length) kids.push(V('dock', '@dock', { n: dockApps.length }, dockApps.map(appIconV)));
+      kids.push(V('dock', '@dock', { n: dockIcons.length }, dockIcons));
       return V('homeview', 'home', { app: 'crown', page: page }, kids);
     }
     function lockV() {
       var kids = [V('text', null, { text: clockText(), size: 'clock', align: 'center' }), V('text', null, { text: dateText(), size: 'md', color: 'dim', align: 'center' })];
-      var fresh = S.notifs.slice(0, 3);
+      var fresh = getPref('notif.lock') === false ? [] : S.notifs.slice(0, 3);
       if (fresh.length) kids.push(V('col', null, { gap: 6, cls: 'lock-notifs' }, fresh.map(function (n) { return V('notif', '@notif:' + n.id, { title: n.title, text: n.text, time: n.t }, [], ['tap']); })));
-      if (manifest.passcode) {
-        var dots = [], code = String(manifest.passcode);
+      if (passcode()) {
+        var dots = [], code = passcode();
         for (var i = 0; i < code.length; i++) dots.push(V('pindot', null, { filled: i < S.pin.length }));
         kids.push(V('row', null, { gap: 10, justify: 'center', cls: S.pinError ? 'pin-error' : '' }, dots));
         var rowsK = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['', '0', 'del']];
@@ -1397,19 +1655,39 @@
       S.notifs.forEach(function (n) { kids.push(V('notif', '@notif:' + n.id, { title: n.title, text: n.text, time: n.t, dismiss: '@notif:x:' + n.id }, [], ['tap'])); });
       return V('shade', '@shadepanel', {}, kids);
     }
+    function drawerV() {
+      var q = String(S.drawerQuery || '').trim().toLowerCase();
+      var list = S.apps.filter(function (a) { return !a.hidden; }).slice().sort(function (a, b) { return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : a.name.toLowerCase() > b.name.toLowerCase() ? 1 : 0; })
+        .filter(function (a) { return !q || a.name.toLowerCase().indexOf(q) >= 0 || a.id.toLowerCase().indexOf(q) >= 0; });
+      var kids = [V('input', '@drawer:q', { type: 'search', placeholder: 'Search ' + S.apps.filter(function (a) { return !a.hidden; }).length + ' apps', value: S.drawerQuery, hint: 'search' }, [], ['change'])], last = '';
+      list.forEach(function (a) {
+        var L = a.name.charAt(0).toUpperCase(); if (!/[A-Z]/.test(L)) L = '#';
+        if (L !== last) { last = L; kids.push(V('text', null, { text: L, size: 'xs', color: 'dim', cls: 'cnp-drawer-letter' })); }
+        kids.push(V('approw', '@app:' + a.id, { name: a.name, glyph: a.glyph || a.name.charAt(0), color: a.color, sub: a.system ? 'System' : '' }, [], ['tap']));
+      });
+      if (!list.length) kids.push(V('text', null, { text: 'No apps match "' + S.drawerQuery + '"', color: 'dim', align: 'center' }));
+      return V('view', 'app:drawer', { app: 'drawer' }, [V('appbar', '@appbar', { title: 'All apps', back: true, home: true, glyph: '\u2630' }, [], ['tap']), V('scroll', 'scroll:drawer', {}, kids)]);
+    }
     function statusV() {
-      return V('statusbar', '@statusbar', { time: clockText(), battery: Math.round(S.battery), charging: S.charging, signal: S.signal, wifi: true, notifs: S.notifs.length,
+      var air = !!getPref('airplane'), mobOn = !air && !!getPref('mobile'), nm = getPref('netmode');
+      return V('statusbar', '@statusbar', { time: clockText(), battery: Math.round(S.battery), charging: S.charging, signal: mobOn ? S.signal : 0, wifi: !air && !!getPref('wifi'), airplane: air,
+        net: mobOn && !getPref('wifi') ? (nm === 'auto' ? '5G' : nm.toUpperCase()) : '', showPct: getPref('bat.pct') !== false, saver: !!getPref('bat.saver'), notifs: S.notifs.length,
         title: S.fg && appInfo(S.fg) ? appInfo(S.fg).name : '' }, [], ['tap']);
     }
     K.tree = function () {
       var T = themeTokens(S.theme), w = wallpapers().filter(function (x) { return x.id === S.wallpaper; })[0] || WALLPAPERS[0];
-      var wall = w.plain ? T.bg : (w.css || T.wall);
+      var wall = w.plain ? T.bg : w.id === 'themeart' ? themeArtCss(T) : (w.id === 'custom' && S.custom) ? customCss() : (w.css || T.wall);
+      var cu = w.id === 'custom' && S.custom ? S.custom : null, pf = S.prefs;
       var root = V('device', '@device', { powered: S.powered, screenOff: S.screenOff, locked: S.locked, theme: T, themeName: S.theme, wallpaper: wall, wallpaperId: w.id, wallpaperLive: !!w.live,
-        brightness: S.brightness, orientation: S.orientation, volume: S.volume, fg: S.fg, devTouches: !!flags.touches, devBounds: !!flags.bounds }, [], []);
+        brightness: S.brightness, orientation: S.orientation, volume: S.volume, fg: S.fg, devTouches: !!flags.touches, devBounds: !!flags.bounds,
+        wallpaperBlur: cu ? cu.blur : 0, wallpaperRev: cu ? cu.rev : 0, online: online(), hasPasscode: !!passcode(), holdMs: +getPref('a11y.hold'),
+        ui: { textSize: getPref('a11y.large') && getPref('textSize') === 'm' ? 'l' : getPref('textSize'), bold: !!getPref('a11y.bold'), contrast: !!getPref('a11y.contrast'), motion: !!getPref('a11y.motion'),
+              filter: getPref('a11y.filter'), reader: !!getPref('a11y.reader'), switchNav: !!getPref('a11y.switch'), oneHand: !!getPref('a11y.onehand'), captions: !!getPref('a11y.captions') } }, [], []);
       if (!S.powered || S.screenOff) return root;
       root.children.push(statusV());
       if (S.locked) root.children.push(lockV());
       else if (S.fg && S.procs[S.fg]) root.children.push(S.fg === 'rings' ? ringsV(S.procs.rings) : uiScreenV(S.procs[S.fg]));
+      else if (S.drawer) root.children.push(drawerV());
       else root.children.push(homeV());
       root.children.push(V('homebar', '@home', {}, [], ['tap']));
       var fresh = S.notifs.filter(function (n) { return n.fresh; })[0];

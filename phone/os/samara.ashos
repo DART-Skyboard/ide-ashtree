@@ -26,7 +26,7 @@ sys.app (lens)  name="Lens"  glyph="◉" color=#bf5af2 entry=Lens
 sys.app (rings) name="Rings" glyph="⚙" color=#8e8e93 entry=Rings
 sys.app (widow) name="Widow" glyph="◈" color=#5e5ce6 entry=Widow
 
-// ---- Crown: home, Bark (lock), notification shade, app menu ----
+// ---- Crown: home, Bark (lock), notification shade. App list = kernel App Drawer ----
 (Crown):-: {
   [net: none] [poly: shell]
   with var (now) var (pct) var (inbox) var (s) {
@@ -42,22 +42,11 @@ sys.app (widow) name="Widow" glyph="◈" color=#5e5ce6 entry=Widow
       ui.text (bat) text="Battery ${pct}%" size=14 align=center color=dim
     }
     ui.row (dockbar) gap=8 {
-      ui.button (hshade) label="Notifications" kind=glass
-      ui.button (hmenu) label="All apps" kind=glass
+      ui.button (hshade) label="Alerts" kind=glass
+      ui.button (hmenu) label="Apps" kind=glass
+      ui.button (hset) label="Settings" kind=glass
       ui.button (hlock) label="Lock" kind=glass
     }
-  }
-
-  ui.screen (menu) title="Apps" {
-    ui.grid (mgrid) cols=2 gap=8 {
-      ui.button (mtally) label="Tally  (calculator)"
-      ui.button (mleaf) label="Leaf  (notes)"
-      ui.button (mdrift) label="Drift  (browser)"
-      ui.button (mlens) label="Lens  (camera)"
-      ui.button (mrings) label="Rings  (settings)"
-      ui.button (mwidow) label="Widow  (windows + widgets)"
-    }
-    ui.button (mback) label="Back to home" kind=tonal
   }
 
   ui.screen (shade) title="Notifications" {
@@ -82,7 +71,8 @@ sys.app (widow) name="Widow" glyph="◈" color=#5e5ce6 entry=Widow
   }
 
   ui.on (hshade) tap { ui.set (inboxl) items=(inbox); ui.screen (shade) }
-  ui.on (hmenu) tap { ui.screen (menu) }
+  ui.on (hmenu) tap { sys.launch (drawer) }      // App Drawer: alphabetical, searchable (kernel pseudo-app)
+  ui.on (hset) tap { sys.launch (rings) }          // Settings (Rings)
   ui.on (hlock) tap {
     sys.clock placeto (now)
     ui.set (bclk) text=(now)
@@ -95,13 +85,6 @@ sys.app (widow) name="Widow" glyph="◈" color=#5e5ce6 entry=Widow
     ui.set (bat) text="Battery ${pct}%"
     sys.home
   }
-  ui.on (mtally) tap { sys.launch (tally) }
-  ui.on (mleaf) tap { sys.launch (leaf) }
-  ui.on (mdrift) tap { sys.launch (drift) }
-  ui.on (mlens) tap { sys.launch (lens) }
-  ui.on (mrings) tap { sys.launch (rings) }
-  ui.on (mwidow) tap { sys.launch (widow) }
-  ui.on (mback) tap { ui.screen (home) }
   ui.on (qdim) tap { sys.setting (brightness) 0.3 }
   ui.on (qmid) tap { sys.setting (brightness) 0.6 }
   ui.on (qbright) tap { sys.setting (brightness) 1.0 }
@@ -133,6 +116,9 @@ sys.app (widow) name="Widow" glyph="◈" color=#5e5ce6 entry=Widow
 }|';'|
 
 // ---- Rings: settings ----
+// Rings is a *system app*: the kernel draws it from the page table in js/phone/rings.js (themes, wallpapers, display, network, sound,
+// notifications, accessibility, battery, storage, apps, privacy, security, language/time, backup). This node is only the minimal
+// fallback an OS can keep for ROMs that run on a kernel without that module.
 (Rings):-: {
   [net: none] [poly: settings]
   with var (s) var (pct) var (chg) var (st) {

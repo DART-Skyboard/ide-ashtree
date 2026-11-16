@@ -8,12 +8,12 @@
         "id": "samara",
         "name": "Samara OS",
         "url": "samara-demo-1.1.0.seed",
-        "sha256": "4a465513c7ee1cfb41011a551e41a3e6615f7b83b1eb8065f61cc8525035fe09",
-        "size": 224239,
+        "sha256": "438eba2d3387516210d42c8edd6fcfde72711ce059aeb5f061e61df35f84a61f",
+        "size": 222220,
         "minKernel": "1.0.0",
         "schema": 1,
         "notes": "Home greets you with \"updated over the air\". Rings menu label mentions updates. State migration 1.0.0 -> 1.1.0 records where you came from.",
-        "createdAt": "2026-11-16T01:47:58.566Z",
+        "createdAt": "2026-11-16T01:52:29.747Z",
         "signature": null,
         "delta": [
           {
@@ -30,12 +30,12 @@
         "id": "samara",
         "name": "Samara OS",
         "url": "samara-demo-1.2.0-beta.1.seed",
-        "sha256": "ec3315257fdd4b1cdebfc96b99f97aded34a60224ea32627e556a90c93cb141d",
-        "size": 224232,
+        "sha256": "53e754f40bf8646ff90d67eca34da9a051e98ea4e8a1cfffee208326219c327a",
+        "size": 222208,
         "minKernel": "1.0.0",
         "schema": 1,
-        "notes": "Beta channel preview: the Notifications button says (beta). Only phones on the Beta or Dev channel see this.",
-        "createdAt": "2026-11-16T01:47:58.605Z",
+        "notes": "Beta channel preview: the Leaf app is labelled (beta). Only phones on the Beta or Dev channel see this.",
+        "createdAt": "2026-11-16T01:52:29.780Z",
         "signature": null,
         "delta": [
           {
@@ -49,5 +49,5 @@
   },
   "product": "samara-os",
   "id": "samara",
-  "generated": "2026-11-16T01:47:58.633Z"
+  "generated": "2026-11-16T01:52:29.801Z"
 }

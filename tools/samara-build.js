@@ -29,7 +29,7 @@ out('samara-demo.seed', SP.serialize(seed100));
 // 1.1.0: visible change + a declarative state migration + notes
 var f110 = Object.assign({}, base);
 f110[ENTRY] = sub(base[ENTRY], 'thenplace "Welcome to Samara OS" placeto (inbox)', 'thenplace "Welcome to Samara OS 1.1 - updated over the air" placeto (inbox)');
-f110[ENTRY] = sub(f110[ENTRY], 'label="Rings  (settings)"', 'label="Rings  (settings & updates)"');
+f110[ENTRY] = sub(f110[ENTRY], 'sys.app (rings) name="Rings"', 'sys.app (rings) name="Rings & updates"');
 f110[ENTRY] = sub(f110[ENTRY], 'sys.meta id="samara"', 'sys.migrate (1.0.0) op=default key=kv.rings:updated-from value="1.0.0"\nsys.meta id="samara"');
 var meta110 = { version: '1.1.0', build: 110, notes: 'Home greets you with "updated over the air". Rings menu label mentions updates. State migration 1.0.0 -> 1.1.0 records where you came from.' };
 var seed110 = build(f110, meta110), text110 = SP.serialize(seed110, false);
@@ -37,8 +37,8 @@ out('samara-demo-1.1.0.seed', text110);
 
 // 1.2.0-beta.1: on top of 1.1.0
 var f120 = Object.assign({}, f110);
-f120[ENTRY] = sub(f110[ENTRY], 'label="Notifications"', 'label="Notifications (beta)"');
-var meta120 = { version: '1.2.0-beta.1', build: 120, channel: 'beta', notes: 'Beta channel preview: the Notifications button says (beta). Only phones on the Beta or Dev channel see this.' };
+f120[ENTRY] = sub(f110[ENTRY], 'sys.app (leaf)  name="Leaf"', 'sys.app (leaf)  name="Leaf (beta)"');
+var meta120 = { version: '1.2.0-beta.1', build: 120, channel: 'beta', notes: 'Beta channel preview: the Leaf app is labelled (beta). Only phones on the Beta or Dev channel see this.' };
 var seed120 = build(f120, meta120), text120 = SP.serialize(seed120, false);
 out('samara-demo-1.2.0-beta.1.seed', text120);
 
