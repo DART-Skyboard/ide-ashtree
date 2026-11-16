@@ -67,3 +67,16 @@ All scripts attach to `window` (IIFE style like ash-exec.js) and `module.exports
 - Sign in via GitHub OAuth *device flow* (client id `Ov23li2K0njEqO1WTSdD`, same as iOS app); browser CORS blocks github.com device endpoints, so route through the existing GAS proxy if it supports it, else fall back to Personal Access Token paste (stored in localStorage only; never commit tokens). 
 - Private repo `Ash-Tree-IDE-Projects` (auto-created on first sign in, already exists for iOS users). Grove saves under `phone/<project>/` (sources) and `phone/<project>/build/<name>.seed`.
 - Embed link: raw URL of a private file can't be fetched anonymously, so Grove offers (1) "Publish embed" -> writes the seed to a GitHub Gist/Pages-readable location the user chooses, and (2) token-less embed using a URL-fragment-encoded seed (`embed.html#seed=<base64url gzip>`) for small ROMs; embed.html also accepts `?repo=owner/name&path=...&token=` is NOT supported (never put tokens in URLs). Be explicit in UI about what is private vs public.
+
+## Persistence (`js/phone/persist.js`, PERSIST pass)
+Pure and host-injected (`{get,set,remove,blobGet,blobSet,blobRemove}`; `memoryHost()` for node, `browserHost()` = localStorage + IndexedDB).
+Snapshot: `{magic:'SAMARA-SESSION', v:1, seedId, project, os, savedAt, settings, prefs, session, store, customWallpaper}` saved under
+`samara:session:v1:<ns>`; `ns` = `seed:<sha12>` (plus `proj:<name>` fallback so edited ROMs keep their session). `parse()` never throws
+(reasons: empty, corrupt, magic, version, newer, shape; bad text kept under `:invalid`). `attach({kernel,host,seedId,project})` gives
+`saveNow/scheduleSave/flush/restore/factoryReset/exportBackup/importBackup/detach`; autosave is debounced, skipped while powered off.
+Restore shows the toast "Restored last session". Kernel side: `exportSession/importSession/factoryReset/storageUsage/clearAppData`,
+`setCustomWallpaper/clearCustomWallpaper`, `toast`, `getPref/setPref`.
+GitHub (Grove): Save writes `phone/<project>/session/state.json` (+ `session/wallpaper.<ext>`); Open restores them via `GitHubAuth.putFiles`
+(accepts `{base64}`) / `readBlobBase64`. Tokens are never stored in the snapshot.
+Canopy extension points: `Canopy.registerLeaf(tag, fn)`, `Canopy.hook('kernel'|'boot'|'destroy', fn)`, `Canopy.create(el,{persist:false, project})`.
+New leaf tags: listrow, switch, themecard, approw, bar, kv, filebtn. New system action ids: `@rings:*`, `@pref:*`, `@field:*`, `@act:*`, `@drawer:*`.

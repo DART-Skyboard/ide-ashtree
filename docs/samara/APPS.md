@@ -138,3 +138,19 @@ Layout hooks (no per-app class exists, so the CSS keys off structure): a `ui.tex
 Drift: row 1 `‹ › ↻ ⌂ MODE ☆`, row 2 full-width address field + Go, then the web view and a status footer; Drift's own CSS is at the end of `css/canopy-web.css`.
 
 Orientation: every layout has a `.cnp-device.landscape` re-flow: home is widgets-left / icon grid + dock right, Tally is display-left / keypad-right, Leaf and Rings go two-column, Lens is viewfinder-left / controls-right, Drift's toolbar becomes one row, the lock screen puts clock left and notifications right. Icon labels, the clock and widget plates use translucent blurred plates and text halos so they stay readable over any wallpaper. The wallpaper layer (`.cnp-wall`) is not touched.
+
+## Rings, App Drawer and exits (PERSIST pass)
+
+**Rings** is a system app drawn by the kernel from `js/phone/rings.js` (not from the .ashos node), as a data-driven page table
+(`PAGES[id] = {title, parent, build(R)}` + `MENU`). Controls are VNodes whose id is an action string handled by the kernel:
+`@rings:page:<id>`, `@pref:<key>:<value|toggle>`, `@set:<setting>:<value>`, `@field:<key>`, `@act:<name>:<arg>`, `@drawer:*`.
+Pages: Wallpapers & Themes, Display, Home screen, Network, Sound & haptics, Notifications, Accessibility, Battery (simulated),
+Storage (real, per-app, clear data), Apps (+ per-app page), Privacy & permissions, Security (PIN), Language/Date & time, Backup & reset,
+plus navigable placeholders `about`, `sysupdate`, `devopts` owned by the UPDATES worker. Add a page by adding one `PAGES` entry and a `MENU` row.
+Preferences live in the flat map `S.prefs` (only non-defaults stored); enforced ones: offline/airplane blocks `net.fetch`, per-app camera/location
+permissions gate `cam.open`/`sensor.location`, per-app notifications and DND, silent/haptics, PIN lock, screen timeout, auto dark, orientation lock, time zone / 12-24 h.
+
+**App Drawer**: alphabetical list with letter headers and search (`@drawer:q`), opened by the Apps dock button or `sys.launch (drawer)`.
+Swipe-up is left to the gestures worker (`@drawer:open`). **Back / Home**: every Rings page and every `ui.screen` has an appbar with back and home;
+the kernel `back` event (`K.dispatch(id,'back')`, `@back`, `press('back')`) goes page -> parent -> home. Apps must not trap Back
+(Tally and Leaf had `input.on (back)` handlers removed for this reason).

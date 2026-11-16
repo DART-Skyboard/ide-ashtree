@@ -49,3 +49,18 @@ upscale the canvas; in headless Chromium (software raster, forced flush) a frame
 `samara-os.js` lists `SamaraWallpapers.list` entries as selectable wallpapers (`live:true`); `canopy.js` mounts the chosen id into
 the wallpaper layer and pauses it when the screen is off. Note: Canopy mounts once per wallpaper id, so a theme change while a
 live wallpaper is active does not re-theme it unless Canopy calls `handle.setOptions({dark, accent, bg})` or remounts.
+
+## Theme art and custom wallpaper (PERSIST pass)
+
+**Theme art** (`js/phone/theme-art.js`, `SamaraThemeArt`): six original SVG scenes, one per built-in theme
+(Ash Dark, Ash Light, Ember, Moss, Mist, Midnight), generated from a seeded PRNG so they are tiny and deterministic.
+`svg(theme,{w,h,tokens})`, `card`, `accent`, `dataUri`, `css`, `cardUri`, `accentUri`. Unknown (ROM-defined) themes fall back to the Ash Dark
+scene tinted with that theme's own accent/bg. The pseudo-wallpaper **`themeart`** uses the current theme's scene as lock/home art.
+Checked-in copies live in `phone/assets/themes/` (portrait, landscape, accent per theme); regenerate with `node tools/gen-theme-art.js`.
+
+**Custom wallpaper** (`SamaraWallpapers.custom`, pseudo-wallpaper **`custom`**): the user imports png/jpg/webp/gif/avif (jxl only where the browser
+decodes it; gif = first frame). The image is downscaled on a canvas to <= 2560 px, stored in IndexedDB (localStorage fallback) and referenced by
+the session. Options: fit `fill|fit|center`, `dim` 0-80 %, `blur` 0-20 px (`wp.dim`, `wp.blur`, `@act:wp-fit:<mode>`). Entry points: Rings > Wallpapers & themes,
+and the Grove toolbar "Import wallpaper" (`inst.importWallpaper(file)` / `inst.pickWallpaper()` / `inst.removeWallpaper()`).
+ROM-defined wallpapers keep working; `custom` only appears in the chip list once an image exists. The image is included in the GitHub backup
+(`session/wallpaper.<ext>`).
