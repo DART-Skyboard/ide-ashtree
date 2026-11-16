@@ -28,10 +28,13 @@
       if (p.notifs) { var n = el('span', 'cnp-sb-n', r); n.textContent = p.notifs; }
       var sig = el('span', 'cnp-sig', r);
       for (var i = 1; i <= 4; i++) { var b = el('i', i <= p.signal ? 'on' : '', sig); b.style.height = (3 + i * 2) + 'px'; }
-      var w = el('span', 'cnp-wifi', r); w.textContent = '◠';
-      var bat = el('span', 'cnp-bat' + (p.charging ? ' chg' : '') + (p.battery <= 15 ? ' low' : ''), r);
+      // [persist] airplane glyph, cellular generation label, Wi-Fi hidden when off, battery % optional (Rings > Network / Battery)
+      if (p.airplane) { var ap = el('span', 'cnp-wifi', r); ap.textContent = '\u2708'; }
+      if (p.net) { var nt = el('span', 'cnp-sb-n', r); nt.textContent = p.net; nt.style.background = 'transparent'; nt.style.color = 'inherit'; }
+      if (p.wifi !== false) { var w = el('span', 'cnp-wifi', r); w.textContent = '◠'; }
+      var bat = el('span', 'cnp-bat' + (p.charging ? ' chg' : '') + (p.battery <= 15 || p.saver ? ' low' : ''), r);
       var lv = el('i', '', bat); lv.style.width = Math.max(4, p.battery) + '%';
-      var bt = el('span', 'cnp-bat-t', r); bt.textContent = p.battery + '%';
+      if (p.showPct !== false) { var bt = el('span', 'cnp-bat-t', r); bt.textContent = p.battery + '%'; }
     },
     appicon: function (e, v) {
       e.textContent = ''; glyphBox(e, v.props.glyph, v.props.color);
@@ -41,6 +44,8 @@
       e.textContent = '';
       if (v.props.back) { var b = el('button', 'cnp-ab-back', e); b.type = 'button'; b.textContent = '‹'; b.setAttribute('aria-label', 'Back'); b.addEventListener('click', function (ev) { ev.stopPropagation(); e._cnp.kernel.back(); }); }
       var t = el('span', 'cnp-ab-title', e); t.textContent = v.props.title;
+      // [persist] Home / Done button on every app header: no screen can trap the user
+      if (v.props.home) { var hb = el('button', 'cnp-ab-home', e); hb.type = 'button'; hb.textContent = '\u2302'; hb.title = 'Home'; hb.setAttribute('aria-label', 'Home'); hb.addEventListener('click', function (ev) { ev.stopPropagation(); e._cnp.kernel.home(); }); }
     },
     text: function (e, v) {
       var p = v.props; e.textContent = p.text == null ? '' : p.text;
@@ -63,7 +68,10 @@
     listitem: function (e, v) { e.textContent = v.props.text; },
     chip: function (e, v) {
       e.textContent = v.props.label; e.classList.toggle('sel', !!v.props.selected);
-      if (v.props.preview) e.style.backgroundImage = v.props.preview.indexOf('gradient') >= 0 ? v.props.preview : '';
+      var pv = v.props.preview;   // [persist] '@custom' (imported image), '@themeart' (current theme illustration), or a gradient
+      if (pv === '@custom') { var cw = e._cnp && e._cnp.kernel.customWallpaperData && e._cnp.kernel.customWallpaperData(); e.style.backgroundImage = cw ? 'url("' + cw.dataUrl + '")' : ''; e.style.backgroundSize = 'cover'; e.style.backgroundPosition = 'center'; }
+      else if (pv === '@themeart') { var SA = global.SamaraThemeArt, st = e._cnp && e._cnp.kernel.state(); e.style.backgroundImage = SA && st ? 'url("' + SA.cardUri(st.theme, e._cnp.kernel.themeTokens(st.theme)) + '")' : ''; e.style.backgroundSize = 'cover'; e.style.backgroundPosition = 'center'; }
+      else if (pv) e.style.backgroundImage = pv.indexOf('gradient') >= 0 ? pv : '';
     },
     swatch: function (e, v) {
       var p = v.props; e.textContent = ''; e.classList.toggle('sel', !!p.selected); e.style.background = p.bg; e.style.borderColor = p.selected ? p.accent : '';
@@ -89,6 +97,9 @@
   var LEAF_TAGS = {};
   Object.keys(LEAF).forEach(function (k) { if (LEAF[k]) LEAF_TAGS[k] = 1; });
   LEAF_TAGS.input = 1; LEAF_TAGS.canvas = 1; LEAF_TAGS.camera = 1; LEAF_TAGS.web = 1;
+  // [persist] extension points used by js/phone/canopy-rings.js (new leaf widgets, persistence glue)
+  var HOOKS = { kernel: [], boot: [], destroy: [] };
+  function runHooks(name, inst) { HOOKS[name].forEach(function (f) { try { f(inst); } catch (e) { if (global.console) console.error('[canopy hook ' + name + ']', e); } }); }
 
   // ---------- canvas 2D commands ----------
   function drawCmds(cv, v) {
@@ -288,6 +299,8 @@
       else if (v.tag === 'section') { /* title handled below */ }
     }
     e.classList.toggle('cnp-tappable', v.on.indexOf('tap') >= 0);
+    if (inst.reader) { var lab = v.props && (v.props.label || v.props.title || v.props.name || v.props.placeholder || (v.on.indexOf('tap') >= 0 ? v.props.text : '')); if (lab) { e.setAttribute('aria-label', String(lab)); if (v.on.indexOf('tap') >= 0 && e.tagName === 'DIV') e.setAttribute('role', 'button'); } }
+    else if (e._aria) { e.removeAttribute('aria-label'); e.removeAttribute('role'); } e._aria = !!inst.reader;
     if (v.tag === 'section') {
       var head = e.firstChild && e.firstChild.className === 'cnp-sec-h' ? e.firstChild : null;
       if (!head) { head = el('div', 'cnp-sec-h'); e.insertBefore(head, e.firstChild); }
@@ -410,7 +423,7 @@
     opts = opts || {};
     if (!doc) throw new Error('Canopy needs a DOM');
     var OS = ownerOS(); if (!OS) throw new Error('samara-os.js not loaded');
-    var inst = { swallow: false, host: {}, orientation: 'portrait' };
+    var inst = { swallow: false, host: {}, orientation: 'portrait', opts: opts };
     var logLines = [], logOpen = opts.log === true;
     mount.classList.add('cnp-mount');
 
@@ -432,6 +445,12 @@
     bootEl.innerHTML = '<div class="cnp-boot-logo">❦</div><div class="cnp-boot-name">samara</div><div class="cnp-boot-bar"><i></i></div>';
     var off = el('div', 'cnp-off', screen); off.textContent = 'Samara One';
     var notch = el('div', 'cnp-notch', bezel); el('i', '', notch);
+    // [persist] on-screen Back/Home (Accessibility > Navigation buttons) + colour-blindness filter defs
+    var navb = el('div', 'cnp-navbar', screen);
+    [['\u25C1', 'back', 'Back'], ['\u25CB', 'home', 'Home']].forEach(function (b) { var x = el('button', 'cnp-nb', navb); x.type = 'button'; x.textContent = b[0]; x.title = b[2]; x.setAttribute('aria-label', b[2]); x.addEventListener('click', function (ev) { ev.stopPropagation(); inst.press(b[1]); }); x.addEventListener('pointerdown', function (ev) { ev.stopPropagation(); }); });
+    var fsvg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg'); fsvg.setAttribute('width', '0'); fsvg.setAttribute('height', '0'); fsvg.style.position = 'absolute';
+    fsvg.innerHTML = '<filter id="cnp-f-deut"><feColorMatrix type="matrix" values="0.625 0.375 0 0 0  0.7 0.3 0 0 0  0 0.3 0.7 0 0  0 0 0 1 0"/></filter><filter id="cnp-f-prot"><feColorMatrix type="matrix" values="0.567 0.433 0 0 0  0.558 0.442 0 0 0  0 0.242 0.758 0 0  0 0 0 1 0"/></filter><filter id="cnp-f-trit"><feColorMatrix type="matrix" values="0.95 0.05 0 0 0  0 0.433 0.567 0 0  0 0.475 0.525 0 0  0 0 0 1 0"/></filter>';
+    root.appendChild(fsvg);
     var hw = el('div', 'cnp-hw', root);
     var logEl = el('div', 'cnp-log', root); var logBody = el('div', 'cnp-log-body', logEl);
     root.appendChild(logEl);
@@ -449,7 +468,7 @@
     // power side button: click = power, hold = long
     (function () {
       var t = null, longed = false;
-      sPower.addEventListener('pointerdown', function () { longed = false; t = setTimeout(function () { longed = true; inst.press('powerlong'); }, 900); });
+      sPower.addEventListener('pointerdown', function () { longed = false; t = setTimeout(function () { longed = true; inst.press('powerlong'); }, Math.max(300, (inst.holdMs || 400) * 2.25)); });   // [persist] touch-and-hold delay from Rings
       ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (n) { sPower.addEventListener(n, function () { clearTimeout(t); }); });
       sPower.addEventListener('click', function () { if (!longed) inst.press('power'); });
     })();
@@ -507,14 +526,30 @@
       if (liveWp && liveId !== want) { try { liveWp.stop(); } catch (x) {} liveWp = null; liveId = null; wall.textContent = ''; }
       if (liveWp && liveWp.setOptions) { var ok = (T.dark ? 1 : 0) + '|' + T.accent + '|' + T.bg; if (liveWp._ok !== ok) { liveWp._ok = ok; try { liveWp.setOptions({ dark: !!T.dark, accent: T.accent, bg: T.bg }); } catch (x) {} } }
       if (want && !liveWp) { try { liveWp = SW.mount(want, wall, { dark: !!T.dark, accent: T.accent, bg: T.bg }); liveId = want; if (liveWp) liveWp._ok = (T.dark ? 1 : 0) + '|' + T.accent + '|' + T.bg; } catch (x) { liveWp = null; } }
-      if (liveWp) { var live = P.powered && !P.screenOff; try { live ? liveWp.resume && liveWp.resume() : liveWp.pause && liveWp.pause(); } catch (x) {} }
+      if (liveWp) { var live = P.powered && !P.screenOff && !(P.ui && P.ui.motion); try { live ? liveWp.resume && liveWp.resume() : liveWp.pause && liveWp.pause(); } catch (x) {} }
+    }
+    // [persist] Rings > Accessibility / Display: classes + filters on the screen element (CSS in css/canopy-rings.css)
+    var FILTERS = { none: '', grayscale: 'grayscale(1)', invert: 'invert(1) hue-rotate(180deg)', deuter: 'url(#cnp-f-deut)', protan: 'url(#cnp-f-prot)', tritan: 'url(#cnp-f-trit)' };
+    function applyA11y(P) {
+      var u = P.ui || {}, sig = JSON.stringify(u) + '|' + P.holdMs + '|' + P.hasPasscode;
+      inst.holdMs = P.holdMs; inst.online = P.online;
+      if (screen._a11y === sig) return; screen._a11y = sig;
+      ['s', 'l', 'xl'].forEach(function (k) { screen.classList.toggle('ts-' + k, u.textSize === k); });
+      screen.classList.toggle('a11y-bold', !!u.bold); screen.classList.toggle('a11y-hc', !!u.contrast); screen.classList.toggle('a11y-rm', !!u.motion);
+      screen.classList.toggle('a11y-one', !!u.oneHand); screen.classList.toggle('a11y-nav', !!u.switchNav);
+      screen.style.filter = FILTERS[u.filter] || '';
+      inst.reader = !!u.reader; screen.setAttribute('data-reader', u.reader ? '1' : '0');
+      if (u.reader) screen.setAttribute('role', 'application'); else screen.removeAttribute('role');
+      view._ariaDirty = true; schedule();
     }
     function applyTheme(tree) {
       var P = tree.props, T = P.theme || {};
       var vars = { '--bg': T.bg, '--surface': T.surface, '--surface2': T.surface2, '--text': T.text, '--dim': T.dim, '--accent': T.accent, '--on-accent': T.onAccent, '--border': T.border, '--danger': T.danger, '--ok': T.ok };
       Object.keys(vars).forEach(function (k) { if (vars[k]) screen.style.setProperty(k, vars[k]); });
       screen.classList.toggle('dark', !!T.dark); screen.classList.toggle('light', !T.dark);
-      wall.style.background = P.wallpaper || T.bg;
+      if (wall._bg !== P.wallpaper) { wall._bg = P.wallpaper; wall.style.background = P.wallpaper || T.bg; }   // [persist] imported images are big strings: only touch the DOM when it changes
+      var bl = P.wallpaperBlur ? 'blur(' + P.wallpaperBlur + 'px)' : ''; if (wall._bl !== bl) { wall._bl = bl; wall.style.filter = bl; wall.style.transform = bl ? 'scale(1.1)' : ''; }
+      applyA11y(P);
       syncLiveWallpaper(P, T);
       dim.style.opacity = String(Math.max(0, Math.min(0.85, 1 - (P.brightness == null ? 1 : P.brightness))));
       screen.classList.toggle('is-off', !P.powered || P.screenOff);
@@ -570,7 +605,7 @@
         if (used) inst.swallow = true;
         setTimeout(function () { inst.swallow = false; }, 50);
       }
-      function document_hasPasscode() { return !!(inst.kernel && inst.seed && inst.seed.manifest && inst.seed.manifest.passcode); }
+      function document_hasPasscode() { return !!(inst.kernel && inst.kernel.hasPasscode && inst.kernel.hasPasscode()); }   // [persist] Rings PIN counts too
       screen.addEventListener('pointerup', end); screen.addEventListener('pointercancel', function () { st = null; });
     })();
 
@@ -605,7 +640,7 @@
       if (typeof seed === 'string') seed = JSON.parse(seed);
       inst.seed = seed; inst.kernel = OS.createKernel(seed, inst.host);
       inst.kernel.subscribe(function () { schedule(); });
-      inst.kernel.state(); return inst.kernel;
+      inst.kernel.state(); runHooks('kernel', inst); return inst.kernel;
     }
     inst.setSeed = function (seed) {
       if (inst.kernel && inst.kernel.state().powered) inst.kernel.shutdown();
@@ -615,12 +650,12 @@
       var K = inst.kernel; if (!K) return Promise.reject(new Error('no seed'));
       if (K.state().powered) return Promise.resolve(inst);
       return new Promise(function (res) {
-        function go() { inst.booting = false; bootEl.classList.remove('run'); K.boot(); render(); res(inst); }
+        function go() { inst.booting = false; bootEl.classList.remove('run'); K.boot(); runHooks('boot', inst); render(); res(inst); }
         if (opts.fast) { go(); return; }
         inst.booting = true; off.style.display = 'none'; bootEl.classList.add('run'); setTimeout(go, 1300);
       });
     };
-    inst.shutdown = function () { if (inst.kernel) inst.kernel.shutdown(); if (camStream) inst.host.camera.close(); render(); return inst; };
+    inst.shutdown = function () { if (inst.persist) inst.persist.flush(); if (inst.kernel) inst.kernel.shutdown(); if (camStream) inst.host.camera.close(); render(); return inst; };
     inst.press = function (key) {
       var K = inst.kernel; if (!K) return false;
       if (key === 'power' && !K.state().powered) { inst.boot(); return true; }
@@ -652,6 +687,7 @@
     };
     inst.log = function () { return logLines.slice(); };
     inst.destroy = function () {
+      runHooks('destroy', inst);
       if (liveWp) { try { liveWp.stop(); } catch (x) {} liveWp = null; }
       clearInterval(timer); if (ro) ro.disconnect(); else global.removeEventListener('resize', layout);
       if (inst.kernel && inst.kernel.state().powered) inst.kernel.shutdown();
@@ -685,7 +721,9 @@
     });
   }
 
-  var api = { create: create_, mountEmbed: mountEmbed, version: '1.0.0' };
+  var api = { create: create_, mountEmbed: mountEmbed, version: '1.0.0',
+    // [persist] extension API: registerLeaf(tag, fn(domEl, vnode)) adds a leaf widget; hook('kernel'|'boot'|'destroy', fn(inst)) runs at those points of an instance's life
+    registerLeaf: function (tag, fn) { LEAF[tag] = fn; LEAF_TAGS[tag] = 1; }, hook: function (name, fn) { if (HOOKS[name]) HOOKS[name].push(fn); }, el: el };
   global.Canopy = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -306,6 +306,5 @@ import (SamaraHW)
     ui.set (hl) items=(hist)
   }
   ui.on (qbtn) tap { sys.home }
-  input.on (back) { sys.home }
   ui.screen (calc)
 }|';'|

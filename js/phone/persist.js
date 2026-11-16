@@ -105,8 +105,10 @@
     function sigOf(s) { var c = Object.assign({}, s); c.savedAt = 0; return JSON.stringify(c); }
 
     // write the snapshot (and, when it changed, the wallpaper image) under every namespace key
-    C.saveNow = function () {
-      if (C.suspended || !C.enabled) return Promise.resolve(false);
+    C.saveNow = function (force) {
+      var st0 = K.state ? K.state() : null;
+      if (C.suspended || !C.enabled || (st0 && !st0.powered)) return Promise.resolve(false);      // never persist a powered-off / half-booted kernel
+      if (!force && K.getPref && K.getPref('autosave') === false) return Promise.resolve(false);   // Rings > Backup > Autosave
       var snap = snapshot(), sig = sigOf(snap), text = serialize(snap), ok = true, jobs = [];
       if (sig !== lastSig) {
         keys.forEach(function (ns) { ok = lsSet(storageKey(ns), text) && ok; });

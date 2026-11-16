@@ -269,7 +269,7 @@
       if (S.cam.open && S.cam.owner === id) camClose();
       log('info', 'kill ' + id);
     }
-    function home() { if (!S.powered) return; S.fg = null; S.shade = false; S.page = 0; S.drawer = false; S.drawerQuery = ''; S.lastActive = now(); changed(); }
+    function home() { if (!S.powered) return; if (S.fg === 'rings' && S.procs.rings) S.procs.rings.ringsPage = 'main'; S.fg = null; S.shade = false; S.page = 0; S.drawer = false; S.drawerQuery = ''; S.lastActive = now(); changed(); }
     function openDrawer() { if (!S.powered || S.locked) return; S.fg = null; S.shade = false; S.drawer = true; S.drawerQuery = ''; changed(); }
     function back() {
       if (!S.powered || S.screenOff) return;

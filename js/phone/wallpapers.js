@@ -781,7 +781,56 @@
     };
   }
 
-  var api = { version: VERSION, list: LIST, mount: mount, ids: LIST.map(function (w) { return w.id; }) };
+  // ------------------------------------------------------------------ custom (imported) wallpaper
+  //   SamaraWallpapers.custom.importFile(file, {max:2560, quality:.86}) -> Promise<{ dataUrl, mime:'image/jpeg', w, h, bytes, srcMime, srcName }>
+  //       decodes png/jpg/webp/gif(first frame)/avif/jxl (whatever this browser can decode), downscales to <= max px on a canvas and re-encodes (JPEG).
+  //   SamaraWallpapers.custom.fitSize(w, h, max) -> {w, h}                 (pure; tested under node)
+  //   SamaraWallpapers.custom.css({dataUrl, fit:'fill'|'fit'|'center', dim:0..0.85}, bgColor) -> CSS `background` value
+  //   SamaraWallpapers.custom.accept                                       <input accept> string
+  // The kernel owns the image (K.setCustomWallpaper); persist.js stores it in IndexedDB and in the GitHub backup.
+  var custom = {
+    accept: 'image/png,image/jpeg,image/webp,image/gif,image/avif,image/jxl,.png,.jpg,.jpeg,.webp,.gif,.avif,.jxl',
+    maxDim: 2560,
+    fitSize: function (w, h, max) {
+      max = max || 2560; if (!(w > 0 && h > 0)) return { w: 0, h: 0 };
+      var k = Math.min(1, max / Math.max(w, h)); return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)) };
+    },
+    css: function (c, bg) {
+      var img = 'url("' + c.dataUrl + '")', fit = c.fit === 'fit' ? 'center/contain' : c.fit === 'center' ? 'center/auto' : 'center/cover', d = clamp(+c.dim || 0, 0, 0.85);
+      var layers = []; if (d > 0) layers.push('linear-gradient(rgba(0,0,0,' + d.toFixed(2) + '),rgba(0,0,0,' + d.toFixed(2) + '))');
+      layers.push(img + ' ' + fit + ' no-repeat'); layers.push(bg || '#000');
+      return layers.join(',');
+    },
+    importFile: function (file, o) {
+      o = o || {};
+      var max = o.max || custom.maxDim, q = o.quality || 0.86, D = root.document;
+      return new Promise(function (resolve, reject) {
+        if (!file) return reject(new Error('No file chosen'));
+        if (!D || !root.URL || !root.URL.createObjectURL) return reject(new Error('Image import needs a browser'));
+        var name = file.name || 'image', type = file.type || '', ext = (/\.([a-z0-9]+)$/i.exec(name) || [])[1] || '';
+        if (!/^image\//.test(type) && !/^(png|jpe?g|webp|gif|avif|jxl)$/i.test(ext)) return reject(new Error('That is not an image file (use PNG, JPEG, WebP, GIF, AVIF or JXL).'));
+        var url = root.URL.createObjectURL(file), im = new root.Image();
+        function done(w, h, drawFn) {
+          try {
+            var sz = custom.fitSize(w, h, max), cv = D.createElement('canvas'); cv.width = sz.w; cv.height = sz.h;
+            var cx = cv.getContext('2d'); cx.fillStyle = '#000'; cx.fillRect(0, 0, sz.w, sz.h);
+            cx.imageSmoothingQuality = 'high'; drawFn(cx, sz.w, sz.h);
+            var out = cv.toDataURL('image/jpeg', q);
+            if (out.length > 4 * 1024 * 1024 && max > 1280) { var s2 = custom.fitSize(sz.w, sz.h, 1600); cv.width = s2.w; cv.height = s2.h; cx.drawImage(im, 0, 0, s2.w, s2.h); out = cv.toDataURL('image/jpeg', 0.8); sz = s2; }   // keep it storable
+            resolve({ dataUrl: out, mime: 'image/jpeg', w: sz.w, h: sz.h, bytes: Math.round(out.length * 0.75), srcMime: type || ('image/' + ext), srcName: name });
+          } catch (e) { reject(e); } finally { root.URL.revokeObjectURL(url); }
+        }
+        im.onload = function () { done(im.naturalWidth || im.width, im.naturalHeight || im.height, function (cx, w, h) { cx.drawImage(im, 0, 0, w, h); }); };
+        im.onerror = function () {
+          root.URL.revokeObjectURL(url);
+          reject(new Error(/jxl/i.test(type + ext) ? 'This browser cannot decode JPEG XL. Convert it to PNG or JPEG first.' : /avif/i.test(type + ext) ? 'This browser cannot decode AVIF.' : 'Could not decode that image.'));
+        };
+        im.src = url;
+      });
+    }
+  };
+
+  var api = { version: VERSION, list: LIST, mount: mount, ids: LIST.map(function (w) { return w.id; }), custom: custom };
   root.SamaraWallpapers = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : this);
