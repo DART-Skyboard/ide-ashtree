@@ -12,6 +12,11 @@
 
   var MAGIC = 'SAMARA-SEED', FORMAT = 1;
   var OS = { name: 'Samara OS', version: '1.0.0' };
+  // SCHEMA = the version of the Ash OS language / seed IR ABI (statement table + op shapes). Bump it when a seed
+  // compiled today could not run on an older kernel. See docs/samara/UPDATES.md.
+  var SCHEMA = 1;
+  var CHANNELS = ['stable', 'beta', 'dev'];
+  var SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$/;
 
   // ---------- pure-JS SHA-256 over UTF-8 ----------
   function utf8(str) {
@@ -71,7 +76,8 @@
   }
   // the hashed body: everything except `built` and `sha256` itself
   function bodyOf(seed) {
-    return canon({ magic: seed.magic, format: seed.format, os: seed.os, sources: seed.sources, manifest: seed.manifest, program: seed.program });
+    // `meta` (release metadata) joins the hash only when present, so seeds built before it existed keep their hashes.
+    return canon({ magic: seed.magic, format: seed.format, os: seed.os, sources: seed.sources, manifest: seed.manifest, program: seed.program, meta: seed.meta });
   }
 
   // ---------- compile ----------
@@ -100,9 +106,24 @@
 
     // manifest from sys.* declarations
     var manifest = { theme: 'ash', layout: { grid: '4x5', cols: 4, rows: 5, dock: 4 }, apps: [], boot: 'Crown' };
-    var ids = {};
+    var ids = {}, meta = null, migrations = [];
+    function metaFrom(a, where) {
+      meta = meta || {};
+      Object.keys(a || {}).forEach(function (k) { if (a[k] !== undefined && a[k] !== null && a[k] !== '') meta[k] = a[k]; });
+    }
     decls.forEach(function (d) {
       var a = d.args;
+      if (d.op === 'sys.meta') { metaFrom(a); return; }
+      if (d.op === 'sys.migrate') {
+        var mg = { from: String(a.from) };
+        ['op', 'key', 'to', 'value'].forEach(function (k) { if (a[k] !== undefined) mg[k] = a[k]; });
+        if (!SEMVER.test(mg.from)) D('error', d.file, d.line, "sys.migrate: '" + mg.from + "' is not a MAJOR.MINOR.PATCH version");
+        else if (['rename', 'set', 'default', 'delete'].indexOf(String(mg.op)) < 0) D('error', d.file, d.line, "sys.migrate: op must be rename|set|default|delete");
+        else if (mg.key === undefined) D('error', d.file, d.line, 'sys.migrate: key= is required');
+        else if (mg.op === 'rename' && mg.to === undefined) D('error', d.file, d.line, 'sys.migrate: rename needs to=');
+        else migrations.push(mg);
+        return;
+      }
       if (d.op === 'sys.theme') manifest.theme = String(a.name);
       else if (d.op === 'sys.boot') manifest.boot = String(a.node);
       else if (d.op === 'sys.layout') {
@@ -122,10 +143,31 @@
     });
     if (!program[manifest.boot]) D('error', entry || '', 0, "boot node '" + manifest.boot + "' is not defined");
 
+    // release metadata: sys.meta statements, overridden by opts.meta (e.g. Grove's Publish update). Absent => no `meta` key at all.
+    if (opts.meta && typeof opts.meta === 'object') metaFrom(opts.meta);
+    if (migrations.length) { meta = meta || {}; meta.migrations = (meta.migrations || []).concat(migrations); }
+    if (meta) {
+      meta.version = String(meta.version === undefined ? OS.version : meta.version);
+      if (!SEMVER.test(meta.version)) D('error', entry || '', 0, "meta: version '" + meta.version + "' must look like 1.2.3 or 1.2.3-beta.1");
+      meta.build = meta.build === undefined ? 0 : +meta.build;
+      if (!(meta.build >= 0) || meta.build % 1) D('error', entry || '', 0, 'meta: build must be a non-negative integer');
+      meta.channel = String(meta.channel === undefined ? 'stable' : meta.channel);
+      if (CHANNELS.indexOf(meta.channel) < 0) D('error', entry || '', 0, "meta: channel must be one of " + CHANNELS.join('|'));
+      meta.schema = meta.schema === undefined ? SCHEMA : +meta.schema;
+      if (meta.schema > SCHEMA) D('error', entry || '', 0, 'meta: schema ' + meta.schema + ' is newer than this Seedpress (' + SCHEMA + ')');
+      ['minKernel', 'minSchema'].forEach(function (k) {
+        if (meta[k] === undefined) return;
+        if (k === 'minKernel') { meta[k] = String(meta[k]); if (!SEMVER.test(meta[k])) D('error', entry || '', 0, 'meta: minKernel must look like 1.0.0'); }
+        else meta[k] = +meta[k];
+      });
+      ['id', 'name', 'notes', 'feed'].forEach(function (k) { if (meta[k] !== undefined) meta[k] = String(meta[k]); });
+    }
+
     var ok = !diags.some(function (d) { return d.level === 'error'; });
     if (ok || opts.force) {
-      seed = { magic: MAGIC, format: FORMAT, os: { name: OS.name, version: OS.version }, built: opts.built || new Date().toISOString(),
+      seed = { magic: MAGIC, format: FORMAT, os: { name: meta && meta.name ? meta.name : OS.name, version: meta ? meta.version : OS.version }, built: opts.built || new Date().toISOString(),
         sha256: '', sources: sources, manifest: manifest, program: program };
+      if (meta) seed.meta = meta;
       seed.sha256 = sha256(bodyOf(seed));
     }
     return { ok: ok, seed: ok ? seed : (opts.force ? seed : null), diagnostics: diags };
@@ -144,6 +186,10 @@
       actual = sha256(bodyOf(seed));
       if (actual !== seed.sha256) errors.push('sha256 mismatch (seed was modified or corrupted)');
       var man = seed.manifest;
+      if (seed.meta !== undefined) {
+        if (!seed.meta || typeof seed.meta !== 'object') errors.push('meta must be an object');
+        else if (!SEMVER.test(String(seed.meta.version))) errors.push("meta.version '" + seed.meta.version + "' is not MAJOR.MINOR.PATCH");
+      }
       if (!seed.program[man.boot]) errors.push("boot node '" + man.boot + "' missing from program");
       (man.apps || []).forEach(function (a) { if (!seed.program[a.entry]) errors.push("app '" + a.id + "' entry '" + a.entry + "' missing from program"); });
     }
@@ -159,7 +205,7 @@
   }
 
   var api = { compile: compile, verify: verify, serialize: serialize, parse: parse, sha256: sha256, canonical: canon,
-    MAGIC: MAGIC, FORMAT: FORMAT, OS: OS };
+    MAGIC: MAGIC, FORMAT: FORMAT, OS: OS, SCHEMA: SCHEMA, CHANNELS: CHANNELS, SEMVER: SEMVER };
   global.Seedpress = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

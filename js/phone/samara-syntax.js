@@ -50,6 +50,12 @@
   def('sys.clock',   { dest: 'opt', doc: 'Current time string into var.' });
   def('sys.battery', { dest: 'opt', doc: 'Battery percent into var.' });
   def('sys.setting', { pos: ['key', 'value'], req: 1, dest: 'opt', doc: 'Get (placeto) or set a system setting.' });
+  // ==== updates: system information / versioning / OTA statements ====
+  def('sys.meta',    { pos: [], any: true, doc: 'OS release metadata (manifest): version= build= channel= id= name= schema= minKernel= minSchema= feed= notes=.' });
+  def('sys.migrate', { pos: ['from'], keys: ['op', 'key', 'to', 'value'], doc: 'Declarative state migration (manifest): runs when persisted state written by version <= (from) is upgraded. op=rename|set|default|delete.' });
+  def('sys.about',   { pos: ['action'], req: 0, keys: ['key'], dest: 'opt', doc: 'System info: refresh (fill about_* vars) | tapbuild | copy.' });
+  def('sys.update',  { pos: ['action', 'value'], req: 1, dest: 'opt', doc: 'OTA updates: check|download|apply|primary|rollback|channel|auto|schedule|simulate|status.' });
+  def('sys.dev',     { pos: ['action', 'value'], req: 1, dest: 'opt', doc: 'Developer options: enable|disable|toggle|log|rom|factoryreset|clearlog|status.' });
   // ui
   def('ui.screen', { pos: ['id'], keys: ['title', 'parent'], block: 'children', host: 'ui.screen', doc: 'Declare / show a screen.' });
   def('ui.text',   { pos: ['id'], keys: ['text', 'size', 'align', 'color', 'parent', 'kind', 'weight', 'glyph', 'span', 'wrap', 'justify'], doc: 'Static or bound text.' });
@@ -103,7 +109,7 @@
   def('input.haptic', { pos: ['ms'], req: 0, doc: 'Vibrate.' });
 
   var HW_KEYS = ['home', 'back', 'power', 'volup', 'voldown'];
-  var MANIFEST_OPS = { 'sys.theme': 1, 'sys.layout': 1, 'sys.app': 1, 'sys.boot': 1 };
+  var MANIFEST_OPS = { 'sys.theme': 1, 'sys.layout': 1, 'sys.app': 1, 'sys.boot': 1, 'sys.meta': 1, 'sys.migrate': 1 };
 
   // ---------- low-level helpers ----------
   function isWordCh(c) { return /[\w]/.test(c); }
