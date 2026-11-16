@@ -148,8 +148,28 @@ Positional slots in `( )` are required, `[ ]` optional. `?` after `placeto` mean
 | `power.charging` | placeto (var)? | `host.power.charging` | Charging flag into var. |
 | `power.sleep` |  | `host.power.sleep` | Screen off. |
 | `power.wake` |  | `host.power.wake` | Screen on. |
-| `input.on` | (key) { handlers } | `host.input.on` | Hardware key handler: home|back|power|volup|voldown. |
+| `input.on` | (key) { handlers } | `host.input.on` | Hardware key handler: home|back|forward|power|volup|voldown. |
 | `input.haptic` | [ms] | `host.input.haptic` | Vibrate. |
+
+## Handler events (`ui.on (id) <event> { ... }`)
+
+Delivered by Canopy's gesture layer (`js/phone/canopy-gestures.js`) with `kernel.dispatch(id, name, payload)`. Touch and mouse-drag behave the same (pointer events), in portrait and landscape. The event goes to the nearest node at or above the touched widget that has a handler for it; `ui.on (<screen id>) ...` handles the whole screen. Payload fields are available in the handler as `${name}` (e.g. `${dx}`). All coordinates are the phone's own screen pixels.
+
+| event | when | payload |
+|---|---|---|
+| `tap` | press + release (fires at once, except on nodes that also have `doubletap`/`tripletap`: then after 300 ms if no further tap) | x, y |
+| `doubletap`, `tripletap` | 2 / 3 quick taps on the same node (within 300 ms, 32 px) | x, y, count |
+| `longpress` | held 500 ms without moving; the release is not a tap | x, y |
+| `swipeleft` `swiperight` `swipeup` `swipedown` | quick drag >= 40 px (or a long drag >= 80 px) that is mostly along one axis | dx, dy, velocity (px/ms), direction, x, y, duration |
+| `dragstart` `drag` `dragend` | finger/mouse drag on a node that has any of these handlers (claims the drag; no swipe is sent) | x, y, dx, dy (from start), ddx, ddy (since last), vx, vy, velocity (dragend) |
+| `pinch` | two pointers (touch, Alt+mouse-drag mirrors a second finger, trackpad Ctrl+wheel) | scale (cumulative, 1 = start), delta, cx, cy, phase (`start`/`move`/`end`) |
+| `rotate` | two pointers | angle (degrees, cumulative), delta, cx, cy, phase |
+| `scroll` | the screen's scroller moved (use `ui.on (<screen id>) scroll`) or wheel over the node | dx, dy, top, left, max, source |
+| `change` `submit` `load` | text input / web view events (see above) | value / url |
+
+Hardware keys via `input.on (key) { ... }`: `home back forward power volup voldown`. `back` is sent to the foreground app first (iOS/Android edge swipe from the left, Esc, Backspace, Alt+Left, the hardware key). The handler **consumes** the key only if it changed something (screen, history, variables, widgets, notifications, foreground app); a handler that did nothing lets the OS default run (go back one screen, else close the app and show the home screen). `forward` (right-edge swipe, Alt+Right) goes to the app's `input.on (forward)`; without one the OS re-opens the last closed or left app.
+
+System gestures (not delivered to apps): edge swipe from the left = Back, from the right = Forward; swipe up from the bottom edge = Home, drag up and hold (or a long slow drag) = app switcher; pull down from the top edge = notification shade, swipe up on the shade (or tap outside it) closes it. Notifications come from `sys.notify`; the first time the shade is pulled on a fresh boot with no notifications, three clearly labelled "Sample" notifications are added.
 
 ## Examples, one per namespace
 

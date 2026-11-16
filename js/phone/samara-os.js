@@ -215,11 +215,12 @@
         if (!info.system) {
           var entry = info.entry || info.name;
           if (program[entry]) runNode(entry, p, {}, 0); else log('warn', 'app ' + id + ' has no entry node "' + entry + '"');
+          if (p.cur) p.hist = [p.cur];   // GESTURES: screens declared while the entry node runs are not back-stack history; the first visible screen is the root
         }
         log('info', 'launch ' + id);
       }
       S.recents = S.recents.filter(function (x) { return x !== id; }); S.recents.push(id);
-      S.fg = id; S.shade = false;
+      S.fg = id; S.shade = false; if (S.fwd === id) S.fwd = null;   // GESTURES: relaunching clears the forward target
       // every launch (first start or coming back to a running app) fires the app's optional `ui.on (resume) tap { ... }` handler once it is the foreground app, so live readouts are current
       if (p.handlers['resume|tap']) execOps(p.handlers['resume|tap'], { proc: p, scope: { evt: 'resume' }, container: null, depth: 0, shared: { n: 0, halt: false } });
       changed(); return true;
@@ -228,16 +229,16 @@
       var p = S.procs[id]; if (!p) return;
       p.dead = true; delete S.procs[id];
       S.recents = S.recents.filter(function (x) { return x !== id; });
-      if (S.fg === id) S.fg = null;
+      if (S.fg === id) { S.fg = null; S.fwd = id; }   // GESTURES: closing the foreground app remembers it for Forward
       if (S.cam.open && S.cam.owner === id) camClose();
       log('info', 'kill ' + id);
     }
-    function home() { if (!S.powered) return; S.fg = null; S.shade = false; S.page = 0; changed(); }
+    function home() { if (!S.powered) return; if (S.fg) S.fwd = S.fg; /* GESTURES: forward target */ S.fg = null; S.shade = false; S.page = 0; changed(); }
     function back() {
       if (!S.powered || S.screenOff) return;
       if (S.shade) { S.shade = false; changed(); return; }
       if (S.locked) return;
-      if (!S.fg) return;
+      if (!S.fg) { if (S.page > 0) { S.page = 0; changed(); } return; }   // GESTURES: Back on a later home page returns to page 1
       var p = S.procs[S.fg];
       if (p && p.hist.length > 1) { p.hist.pop(); p.cur = p.hist[p.hist.length - 1]; changed(); return; }
       if (S.fg === 'rings' && p && p.ringsPage && p.ringsPage !== 'main') { p.ringsPage = 'main'; changed(); return; }
@@ -788,16 +789,32 @@
         if (p && p.keyHandlers[key]) { runKey(p, key); return true; }
         S.volume = clamp(S.volume + (key === 'volup' ? 10 : -10), 0, 100); toast('Volume ' + S.volume); persistSettings(); changed(); return true;
       }
+      if (key === 'forward') {   // GESTURES: app handler first (input.on (forward)); otherwise re-open the last closed/left app
+        if (S.locked) return false;
+        var fp = S.fg && S.procs[S.fg];
+        if (fp && fp.keyHandlers.forward) { runKey(fp, 'forward'); return true; }
+        if (!S.fg && S.fwd && S.appIndex[S.fwd]) { launch(S.fwd); return true; }
+        return false;
+      }
       if (key === 'home' || key === 'back') {
         if (!S.locked) {
           var q = S.fg && S.procs[S.fg];
-          if (q && q.keyHandlers[key]) { runKey(q, key); return true; }
+          if (q && q.keyHandlers[key]) {
+            // GESTURES: an input.on (back) handler only CONSUMES the key if it changed something (screen, history, vars, widgets, foreground app);
+            // a handler that did nothing (e.g. 'go to list' while already on the list) falls through to the OS default so Back can still leave the app.
+            var before = key === 'back' ? stateSig(q) : null, fgBefore = S.fg;
+            runKey(q, key);
+            if (key === 'home' || S.fg !== fgBefore || S.shade || stateSig(q) !== before) return true;
+          }
         }
         if (key === 'home') { if (S.locked) return false; home(); } else back();
         return true;
       }
       if (key === 'shade') { toggleShade(); return true; }
       return false;
+    }
+    function stateSig(p) {   // GESTURES: cheap fingerprint of an app's observable state
+      try { var np = {}; Object.keys(p.nodes).forEach(function (k) { np[k] = p.nodes[k].props; }); return JSON.stringify([p.cur, p.hist, p.vars, np, p.ringsPage, S.notifs.length, S.volume, S.brightness, S.theme, S.cam.open]); } catch (e) { return String(Math.random()); }
     }
     function runKey(p, key) {
       execOps(p.keyHandlers[key], { proc: p, scope: { key: key }, container: null, depth: 0, shared: { n: 0, halt: false } }); changed();
@@ -809,7 +826,7 @@
     K.boot = function () {
       if (S.powered) return K;
       S.powered = true; S.screenOff = false; S.locked = manifest.lock === false ? false : true; S.fg = null;
-      S.apps = []; S.appIndex = {}; S.procs = {}; S.recents = []; S.notifs = []; S.page = 0; S.shade = false;
+      S.apps = []; S.appIndex = {}; S.procs = {}; S.recents = []; S.notifs = []; S.page = 0; S.shade = false; S.fwd = null; S.sampled = false;
       Object.assign(S, { theme: 'Ash Dark', wallpaper: 'theme', cols: 4, rows: 5, dock: 4, brightness: 1, volume: 50, clock24: false, dnd: false });
       booted = false;
       var savedRaw = sysStore.get('settings');
@@ -911,6 +928,7 @@
       var proc = findProcFor(id); if (!proc) return false;
       var base = id, idx = -1, h = id.lastIndexOf('#');
       if (h > 0 && proc.nodes[id.slice(0, h)] === undefined) { /* literal id */ } else if (h > 0) { base = id.slice(0, h); idx = parseInt(id.slice(h + 1), 10); }
+      if (!proc.nodes[base] && base.indexOf('scroll:') === 0) base = base.slice(7);   // GESTURES: the screen's scroller carries the screen id's handlers
       var node = proc.nodes[base]; if (!node) return false;
       var scope = { id: base, evt: evt }, ops;
       if (evt === 'change' || evt === 'submit') {
@@ -924,6 +942,7 @@
       }
       if (idx >= 0) { var items = itemsOf(resolveProp(proc, node.props.items)); scope.index = idx; scope.item = items[idx]; proc.vars[base + '_index'] = idx; proc.vars[base + '_item'] = items[idx]; }
       if (payload.x !== undefined) { scope.x = payload.x; scope.y = payload.y; }
+      Object.keys(payload).forEach(function (pk) { var pv = payload[pk]; if (!(pk in scope) && (typeof pv === 'number' || typeof pv === 'string' || typeof pv === 'boolean')) scope[pk] = pv; });   // GESTURES: dx, dy, velocity, scale, angle, count... usable as {dx}
       ops = proc.handlers[base + '|' + evt];
       if (!ops && idx >= 0 && evt === 'tap') ops = proc.handlers[base + '|select'];
       if (ops) execOps(ops, { proc: proc, scope: scope, container: null, depth: 0, shared: { n: 0, halt: false } });
@@ -931,7 +950,16 @@
       return !!ops;
     };
     K.press = press;
-    K.launch = launch; K.home = home; K.back = back; K.kill = kill; K.lock = lock; K.unlock = unlock; K.sleep = sleep; K.wake = wake;
+    K.launch = launch; K.home = home; K.back = back; K.kill = function (id) { kill(id); changed(); }; K.lock = lock; K.unlock = unlock; K.sleep = sleep; K.wake = wake;
+    // GESTURES: demo notifications for the shade, clearly marked 'Sample', seeded once per boot (only if nothing real is waiting)
+    K.sampleNotifications = function () {
+      if (S.sampled || S.notifs.length) { S.sampled = true; return false; }
+      S.sampled = true;
+      [['leaf', 'Sample · Leaf', 'This is a sample notification. Tap to open Leaf.'], ['tally', 'Sample · Tally', 'Sample: a calculation finished.'], ['rings', 'Sample · System', 'Sample: swipe a notification away with the x.']].forEach(function (r) {
+        var app = S.appIndex[r[0]] ? r[0] : 'rings', n = notify(app, r[2], r[1]); n.fresh = false; n.sample = true;
+      });
+      return true;
+    };
     K.toggleShade = toggleShade; K.notify = function (text, title, appId) { return notify(appId || 'rings', text, title); };
     K.setSetting = setSetting; K.getSetting = getSetting;
     K.rotate = function () { S.orientation = S.orientation === 'portrait' ? 'landscape' : 'portrait'; S.page = 0; changed(); return S.orientation; };
@@ -983,7 +1011,7 @@
       var title = s.props.title !== undefined ? fmt(resolveProp(proc, s.props.title)) : null;
       if (title !== null) kids.push(V('appbar', '@appbar', { title: title, back: proc.hist.length > 1, glyph: info && info.glyph }, [], ['tap']));
       var body = s.children.map(function (c) { return nodeToV(c, proc); });
-      kids.push(V('scroll', 'scroll:' + s.id, {}, body));
+      kids.push(V('scroll', 'scroll:' + s.id, {}, body, (proc.evts[s.id] || []).slice()));   // GESTURES: screen-level handlers (ui.on (main) swipeleft ...)
       return V('view', 'app:' + proc.id, { app: proc.id, screen: s.id }, kids);
     }
     function ringsV(proc) {

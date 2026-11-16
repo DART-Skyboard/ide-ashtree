@@ -248,7 +248,10 @@
     e._cnp = inst; e._tag = tag;
     e.addEventListener('click', function (ev) {
       if (inst.swallow) { inst.swallow = false; ev.stopPropagation(); return; }
-      var v2 = e._v; if (!v2 || v2.on.indexOf('tap') < 0 || ev.defaultPrevented || e.tagName === 'INPUT' || e.tagName === 'TEXTAREA') return;
+      var v2 = e._v; if (!v2 || ev.defaultPrevented || e.tagName === 'INPUT' || e.tagName === 'TEXTAREA') return;
+      if (v2.on.indexOf('tap') < 0 && v2.on.indexOf('doubletap') < 0 && v2.on.indexOf('tripletap') < 0) return;
+      if (inst.gestures && inst.gestures.tap(v2, ev)) { ev.stopPropagation(); return; }   // GESTURES: node with doubletap/tripletap handlers -> counted, single tap waits briefly
+      if (v2.on.indexOf('tap') < 0) return;
       ev.stopPropagation(); inst.kernel.dispatch(v2.id, 'tap', { x: ev.offsetX, y: ev.offsetY });
     });
     return e;
@@ -565,7 +568,9 @@
     if (global.ResizeObserver) { ro = new global.ResizeObserver(function () { layout(); }); ro.observe(mount); } else global.addEventListener('resize', layout);
 
     // --- input: gestures (touch + mouse) ---
-    (function () {
+    // GESTURES: js/phone/canopy-gestures.js owns all gesture recognition; the legacy block below is only a fallback when it isn't loaded
+    if (global.CanopyGestures && global.CanopyGestures.attach) inst.gestures = global.CanopyGestures.attach(inst, { screen: screen, root: root, view: view, SCREEN: SCREEN, render: function () { render(); } });
+    else (function () {
       var st = null;
       screen.addEventListener('pointerdown', function (e) {
         if (e.target.closest && e.target.closest('input,textarea')) { st = null; return; }
@@ -642,6 +647,7 @@
     };
     inst.shutdown = function () { if (inst.kernel) inst.kernel.shutdown(); if (camStream) inst.host.camera.close(); render(); return inst; };
     inst.press = function (key) {
+      if (inst.gestures && inst.gestures.beforePress && inst.gestures.beforePress(key)) return true;   // GESTURES: app switcher swallows Home/Back
       var K = inst.kernel; if (!K) return false;
       if (key === 'power' && !K.state().powered) { inst.boot(); return true; }
       var r = K.press(key); render(); return r;
@@ -678,6 +684,7 @@
     };
     inst.log = function () { return logLines.slice(); };
     inst.destroy = function () {
+      if (inst.gestures) { try { inst.gestures.destroy(); } catch (x) { /* ignore */ } }
       if (liveWp) { try { liveWp.stop(); } catch (x) {} liveWp = null; }
       clearInterval(timer); if (ro) ro.disconnect(); else global.removeEventListener('resize', layout);
       if (inst.kernel && inst.kernel.state().powered) inst.kernel.shutdown();
