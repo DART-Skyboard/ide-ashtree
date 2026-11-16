@@ -143,6 +143,14 @@
         Object.keys(mem).forEach(function (k) { if (k.indexOf(prefix) === 0) out[k.slice(prefix.length)] = 1; });
         try { if (ls && typeof ls.length === 'number' && ls.key) for (i = 0; i < ls.length; i++) { var kk = ls.key(i); if (kk && kk.indexOf(prefix) === 0) out[kk.slice(prefix.length)] = 1; } } catch (e) { /* ignore */ }
         return Object.keys(out).filter(function (k) { return k !== '__idx' && S_.get(k) !== null; });
+      },
+      // real usage of this seed's namespace: number of keys and characters held (localStorage when it can be enumerated, else this session's memory)
+      usage: function () {
+        var seen = {}, n = 0, bytes = 0, i, k, v;
+        try { if (ls && typeof ls.length === 'number' && ls.key) for (i = 0; i < ls.length; i++) { k = ls.key(i); if (k && k.indexOf(prefix) === 0) seen[k] = ls.getItem(k); } } catch (e) { /* use memory */ }
+        Object.keys(mem).forEach(function (mk) { if (!(mk in seen)) seen[mk] = mem[mk]; });
+        Object.keys(seen).forEach(function (sk) { v = seen[sk]; if (v != null) { n++; bytes += sk.length - prefix.length + String(v).length; } });
+        return { keys: n, bytes: bytes };
       }
     };
     return S_;
@@ -178,7 +186,7 @@
       orientation: 'portrait', page: 0, shade: false,
       apps: [], appIndex: {}, procs: {}, recents: [], fg: null,
       notifs: [], pin: '', pinError: false, toast: null,
-      battery: 87, charging: false, signal: 4, uptime: 0, drainAcc: 0,
+      battery: 87, charging: false, signal: 4, uptime: 0, drainAcc: 0, dnd: false,
       cam: { open: false, facing: 'back', synthetic: false, frames: 0, last: null },
       tilt: { x: 0, y: 0, z: 9.8 }, loc: { lat: 37.7749, lon: -122.4194 },
       logLines: [], bootNode: manifest.boot || 'Crown', netListeners: {}
@@ -212,7 +220,7 @@
       return true;
     }
     function launch(id) {
-      if (!S.powered || S.locked) return false;
+      if (!S.powered || S.locked || !id) return false;
       var info = appInfo(id);
       if (!info) { log('error', 'launch: unknown app ' + id); return false; }
       var p = S.procs[id];
@@ -226,6 +234,8 @@
       }
       S.recents = S.recents.filter(function (x) { return x !== id; }); S.recents.push(id);
       S.fg = id; S.shade = false;
+      // every launch (first start or coming back to a running app) fires the app's optional `ui.on (resume) tap { ... }` handler once it is the foreground app, so live readouts are current
+      if (p.handlers['resume|tap']) execOps(p.handlers['resume|tap'], { proc: p, scope: { evt: 'resume' }, container: null, depth: 0, shared: { n: 0, halt: false } });
       changed(); return true;
     }
     function kill(id) {
@@ -277,10 +287,18 @@
       return null;
     }
     function persistSettings() {
-      sysStore.set('settings', JSON.stringify({ theme: S.theme, wallpaper: S.wallpaper, cols: S.cols, rows: S.rows, dock: S.dock, brightness: S.brightness, volume: S.volume, clock24: S.clock24 }));
+      sysStore.set('settings', JSON.stringify({ theme: S.theme, wallpaper: S.wallpaper, cols: S.cols, rows: S.rows, dock: S.dock, brightness: S.brightness, volume: S.volume, clock24: S.clock24, dnd: S.dnd }));
     }
+    // 'next' cycles a setting through its presets (themes, wallpapers, brightness, volume)
+    function nextOf(list, cur) { var i = list.indexOf(cur); return list[(i + 1) % list.length]; }
     function setSetting(key, value, silent) {
       key = String(key).toLowerCase();
+      if (value === 'next') {
+        if (key === 'theme') value = nextOf(themeNames(), S.theme);
+        else if (key === 'wallpaper') value = nextOf(wallpapers().map(function (w) { return w.id; }), S.wallpaper);
+        else if (key === 'brightness') { var bs = [0.3, 0.6, 1]; value = bs.filter(function (x) { return x > S.brightness + 0.01; })[0] || bs[0]; }
+        else if (key === 'volume') { var vs = [0, 50, 100]; value = vs.filter(function (x) { return x > S.volume; })[0]; if (value === undefined) value = vs[0]; }
+      }
       switch (key) {
         case 'theme': { var n = resolveThemeName(value); if (!n) { log('warn', 'unknown theme ' + value); return false; } S.theme = n; break; }
         case 'wallpaper': {
@@ -295,6 +313,16 @@
         case 'brightness': { var b = toNum(value, 1); if (b > 1) b = b / 100; S.brightness = clamp(b, 0.1, 1); break; }
         case 'volume': S.volume = clamp(Math.round(toNum(value, 50)), 0, 100); break;
         case 'clock24': S.clock24 = value === true || value === 'true' || value === '1' || value === 1; break;
+        case 'dnd': {   // do not disturb: new notifications still land in the shade but no longer pop a banner
+          var dv = String(value).toLowerCase();
+          S.dnd = dv === 'toggle' ? !S.dnd : (dv === 'on' || dv === 'true' || dv === '1'); break;
+        }
+        case 'orientation': {
+          var ov = String(value).toLowerCase(), want = ov === 'toggle' ? (S.orientation === 'portrait' ? 'landscape' : 'portrait') : ov;
+          if (want !== 'portrait' && want !== 'landscape') return false;
+          if (want !== S.orientation) { S.orientation = want; S.page = 0; } break;
+        }
+        case 'close': { var cid = String(value); if (cid && cid !== 'crown' && S.procs[cid]) kill(cid); else return false; break; }   // action: close a running app
         default: log('warn', 'unknown setting ' + key); return false;
       }
       if (!silent && booted) persistSettings();
@@ -305,8 +333,31 @@
       switch (String(key).toLowerCase()) {
         case 'theme': return S.theme; case 'wallpaper': return S.wallpaper; case 'layout': case 'grid': return S.cols + 'x' + S.rows;
         case 'dock': return S.dock; case 'brightness': return S.brightness; case 'volume': return S.volume; case 'clock24': return S.clock24;
+        // read-only status for system-style apps (Widow); everything here is real kernel state
+        case 'dnd': return S.dnd ? 'On' : 'Off';
+        case 'orientation': return S.orientation;
+        case 'date': return dateText();
+        case 'signal': return S.signal;
+        case 'power': return Math.round(S.battery) + '%' + (S.charging ? ' \u26A1' : '');
+        case 'uptime': return uptimeText();
+        case 'openapps': return openProcs().length;
+        case 'storage': { var u = sysStore.usage(); return u.keys + (u.keys === 1 ? ' key' : ' keys') + ' \u00B7 ' + (u.bytes < 1024 ? u.bytes + ' B' : (u.bytes / 1024).toFixed(1) + ' KB'); }
+        case 'wallpapername': { var wp = wallpapers().filter(function (x) { return x.id === S.wallpaper; })[0]; return wp ? wp.name : S.wallpaper; }
+        case 'windows': return otherApps().length;
+        case 'recentnote': return otherApps().length ? '' : 'No other apps are open. Launch one from Crown.';
+      }
+      var rm = /^(recent|recentlabel)([1-9])$/.exec(String(key).toLowerCase());
+      if (rm) {   // the Nth most recently used running app other than the foreground one: its id, or "glyph  Name" ('' when none)
+        var ra = otherApps()[+rm[2] - 1], ri = ra && appInfo(ra);
+        return !ra ? '' : rm[1] === 'recent' ? ra : ((ri && ri.glyph) || '') + '  ' + (ri ? ri.name : ra);
       }
       return '';
+    }
+    function openProcs() { return Object.keys(S.procs).filter(function (id) { return id !== 'crown'; }); }
+    function otherApps() { return S.recents.filter(function (id) { return id !== S.fg && S.procs[id]; }).reverse(); }
+    function uptimeText() {
+      var t = Math.floor(S.uptime / 1000), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60;
+      return h ? h + 'h ' + pad2(m) + 'm' : m ? m + 'm ' + pad2(sec) + 's' : sec + 's';
     }
     function registerApp(a) {
       if (!a || !a.id) return;
@@ -527,7 +578,7 @@
       if (op.children) { var saved = s.children; execOps(op.children, childCtx(ctx, s)); }
       if (op.handlers) Object.keys(op.handlers).forEach(function (ev) { registerHandler(ctx.proc, id, ev, op.handlers[ev]); });
     };
-    ['text', 'button', 'input', 'list', 'icon', 'menu', 'image'].forEach(function (k) {
+    ['text', 'button', 'input', 'list', 'icon', 'menu', 'image', 'web'].forEach(function (k) {
       OPS['ui.' + k] = function (op, ctx) { addNode(ctx, k, op); };
     });
     ['row', 'col', 'grid'].forEach(function (k) {
@@ -676,8 +727,10 @@
 
     // --- store.* ---
     function skey(ctx, k) { return ctx.proc.id + ':' + k; }
+    // store.get (app/key) reads another app's stored value (read-only: store.set always writes the caller's own namespace)
+    function rkey(ctx, k) { var m = /^([\w-]+)\/(.+)$/.exec(String(k)); return m && S.appIndex[m[1]] ? m[1] + ':' + m[2] : skey(ctx, k); }
     OPS['store.get'] = function (op, ctx) {
-      var v = sysStore.get(skey(ctx, arg(op, ctx, 'key'))), d = destOf(op);
+      var v = sysStore.get(rkey(ctx, arg(op, ctx, 'key'))), d = destOf(op);
       if (d && v != null) assignVar(ctx, d, numify(v));   // missing key leaves the variable (and its default) unchanged
     };
     OPS['store.set'] = function (op, ctx) {
@@ -717,7 +770,7 @@
         ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][d.getMonth()] + ' ' + d.getDate();
     }
     function notify(appId, text, title) {
-      var info = appInfo(appId), n = { id: seq++, app: appId, title: title || (info ? info.name : appId), text: String(text == null ? '' : text), t: now(), fresh: true, age: 0 };
+      var info = appInfo(appId), n = { id: seq++, app: appId, title: title || (info ? info.name : appId), text: String(text == null ? '' : text), t: now(), fresh: !S.dnd, age: 0 };
       S.notifs.unshift(n); if (S.notifs.length > 50) S.notifs.pop();
       log('info', 'notify [' + n.title + '] ' + n.text); changed(); return n;
     }
@@ -771,7 +824,7 @@
       if (S.powered) return K;
       S.powered = true; S.screenOff = false; S.locked = manifest.lock === false ? false : true; S.fg = null;
       S.apps = []; S.appIndex = {}; S.procs = {}; S.recents = []; S.notifs = []; S.page = 0; S.shade = false;
-      Object.assign(S, { theme: 'Ash Dark', wallpaper: 'theme', cols: 4, rows: 5, dock: 4, brightness: 1, volume: 50, clock24: false });
+      Object.assign(S, { theme: 'Ash Dark', wallpaper: 'theme', cols: 4, rows: 5, dock: 4, brightness: 1, volume: 50, clock24: false, dnd: false });
       booted = false;
       var savedRaw = sysStore.get('settings');
       // 1. manifest
@@ -793,7 +846,7 @@
       try {
         var saved = JSON.parse(savedRaw || 'null');
         if (saved) {
-          ['theme', 'wallpaper', 'dock', 'brightness', 'volume', 'clock24'].forEach(function (k) { if (saved[k] !== undefined) setSetting(k, saved[k], true); });
+          ['theme', 'wallpaper', 'dock', 'brightness', 'volume', 'clock24', 'dnd'].forEach(function (k) { if (saved[k] !== undefined) setSetting(k, saved[k], true); });
           if (saved.cols && saved.rows) { S.cols = saved.cols; S.rows = saved.rows; }
         }
       } catch (e) { /* ignore corrupt settings */ }

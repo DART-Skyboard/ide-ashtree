@@ -10,3 +10,25 @@
 .cnp-web-note{ position:absolute; left:8px; right:52px; bottom:8px; z-index:3; padding:6px 10px; border-radius:10px; font-size:11.5px; line-height:1.35; background:rgba(16,21,28,.88); color:#d7e0ea; display:none; pointer-events:none; }
 .cnp-web.slow:not(.loaded) .cnp-web-note{ display:block; }
 .cnp-web:not([data-has]) .cnp-web-frame:not([src]){ display:none; }
+
+/* ---- Drift browser chrome (phone/apps/drift.ashos). Theme variables only; 44px+ touch targets. ---- */
+.dhide{ display:none!important; }
+.cnp-scroll:has(>.cnp-web:not(.dhide)){ overflow:hidden; padding-bottom:20px; gap:8px; }
+.cnp-button.k-mode{ flex:2.2 1 0; min-width:0; min-height:44px; padding:4px 6px; font-size:11.5px; letter-spacing:.03em; border-radius:22px; background:color-mix(in srgb,var(--accent) 14%,var(--surface2)); border-color:color-mix(in srgb,var(--accent) 30%,var(--border)); color:var(--accent); }
+.cnp-button.k-x{ flex:0 0 52px!important; min-height:56px; color:var(--danger); background:color-mix(in srgb,var(--danger) 13%,var(--surface2)); border-color:color-mix(in srgb,var(--danger) 38%,var(--border)); font-size:18px; padding:0; }
+.cnp-button.k-hint{ min-height:0; padding:6px 10px; justify-content:flex-start; text-align:left; font-size:11.5px; font-weight:450; line-height:1.3; color:var(--dim); border-radius:10px; background:color-mix(in srgb,var(--accent) 8%,var(--surface)); box-shadow:none; }
+.cnp-button.k-tool{ min-width:0; min-height:44px; font-size:24px; }
+.cnp-scroll>.cnp-col>.cnp-row>.cnp-input{ min-height:44px; padding:8px 12px; }
+.cnp-scroll>.cnp-col>.cnp-row>.cnp-button.k-go{ min-height:44px; flex:0 0 64px!important; }
+.cnp-scroll>.cnp-col:first-child>.cnp-row:first-child{ gap:6px; }
+/* start page: hero search, bookmark tiles (2 cols portrait, 4 landscape), recents */
+.cnp-scroll>.cnp-col>.cnp-row:first-child>.cnp-input{ min-height:56px; font-size:17px; border-radius:28px; padding:10px 20px; }
+.cnp-scroll>.cnp-col>.cnp-row:first-child>.cnp-button.k-go{ min-height:56px; border-radius:28px; flex:0 0 72px!important; }
+.cnp-col .cnp-grid>.cnp-button.k-card{ font-size:12.5px; min-height:52px; padding:8px 6px 8px 10px; gap:6px; overflow-wrap:anywhere; letter-spacing:0; }
+.cnp-col .cnp-grid>.cnp-button.k-card::after{ display:none; }
+.cnp-col .cnp-grid>.cnp-button.k-card::before{ width:3px; margin-right:-2px; }
+.cnp-scroll>.cnp-col>.cnp-text[style*="font-size: 12px"]{ letter-spacing:.12em; font-weight:650; padding:6px 2px 0; }
+.cnp-scroll>.cnp-col>.cnp-text[style*="font-size: 12px"]:last-child{ letter-spacing:.01em; font-weight:400; text-align:center; padding:6px 8px 0; }
+.cnp-device.landscape .cnp-col .cnp-grid{ grid-template-columns:repeat(4,minmax(0,1fr))!important; }
+.cnp-device.landscape .cnp-scroll>.cnp-col:first-child>.cnp-row:first-child{ flex:0 0 320px; }
+.cnp-device.landscape .cnp-scroll>.cnp-col>.cnp-row:first-child{ max-width:560px; }

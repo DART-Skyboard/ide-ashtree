@@ -17,6 +17,7 @@ sys.app (leaf)  name="Leaf"  glyph="❦" color=#34c759 entry=Leaf
 sys.app (drift) name="Drift" glyph="◎" color=#0a84ff entry=Drift
 sys.app (lens)  name="Lens"  glyph="◉" color=#bf5af2 entry=Lens
 sys.app (rings) name="Rings" glyph="⚙" color=#8e8e93 entry=Rings
+sys.app (widow) name="Widow" glyph="◈" color=#5e5ce6 entry=Widow
 
 // ---- Crown: home, Bark (lock), notification shade, app menu ----
 (Crown):-: {
@@ -47,6 +48,7 @@ sys.app (rings) name="Rings" glyph="⚙" color=#8e8e93 entry=Rings
       ui.button (mdrift) label="Drift  (browser)"
       ui.button (mlens) label="Lens  (camera)"
       ui.button (mrings) label="Rings  (settings)"
+      ui.button (mwidow) label="Widow  (windows + widgets)"
     }
     ui.button (mback) label="Back to home" kind=tonal
   }
@@ -91,6 +93,7 @@ sys.app (rings) name="Rings" glyph="⚙" color=#8e8e93 entry=Rings
   ui.on (mdrift) tap { sys.launch (drift) }
   ui.on (mlens) tap { sys.launch (lens) }
   ui.on (mrings) tap { sys.launch (rings) }
+  ui.on (mwidow) tap { sys.launch (widow) }
   ui.on (mback) tap { ui.screen (home) }
   ui.on (qdim) tap { sys.setting (brightness) 0.3 }
   ui.on (qmid) tap { sys.setting (brightness) 0.6 }

@@ -53,7 +53,7 @@
     },
     button: function (e, v) {
       var p = v.props; e.textContent = (p.glyph ? p.glyph + ' ' : '') + (p.label == null ? '' : p.label);
-      e.className = 'cnp-button' + (p.kind ? ' k-' + p.kind : '');
+      e.className = 'cnp-button' + (p.kind ? ' k-' + p.kind : '') + (e._cls ? ' ' + e._cls : '');   // keep ui.set cls= (update() applied it just before this leaf ran)
       if (p.color) e.style.background = p.color; else e.style.background = '';
       if (p.span) e.style.gridColumn = 'span ' + p.span; else e.style.gridColumn = '';
       if (p.w) e.style.width = /^\d+$/.test(p.w) ? p.w + 'px' : p.w; if (p.h) e.style.height = /^\d+$/.test(p.h) ? p.h + 'px' : p.h;
@@ -149,7 +149,7 @@
   // The host browser engine does all decoding/rendering (HTML5, CSS, SVG, WebGL/three.js, WebAssembly, JS, MP4/MOV/MP3, PNG/JPEG/GIF/WebP/AVIF/JXL where the host supports them).
   var WEB_ALLOW = 'autoplay; fullscreen; picture-in-picture; encrypted-media; camera; microphone; geolocation; clipboard-read; clipboard-write; web-share; xr-spatial-tracking; accelerometer; gyroscope; magnetometer; gamepad; midi; display-capture; screen-wake-lock; storage-access; cross-origin-isolated';
   var WEB_SANDBOX = 'allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads allow-pointer-lock allow-presentation allow-orientation-lock allow-storage-access-by-user-activation';
-  var SEARCH_URL = 'https://duckduckgo.com/?q=';
+  var SEARCH_URL = 'https://www.bing.com/search?q=';   // DuckDuckGo sends frame-ancestors 'self' (refuses embedding); Bing allows it
   function normalizeUrl(raw) {
     var t = String(raw == null ? '' : raw).trim();
     if (!t) return '';
@@ -195,8 +195,14 @@
     // height: fill whatever is left in the scroll container under the toolbars
     var par = e.parentNode, hh = parseFloat(e._wh) || 0;
     if (!hh && par && par.clientHeight) {
-      var used = 0, i, sib; for (i = 0; i < par.children.length; i++) { sib = par.children[i]; if (sib !== e) used += sib.offsetHeight + 8; }
-      hh = Math.max(180, par.clientHeight - used - 8);
+      // content box of the scroller minus every visible sibling (height + margins) and the flex gaps between them
+      var cs = global.getComputedStyle(par), gap = parseFloat(cs.rowGap) || 0, used = 0, n = 1, i, sib, sc2;
+      for (i = 0; i < par.children.length; i++) {
+        sib = par.children[i]; if (sib === e) continue;
+        sc2 = global.getComputedStyle(sib); if (sc2.display === 'none') continue;
+        used += sib.offsetHeight + (parseFloat(sc2.marginTop) || 0) + (parseFloat(sc2.marginBottom) || 0); n++;
+      }
+      hh = Math.max(180, par.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0) - used - gap * (n - 1));
     }
     hh = hh || 420; e.style.height = hh + 'px';
     if (desktop) {
@@ -322,6 +328,46 @@
     r = Math.max(0, Math.min(r, w / 2, h / 2)); ctx.beginPath();
     ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
   }
+  // Browsers never let a page read another site's pixels, so a cross-origin <iframe> cannot be painted into a canvas.
+  // paintScreen() therefore draws an honest placeholder card; real pixels come from grabTab() (screen-capture API) when available.
+  function framePlaceholder(ctx, x, y, w, h, url) {
+    var host = ''; try { host = new URL(url).host; } catch (e) { host = url || ''; }
+    var g = ctx.createLinearGradient(x, y, x, y + h); g.addColorStop(0, '#1b1f3a'); g.addColorStop(1, '#0d1024');
+    ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#e8eaff';
+    ctx.font = '600 ' + Math.max(13, Math.min(22, w / 16)) + 'px sans-serif'; ctx.fillText(host || 'Web page', x + w / 2, y + h / 2 - 22);
+    ctx.fillStyle = '#9aa0d0'; ctx.font = Math.max(10, Math.min(14, w / 28)) + 'px sans-serif';
+    ctx.fillText('Live page content is not part of this screenshot', x + w / 2, y + h / 2 + 4);
+    ctx.fillText('(browsers block reading other sites’ pixels)', x + w / 2, y + h / 2 + 24);
+    ctx.textAlign = 'start';
+  }
+  function visibleWebFrame(screen) {
+    var fs = screen.querySelectorAll('.cnp-web-frame');
+    for (var i = 0; i < fs.length; i++) if (fs[i].getAttribute('src') && fs[i].offsetParent !== null) return fs[i];
+    return null;
+  }
+  // Real screenshot of what is on screen (cross-origin pages included) via the screen-capture API, cropped to the phone.
+  // Needs a user gesture + permission prompt, and a browser that has getDisplayMedia (desktop Chrome/Edge/Firefox/Safari; not Android browsers).
+  function grabTab(screen) {
+    var md = global.navigator && global.navigator.mediaDevices;
+    if (!md || !md.getDisplayMedia) return Promise.reject(new Error('no screen capture'));
+    return md.getDisplayMedia({ video: { displaySurface: 'browser' }, audio: false, preferCurrentTab: true, selfBrowserSurface: 'include', surfaceSwitching: 'exclude' }).then(function (ms) {
+      var v = doc.createElement('video'); v.muted = true; v.playsInline = true; v.srcObject = ms;
+      var stop = function () { ms.getTracks().forEach(function (t) { t.stop(); }); };
+      return v.play().then(function () {
+        return new Promise(function (res) { setTimeout(res, 350); });     // let the capture settle past the permission UI
+      }).then(function () {
+        var ratio = v.videoWidth / global.innerWidth;
+        if (!v.videoWidth || Math.abs(v.videoWidth / v.videoHeight - global.innerWidth / global.innerHeight) > 0.03) throw new Error('captured surface is not this tab');
+        var R = screen.getBoundingClientRect(), cv = doc.createElement('canvas');
+        cv.width = Math.round(R.width * ratio); cv.height = Math.round(R.height * ratio); var c = cv.getContext('2d');
+        var kk = R.width / screen.offsetWidth || 1;
+        rrect(c, 0, 0, cv.width, cv.height, 34 * kk * ratio); c.clip();
+        c.drawImage(v, R.left * ratio, R.top * ratio, R.width * ratio, R.height * ratio, 0, 0, cv.width, cv.height);
+        stop(); return cv.toDataURL('image/png');
+      }).catch(function (e) { stop(); throw e; });
+    });
+  }
   function paintScreen(screen) {
     var R = screen.getBoundingClientRect(), k = R.width / screen.offsetWidth || 1, W = screen.offsetWidth, H = screen.offsetHeight, DPR = 2;
     var cv = doc.createElement('canvas'); cv.width = W * DPR; cv.height = H * DPR; var ctx = cv.getContext('2d'); ctx.scale(DPR, DPR);
@@ -338,6 +384,7 @@
         var bw = parseFloat(cs.borderTopWidth) || 0;
         if (bw > 0 && cs.borderTopStyle !== 'none') { ctx.strokeStyle = cs.borderTopColor; ctx.lineWidth = bw; rrect(ctx, x + bw / 2, y + bw / 2, w - bw, h - bw, rad); ctx.stroke(); }
         if (node.tagName === 'CANVAS' || node.tagName === 'VIDEO' || node.tagName === 'IMG') { try { ctx.drawImage(node, x, y, w, h); } catch (e) { /* tainted */ } }
+        if (node.tagName === 'IFRAME') framePlaceholder(ctx, x, y, w, h, node.parentNode && node.parentNode._wurl);
       }
       for (var c = node.firstChild; c; c = c.nextSibling) {
         if (c.nodeType === 1) { if (c.tagName !== 'CANVAS' && c.tagName !== 'VIDEO' && c.tagName !== 'IMG') walk(c); else walk(c); }
@@ -580,11 +627,28 @@
       var r = K.press(key); render(); return r;
     };
     inst.rotate = function () { inst.kernel.rotate(); render(); layout(); return inst.orientation; };
+    function shotToast(msg) {
+      var t = el('div', 'cnp-toast', stage); t.textContent = msg;
+      t.style.cssText = 'position:absolute;left:50%;bottom:14px;transform:translateX(-50%);max-width:86%;padding:9px 14px;border-radius:12px;background:rgba(20,22,40,.94);color:#e8eaff;font:13px/1.35 sans-serif;z-index:30;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.4);pointer-events:none';
+      setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 6500);
+    }
     inst.screenshot = function (o) {
-      render(); var url;
-      try { url = paintScreen(screen); } catch (e) { onLog('[error] screenshot failed: ' + e.message, 'error'); return null; }
-      if (o && o.download) { var a = doc.createElement('a'); a.href = url; a.download = 'samara-' + Date.now() + '.png'; doc.body.appendChild(a); a.click(); doc.body.removeChild(a); }
-      return url;
+      render();
+      var finish = function (url) {
+        if (url && o && o.download) { var a = doc.createElement('a'); a.href = url; a.download = 'samara-' + Date.now() + '.png'; doc.body.appendChild(a); a.click(); doc.body.removeChild(a); }
+        return url;
+      };
+      var paint = function () { try { return paintScreen(screen); } catch (e) { onLog('[error] screenshot failed: ' + e.message, 'error'); return null; } };
+      if (!visibleWebFrame(screen)) return finish(paint());                  // no embedded page on screen: plain synchronous capture
+      var canReal = !(o && o.real === false) && !!(global.navigator && global.navigator.mediaDevices && global.navigator.mediaDevices.getDisplayMedia);
+      var p = canReal ? grabTab(screen).catch(function (e) { onLog('[warn] screen capture unavailable: ' + (e && e.message), 'warn'); return null; }) : Promise.resolve(null);
+      return p.then(function (real) {
+        if (real) return finish(real);
+        var url = paint();
+        shotToast(canReal ? 'Screen capture was cancelled, so the web page area is a placeholder. Allow "this tab" to include the live page.'
+          : 'This browser cannot capture other sites’ content (Android browsers have no screen-capture API). The page area is a placeholder; use your device screenshot for the live page.');
+        return finish(url);
+      });
     };
     inst.log = function () { return logLines.slice(); };
     inst.destroy = function () {

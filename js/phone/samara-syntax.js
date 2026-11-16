@@ -62,7 +62,9 @@
   def('ui.col',    { pos: ['id'], keys: ['gap', 'parent', 'kind', 'weight', 'span', 'wrap', 'justify'], block: 'children', doc: 'Vertical container.' });
   def('ui.grid',   { pos: ['id'], keys: ['cols', 'gap', 'parent'], block: 'children', doc: 'Grid container.' });
   def('ui.set',    { pos: ['id'], any: true, doc: 'Set widget properties: ui.set (id) text=.. color=..' });
-  def('ui.on',     { pos: ['id', 'event'], block: 'handlers', events: ['tap', 'change', 'submit'], doc: 'Event handler block.' });
+  def('ui.on',     { pos: ['id', 'event'], block: 'handlers', events: ['tap', 'change', 'submit', 'load'], doc: 'Event handler block (load: ui.web finished loading).' });
+  def('call',      { pos: ['node'], doc: 'Run another node\'s ops in this app (shared vars/widgets), like a subroutine.' });
+  def('if',        { pos: [], keys: ['cond'], block: 'children', doc: 'Conditional block: if cond="${a}==${b}" { ... }  (== != < > <= >=; no else, use a second if).' });
   def('ui.menu',   { pos: ['id'], keys: ['items', 'parent'], doc: 'Menu of items.' });
   // gfx
   def('gfx.canvas', { pos: ['id'], keys: ['w', 'h'], doc: '2D canvas surface.' });

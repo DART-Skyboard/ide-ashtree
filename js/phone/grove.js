@@ -7,7 +7,7 @@
 (function (root) {
   "use strict";
 
-  var DEMO_FILES = ["phone/os/samara.ashos", "phone/apps/tally.ashos", "phone/apps/leaf.ashos", "phone/apps/drift.ashos"];
+  var DEMO_FILES = ["phone/os/samara.ashos", "phone/apps/tally.ashos", "phone/apps/leaf.ashos", "phone/apps/drift.ashos", "phone/apps/widow.ashos"];
   var DEFAULT_ENTRY = "phone/os/samara.ashos";
   var LH = 20.8;
   var K_CUR = "grove_current", K_LIST = "grove_projects", K_PROJ = "grove_project_";
