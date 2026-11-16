@@ -11,6 +11,14 @@
 <style>
   html,body{margin:0;height:100%;background:#05070a;color:#e9edf2;font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overflow:hidden}
   #mount{position:fixed;inset:0}
+  /* ?bare=1 (or #bare=1): the phone alone on a transparent page, for hosting inside a floating window on another site */
+  html.bare,html.bare body{background:transparent;color-scheme:normal}
+  .bare .cnp{padding:0;gap:0;background:transparent;overflow:visible;pointer-events:none}
+  .bare .cnp-toolbar,.bare .cnp-hw,.bare .cnp-label{display:none}
+  .bare .cnp-stage{padding:0;overflow:visible;pointer-events:none}
+  .bare .cnp-fit{pointer-events:none}
+  .bare .cnp-device{pointer-events:auto}
+  .bare #mount{pointer-events:none}
   #msg{position:fixed;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;color:#8ab4cc}
   #msg b{color:#ff9500}
 </style>
@@ -18,6 +26,7 @@
 <body>
 <div id="mount"></div>
 <div id="msg"></div>
+<script>try{if(/(?:^|[?&#])bare=1/.test(location.search+location.hash))document.documentElement.className+=' bare';}catch(e){}</script>
 <script src="js/phone/samara-syntax.js?v=samara1"></script>
 <script src="js/phone/seedpress.js?v=samara1"></script>
 <script src="js/phone/samara-update.js?v=upd1"></script>
@@ -48,6 +57,26 @@
     }
     return new TextDecoder().decode(b);
   }
+  // Host bridge (bare mode): the embedding page can drive the phone and follow its size with postMessage.
+  //   parent -> phone: {samara:"cmd", cmd:"power"|"rotate"|"shot"|"home"}      phone -> parent: {samara:"size", w, h, orientation} | {samara:"shot", url}
+  function bridge(sim) {
+    var dev = mount.querySelector(".cnp-device"), last = "";
+    function post(m) { try { parent.postMessage(m, "*"); } catch (e) { /* no parent */ } }
+    function size() {
+      if (!dev) return; var W = parseFloat(dev.style.width) || 388, H = parseFloat(dev.style.height) || 808, k = W + "x" + H;
+      if (k !== last) { last = k; post({ samara: "size", w: W, h: H, orientation: sim.orientation }); }
+    }
+    if (window.MutationObserver && dev) new MutationObserver(size).observe(dev, { attributes: true, attributeFilter: ["style", "class"] });
+    size(); setTimeout(size, 300);
+    window.addEventListener("message", function (ev) {
+      var d = ev.data; if (!d || d.samara !== "cmd") return;
+      if (d.cmd === "power") sim.press("power");
+      else if (d.cmd === "rotate") sim.rotate();
+      else if (d.cmd === "home") sim.press("home");
+      else if (d.cmd === "shot") { Promise.resolve(sim.screenshot({ service: false })).then(function (u) { post({ samara: "shot", url: u || null }); }); }
+      setTimeout(size, 60);
+    });
+  }
   async function main() {
     if (!window.Canopy || !Canopy.create) throw new Error("Canopy simulator is not available on this host.");
     var qs = new URLSearchParams(location.search), src = qs.get("src"), hash = location.hash.replace(/^#/, ""), text;
@@ -73,6 +102,7 @@
     if (feed) { var fu = new URL(feed, location.href); if (fu.protocol !== "https:" && fu.origin !== location.origin) throw new Error("Only https:// feed URLs are allowed."); feed = fu.href; }
     var sim = Canopy.create(mount, { seed: seed, onLog: function () {}, update: autoUpd, updateFeedUrl: feed || undefined });
     await sim.boot();
+    if (document.documentElement.classList.contains("bare")) bridge(sim);
   }
   main().catch(function (e) { fail(e.message || String(e)); });
 })();
