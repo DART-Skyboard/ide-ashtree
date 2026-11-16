@@ -363,3 +363,17 @@ textarea.cnp-input{ min-height:110px; resize:vertical; line-height:1.45; }
 .cnp-device.landscape .cnp-row>.cnp-button[data-id^="wc"]{ min-height:48px; }
 .cnp-device.landscape .cnp-grid>.cnp-button[data-id^="wt"]{ min-height:70px; padding-top:8px; }
 .cnp-device.landscape .cnp-scroll [data-id="wnote"]{ padding:12px; }
+
+/* ==== updates: system pages (About / System update / Developer options) + developer overlays ==== */
+.cnp-col.k-panel{ display:flex; flex-direction:column; gap:12px; padding:16px; border-radius:var(--r-lg); background:var(--surface); border:1px solid var(--border); box-shadow:var(--raise); }
+.cnp-col.k-panel>.cnp-col{ gap:1px; }
+.cnp-text.k-head{ font-size:12px!important; letter-spacing:.12em; text-transform:uppercase; color:var(--dim)!important; font-weight:700; }
+.cnp-col.k-panel .cnp-button{ width:100%; }
+.cnp-col.k-panel .cnp-row>.cnp-button{ padding:8px 4px; font-size:13px; }
+.cnp-device.landscape .cnp-scroll:has(>.cnp-col.k-panel){ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 12px; align-items:start; }
+.cnp-device.landscape .cnp-scroll:has(>.cnp-col.k-panel)>.cnp-button,.cnp-device.landscape .cnp-scroll:has(>.cnp-col.k-panel)>.cnp-text{ grid-column:1/3; }
+.cnp-screen.dev-bounds .cnp-view *{ outline:1px solid rgba(255,70,70,.7); outline-offset:-1px; }
+.cnp-touch{ position:absolute; width:34px; height:34px; margin:-17px 0 0 -17px; border-radius:50%; background:rgba(255,255,255,.35); border:2px solid rgba(255,255,255,.85); pointer-events:none; z-index:99; animation:cnp-touch .7s ease-out forwards; }
+@keyframes cnp-touch{ from{ transform:scale(.6); opacity:1; } to{ transform:scale(1.5); opacity:0; } }
+.cnp-scroll>.cnp-col.k-panel:first-child,.cnp-device.landscape .cnp-scroll>.cnp-col.k-panel:first-child{ position:static; z-index:auto; margin:0; padding:16px; top:auto; flex-direction:column; align-items:stretch; background:var(--surface); -webkit-backdrop-filter:none; backdrop-filter:none; border:1px solid var(--border); }
+.cnp-col.k-panel .cnp-text:empty{ display:none; }

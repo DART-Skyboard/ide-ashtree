@@ -42,6 +42,8 @@ Behaviours the kernel can rely on:
 * `cam.open` always has `args.facing` (`"back"` default).
 * Ops inside a `with var (..) { }` block are emitted flat into the node (the `with` wrapper is transparent).
 
+> Versioning, release metadata (`seed.meta`, hashed when present) and OTA updates are specified in `docs/samara/UPDATES.md`.
+
 ## Seed envelope
 
 ```
@@ -95,6 +97,11 @@ Positional slots in `( )` are required, `[ ]` optional. `?` after `placeto` mean
 | `sys.clock` | placeto (var)? | `host.sys.clock` | Current time string into var. |
 | `sys.battery` | placeto (var)? | `host.sys.battery` | Battery percent into var. |
 | `sys.setting` | (key) [value] placeto (var)? | `host.sys.setting` | Get (placeto) or set a system setting. |
+| `sys.meta` | key=value... | manifest | Release metadata (version, build, channel, id, schema, minKernel, feed, notes) -> `seed.meta`. See UPDATES.md. |
+| `sys.migrate` | (fromVer) op= key= to= value= | manifest | Declarative state migration (rename/set/default/delete) -> `seed.meta.migrations`. |
+| `sys.about` | (refresh\|tapbuild\|copy) | `kernel` | System info into `about_*` variables. |
+| `sys.update` | (action) [value] | `host.update` | OTA: check/download/apply/primary/rollback/channel/auto/schedule/simulate. |
+| `sys.dev` | (action) [value] | `kernel` | Developer options: enable/disable/toggle/log/skipclock/factoryreset. |
 | `ui.screen` | (id) title= parent= { children }? | `host.ui.screen` | Declare / show a screen. |
 | `ui.text` | (id) text= size= align= color= parent= | `host.ui.text` | Static or bound text. |
 | `ui.button` | (id) label= color= parent= w= h= | `host.ui.button` | Push button; pair with ui.on (id) tap. |

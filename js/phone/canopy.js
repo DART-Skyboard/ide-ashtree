@@ -49,7 +49,7 @@
       e.style.color = p.color === 'dim' ? 'var(--dim)' : p.color === 'accent' ? 'var(--accent)' : p.color === 'danger' ? 'var(--danger)' : (p.color || '');
       e.style.fontFamily = p.mono ? 'var(--mono)' : '';
       if (p.span) e.style.gridColumn = 'span ' + p.span;
-      e.classList.toggle('cnp-clock', p.size === 'clock');
+      e.classList.toggle('cnp-clock', p.size === 'clock'); e.classList.toggle('k-head', p.kind === 'head');
     },
     button: function (e, v) {
       var p = v.props; e.textContent = (p.glyph ? p.glyph + ' ' : '') + (p.label == null ? '' : p.label);
@@ -259,6 +259,7 @@
   function applyStyle(e, v) {
     var p = v.props, tag = v.tag;
     if (tag === 'row' || tag === 'col' || tag === 'grid') {
+      var kc = p.kind ? 'k-' + p.kind : ''; if (e._kc !== kc) { if (e._kc) e.classList.remove(e._kc); if (kc) e.classList.add(kc); e._kc = kc; }   // updates: kind=panel etc.
       e.style.gap = p.gap !== undefined ? (parseFloat(p.gap) || 0) + 'px' : '';
       e.style.flexWrap = p.wrap ? 'wrap' : '';
       e.style.justifyContent = p.justify || ''; e.style.alignItems = p.align || '';
@@ -515,6 +516,50 @@
       }
     };
     inst.host.onRender = function () { schedule(); };
+    // ==== updates:canopy ====  OTA updater, reboot into a new image, clipboard, dev touches
+    inst.host.info = function () { return { userAgent: (global.navigator && navigator.userAgent) || '' }; };
+    inst.host.copy = function (text) {
+      if (global.navigator && navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).catch(function () { return legacyCopy(text); });
+      return legacyCopy(text);
+    };
+    function legacyCopy(text) {
+      return new Promise(function (res, rej) {
+        try { var t = doc.createElement('textarea'); t.value = text; t.style.cssText = 'position:fixed;opacity:0'; doc.body.appendChild(t); t.select(); var ok = doc.execCommand('copy'); t.remove(); ok ? res() : rej(new Error('copy blocked')); } catch (e) { rej(e); }
+      });
+    }
+    inst.host.reboot = function (o) {
+      setTimeout(function () {
+        if (!inst.kernel) return;
+        var next = (o && o.seed) || inst.seed;
+        inst.kernel.shutdown(); makeKernel(next); render();
+        inst.boot();
+      }, 30);
+    };
+    function setupUpdater(seed) {
+      inst.updater = null; delete inst.host.update;
+      var SU = global.SamaraUpdate;
+      if (opts.update === false || !SU || !seed) return seed;
+      var m = seed.meta || {}, lineage = String(m.id || (seed.sha256 || 'seed').slice(0, 12)).replace(/[^\w.-]/g, '_'), store = null;
+      try { store = global.localStorage; store.getItem('x'); } catch (e) { store = null; }
+      inst.host.updateFeedUrl = function () {
+        var u = opts.updateFeedUrl || (inst.seed && inst.seed.meta && inst.seed.meta.feed) || m.feed || '';
+        try { return u ? new URL(u, global.location.href).href : ''; } catch (e) { return u; }
+      };
+      inst.updater = SU.create({ storage: store, fetch: function (u) { return inst.host.fetch(u); }, now: function () { return Date.now(); }, base: seed,
+        feedUrl: inst.host.updateFeedUrl, env: { kernel: OS.version, schema: OS.schema }, namespace: 'samara:upd:' + lineage + ':', seedpress: global.Seedpress,
+        online: function () { return !(global.navigator && navigator.onLine === false); } });
+      inst.host.update = inst.updater;
+      var sel = inst.updater.selectBootSeed();
+      if (sel.notice) onLog('[info] ' + sel.notice, 'info');
+      return sel.seed || seed;
+    }
+    screen.addEventListener('pointerdown', function (e) {
+      if (!screen.classList.contains('dev-touches')) return;
+      var r = screen.getBoundingClientRect(), k = inst.scale || 1, d = el('i', 'cnp-touch', screen);
+      d.style.left = ((e.clientX - r.left) / k) + 'px'; d.style.top = ((e.clientY - r.top) / k) + 'px';
+      setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 700);
+    });
+    // ==== /updates:canopy ====
     if (opts.hostOverrides) Object.assign(inst.host, opts.hostOverrides);
 
     // --- rendering ---
@@ -542,6 +587,7 @@
       dim.style.opacity = String(Math.max(0, Math.min(0.85, 1 - (P.brightness == null ? 1 : P.brightness))));
       screen.classList.toggle('is-off', !P.powered || P.screenOff);
       screen.classList.toggle('is-locked', !!P.locked);
+      screen.classList.toggle('dev-bounds', !!P.devBounds); screen.classList.toggle('dev-touches', !!P.devTouches);   // updates: Developer options
       if (P.orientation !== inst.orientation) { inst.orientation = P.orientation; layout(); }
       bPower.classList.toggle('on', !!P.powered);
     }
@@ -634,7 +680,8 @@
     }
     inst.setSeed = function (seed) {
       if (inst.kernel && inst.kernel.state().powered) inst.kernel.shutdown();
-      makeKernel(seed); render(); return inst;
+      if (typeof seed === 'string') seed = JSON.parse(seed);
+      makeKernel(setupUpdater(seed)); render(); return inst;
     };
     inst.boot = function () {
       var K = inst.kernel; if (!K) return Promise.reject(new Error('no seed'));
@@ -693,7 +740,7 @@
     };
 
     mount.appendChild(root);
-    if (opts.seed) makeKernel(opts.seed);
+    if (opts.seed) { var seed0 = typeof opts.seed === 'string' ? JSON.parse(opts.seed) : opts.seed; makeKernel(setupUpdater(seed0)); }
     layout();
     if (inst.kernel) { render(); if (opts.autoBoot !== false) inst.boot(); }
     else { off.textContent = 'No seed loaded'; off.style.display = ''; }

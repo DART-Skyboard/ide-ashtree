@@ -58,6 +58,7 @@
         '<button class="gv-btn" id="gvSave">Save to GitHub</button>' +
         '<button class="gv-btn" id="gvLoadGh">Load from GitHub</button>' +
         '<button class="gv-btn" id="gvEmbed">Embed link</button>' +
+        '<button class="gv-btn" id="gvPublish" title="Build a versioned OTA update package + feed entry">Publish update</button>' +
         '<span id="gvAuth"></span>' +
       '</div>' +
       '<div class="gv-body">' +
@@ -95,6 +96,7 @@
     $("#gvSave").onclick = saveToGitHub;
     $("#gvLoadGh").onclick = loadFromGitHub;
     $("#gvEmbed").onclick = embedFlow;
+    $("#gvPublish").onclick = publishUpdate;
     GitHubAuth && GitHubAuth.onChange(renderAuth);
   }
 
@@ -443,6 +445,64 @@
       q("#gvCpL").onclick = function () { cp("#gvL"); }; q("#gvCpS").onclick = function () { cp("#gvS"); };
     };
   }
+
+
+  // ==== updates:grove ====  Publish update: versioned seed + feed.json entry (docs/samara/UPDATES.md)
+  var K_FEED = "grove_feed_";
+  function loadFeed() { try { return JSON.parse(lsGet(K_FEED + S.project) || "null"); } catch (e) { return null; } }
+  function readMeta() {
+    var m = (S.seed && S.seed.meta) || {}, SU = root.SamaraUpdate;
+    var v = m.version || "1.0.0";
+    return { id: m.id || slug(S.project), version: v, next: SU ? SU.bumpPatch(v.replace(/-.*/, "")) : v, build: (m.build || 0), channel: m.channel || "stable", feed: m.feed || "", name: m.name || "Samara OS" };
+  }
+  async function publishUpdate() {
+    if (!root.SamaraUpdate) return alert("samara-update.js is not loaded.");
+    if (!(await ensureSeed())) return alert("Build the project first (fix diagnostics).");
+    var cur = readMeta(), signed = GitHubAuth.isSignedIn(), made = null;
+    var m = modal('<h3>Publish update</h3>' +
+      '<p>Builds a new <b>versioned seed</b> from your sources and adds it to <code>feed.json</code>. Phones running this OS (same <code>id</code>: <b>' + esc(cur.id) + '</b>) that point at your feed will find it in Rings &gt; System update. Currently built: <b>' + esc(cur.version) + '</b> (build ' + cur.build + ', ' + esc(cur.channel) + ').</p>' +
+      '<div class="row"><label>Version <input type="text" id="gvUv" value="' + esc(cur.next) + '" size="12"></label> <label>Build <input type="number" id="gvUb" value="' + (cur.build + 1) + '" style="width:80px"></label> ' +
+      '<label>Channel <select id="gvUc"><option>stable</option><option>beta</option><option>dev</option></select></label></div>' +
+      '<p><label>Release notes<br><textarea id="gvUn" rows="3" style="width:100%" placeholder="What changed?"></textarea></label></p>' +
+      '<p id="gvUe" class="gv-warn"></p><div id="gvUo"></div>' +
+      '<div class="row"><button class="gv-btn primary" id="gvUm">Build package</button><button class="gv-btn" id="gvUx">Close</button></div>');
+    var q = function (x) { return m.querySelector(x); };
+    q("#gvUc").value = cur.channel; q("#gvUx").onclick = m.close;
+    q("#gvUm").onclick = async function () {
+      var SU = root.SamaraUpdate, ver = q("#gvUv").value.trim(), ch = q("#gvUc").value, notes = q("#gvUn").value.trim();
+      q("#gvUe").textContent = "";
+      if (!SU.isVersion(ver)) { q("#gvUe").textContent = "Version must look like 1.2.3 or 1.2.3-beta.1."; return; }
+      if (S.active) S.files[S.active] = S.ui.gvTa.value;
+      var meta = { version: ver, build: +q("#gvUb").value || 0, channel: ch }; if (notes) meta.notes = notes;
+      var res = await Seedpress.compile({ files: S.files, entry: findEntry(), meta: meta });
+      if (!res.ok || !res.seed) { S.diag = res.diagnostics || []; renderDiag(); q("#gvUe").textContent = "Build failed: " + ((res.diagnostics || []).filter(function (d) { return d.level === "error"; })[0] || {}).msg; return; }
+      var seed = res.seed, text = Seedpress.serialize(seed, false), file = slug(S.project) + "-" + ver + ".seed";
+      var feedBase = (cur.feed || "").replace(/[^\/]*$/, "");
+      var rel = SU.makeRelease(seed, text, { url: file, previous: S.seed });
+      var feed = SU.addRelease(loadFeed(), rel, { id: rel.id });
+      lsSet(K_FEED + S.project, JSON.stringify(feed));
+      var feedText = JSON.stringify(feed, null, 2) + "\n";
+      made = { seed: seed, text: text, file: file, feedText: feedText, rel: rel };
+      q("#gvUo").innerHTML = "<p>Built <b>" + esc(ver) + "</b>: " + bytes(text.length) + ", sha256 <code>" + esc(seed.sha256.slice(0, 16)) + "…</code>. Changed files: " + esc((rel.delta || []).map(function (d) { return d.path + " (" + d.change + ")"; }).join(", ") || "none") + ".</p>" +
+        '<div class="row"><button class="gv-btn" id="gvUt">Test on simulator</button><button class="gv-btn" id="gvUd1">Download .seed</button><button class="gv-btn" id="gvUd2">Download feed.json</button><button class="gv-btn" id="gvUg">' + (signed ? "Save to private repo" : "Save to private repo (sign in)") + "</button></div>" +
+        '<p class="gv-warn">Hosting: put <code>feed.json</code> and the .seed next to each other on <b>GitHub Pages / a public repo / a Gist</b> and set <code>sys.meta feed="https://.../feed.json"</code>. A private repo cannot be read by phones: saving there is a backup, not a delivery channel.</p>';
+      q("#gvUd1").onclick = function () { download(file, text); };
+      q("#gvUd2").onclick = function () { download("feed.json", feedText, "application/json"); };
+      q("#gvUt").onclick = function () {
+        var sim = S.sim, up = sim && sim.updater;
+        if (!up) return toastMsg("Power on the simulator first (it must be running this OS).");
+        var payloads = {}; payloads[file] = text; up.useLocalFeed(feed, payloads);
+        toastMsg("Local test feed installed. On the phone: Rings > System update > Check for updates.");
+      };
+      q("#gvUg").onclick = async function () {
+        if (!(await needAuth())) return;
+        var out = {}; out["phone/" + S.project + "/build/" + file] = text; out["phone/" + S.project + "/build/feed.json"] = feedText;
+        try { var r = await GitHubAuth.putFiles(out, "Grove: publish " + S.project + " " + ver); toastMsg("Saved update + feed to private repo " + r.repo.full_name); }
+        catch (e) { q("#gvUe").textContent = "Save failed: " + e.message; }
+      };
+    };
+  }
+  // ==== /updates:grove ====
 
   // ── init ────────────────────────────────────────────────
   var Grove = {

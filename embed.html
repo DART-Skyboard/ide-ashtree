@@ -19,6 +19,7 @@
 <div id="msg"></div>
 <script src="js/phone/samara-syntax.js?v=samara1"></script>
 <script src="js/phone/seedpress.js?v=samara1"></script>
+<script src="js/phone/samara-update.js?v=upd1"></script>
 <script src="js/phone/wallpapers.js"></script>
   <script src="js/phone/samara-os.js?v=samara1"></script>
 <script src="js/phone/canopy-gestures.js?v=gest1"></script>
@@ -61,7 +62,11 @@
       var v = Seedpress.verify(seed);
       if (v === false || (v && v.ok === false)) throw new Error("Seed failed integrity verification.");
     }
-    var sim = Canopy.create(mount, { seed: seed, onLog: function () {} });
+    // updates: embeds are PINNED to exactly this seed by default. ?update=auto lets the embedded phone check a feed
+    // (?feed=<https url>, else the seed's own sys.meta feed) and keep updates in this origin's localStorage.
+    var autoUpd = qs.get("update") === "auto", feed = qs.get("feed") || "";
+    if (feed) { var fu = new URL(feed, location.href); if (fu.protocol !== "https:" && fu.origin !== location.origin) throw new Error("Only https:// feed URLs are allowed."); feed = fu.href; }
+    var sim = Canopy.create(mount, { seed: seed, onLog: function () {}, update: autoUpd, updateFeedUrl: feed || undefined });
     await sim.boot();
   }
   main().catch(function (e) { fail(e.message || String(e)); });

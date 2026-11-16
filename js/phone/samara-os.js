@@ -14,7 +14,8 @@
 // ============================================================
 (function (global) {
   'use strict';
-  var VERSION = '1.0.0';
+  var VERSION = '1.1.0';      // kernel (runtime) version; the OS image version lives in seed.meta.version
+  var SCHEMA = 1;             // Ash OS language / seed IR ABI this kernel speaks (see docs/samara/UPDATES.md)
 
   // ---------- themes ----------
   var THEMES = {
@@ -120,6 +121,10 @@
   // ---------- storage ----------
   function makeStore(host, prefix) {
     var mem = {}, ls = null;
+    function idxGet() { try { var r = ls ? ls.getItem(prefix + '__idx') : null; if (r == null) r = mem[prefix + '__idx']; return JSON.parse(r || '[]'); } catch (e) { return []; } }
+    function idxPut(a) { var t = JSON.stringify(a); mem[prefix + '__idx'] = t; try { if (ls) ls.setItem(prefix + '__idx', t); } catch (e) { /* memory only */ } }
+    function idxAdd(k) { if (k === '__idx') return; var a = idxGet(); if (a.indexOf(k) < 0) { a.push(k); idxPut(a); } }
+    function idxDel(k) { var a = idxGet(), i = a.indexOf(k); if (i >= 0) { a.splice(i, 1); idxPut(a); } }
     try { ls = host.storage || (typeof localStorage !== 'undefined' ? localStorage : null); } catch (e) { ls = null; }
     return {
       get: function (k) {
@@ -127,10 +132,12 @@
         return Object.prototype.hasOwnProperty.call(mem, prefix + k) ? mem[prefix + k] : null;
       },
       set: function (k, v) {
-        mem[prefix + k] = String(v);
+        mem[prefix + k] = String(v); idxAdd(k);
         try { if (ls) ls.setItem(prefix + k, String(v)); } catch (e) { /* memory only */ }
       },
-      remove: function (k) { delete mem[prefix + k]; try { if (ls) ls.removeItem(prefix + k); } catch (e) { /* ignore */ } },
+      remove: function (k) { delete mem[prefix + k]; idxDel(k); try { if (ls) ls.removeItem(prefix + k); } catch (e) { /* ignore */ } },
+      // updates: key index (storage has no portable enumeration) so migrations / snapshots / factory reset can see every key
+      keys: function () { return idxGet(); },
       // real usage of this seed's namespace: number of keys and characters held (localStorage when it can be enumerated, else this session's memory)
       usage: function () {
         var seen = {}, n = 0, bytes = 0, i, k, v;
@@ -159,7 +166,9 @@
     if (typeof seed === 'string') seed = JSON.parse(seed);
     seed = seed || {};
     var manifest = seed.manifest || {}, program = seed.program || {};
-    var seedId = (seed.sha256 ? String(seed.sha256).slice(0, 12) : (manifest.name || (seed.os && seed.os.name) || 'seed')).replace(/[^\w.-]/g, '_');
+    var meta = seed.meta || {};
+    // an OS lineage (meta.id) keeps one persisted-state namespace across updates; seeds without it stay per-seed-hash (old behaviour)
+    var seedId = meta.id ? String(meta.id).replace(/[^\w.-]/g, '_') : (seed.sha256 ? String(seed.sha256).slice(0, 12) : (manifest.name || (seed.os && seed.os.name) || 'seed')).replace(/[^\w.-]/g, '_');
     var sysStore = makeStore(host, 'samara:' + seedId + ':');
     var K = { version: VERSION, seedId: seedId, THEMES: THEMES };
     var subs = [];
@@ -175,8 +184,9 @@
       battery: 87, charging: false, signal: 4, uptime: 0, drainAcc: 0, dnd: false,
       cam: { open: false, facing: 'back', synthetic: false, frames: 0, last: null },
       tilt: { x: 0, y: 0, z: 9.8 }, loc: { lat: 37.7749, lon: -122.4194 },
-      logLines: [], bootNode: manifest.boot || 'Crown', netListeners: {}
+      clockSkew: 0, buildTaps: 0, buildTapAt: 0, sysPages: {}, logLines: [], bootNode: manifest.boot || 'Crown', netListeners: {}
     };
+    var sysHook = null;    // updates: refreshes bound about_*/upd_*/dev_* variables of the open system page
     var crown = null;      // system process holding boot-node UI (home widgets)
 
     // ---------- logging / render plumbing ----------
@@ -187,10 +197,11 @@
     }
     var renderQueued = false;
     function changed() {
+      if (sysHook) { try { sysHook(); } catch (e) { /* ignore */ } }
       subs.slice().forEach(function (f) { try { f(K); } catch (e) { /* ignore */ } });
       try { if (host.onRender) host.onRender(K); } catch (e) { /* ignore */ }
     }
-    function now() { return host.now ? host.now() : Date.now(); }
+    function now() { return (host.now ? host.now() : Date.now()) + (S.clockSkew || 0); }
 
     // ---------- processes ----------
     function makeProc(id) {
@@ -821,14 +832,308 @@
     }
     function toggleShade(v) { if (!S.powered || S.screenOff) return; S.shade = v === undefined ? !S.shade : !!v; changed(); }
 
+    // ==== updates:kernel ====  system information, versioning, OTA updates, developer options (docs/samara/UPDATES.md)
+    var SYS_PAGES = { about: 'RingsAbout', sysupdate: 'RingsSysUpdate', devopts: 'RingsDevOpts' };
+    var SYS_TITLES = { about: 'About phone', sysupdate: 'System update', devopts: 'Developer options' };
+    var flags = { dev: false, touches: false, bounds: false };
+    function sysLoadFlags() { try { var f = JSON.parse(sysStore.get('sysflags') || 'null'); if (f && typeof f === 'object') flags = Object.assign({ dev: false, touches: false, bounds: false }, f); } catch (e) { /* defaults */ } }
+    function sysSaveFlags() { sysStore.set('sysflags', JSON.stringify(flags)); }
+    function osInfo() {
+      var m = seed.meta || {}, o = seed.os || {};
+      return { name: m.name || o.name || 'Samara OS', version: m.version || o.version || '0.0.0', build: m.build || 0, channel: m.channel || 'stable', schema: m.schema || SCHEMA,
+        id: m.id || null, feed: m.feed || null, notes: m.notes || '', minKernel: m.minKernel || null, builtAt: seed.built || null, hasMeta: !!seed.meta };
+    }
+    function deviceId() {
+      var ls = null, key = 'samara:device-id', id = null;
+      try { id = host.deviceId ? host.deviceId() : null; } catch (e) { id = null; }
+      if (id) return String(id);
+      try { ls = host.storage || (typeof localStorage !== 'undefined' ? localStorage : null); } catch (e) { ls = null; }
+      try { id = ls && ls.getItem(key); } catch (e) { id = null; }
+      if (!id) {
+        var r = ''; for (var i = 0; i < 8; i++) r += Math.floor(Math.random() * 16).toString(16);
+        id = 'SMR-' + r.slice(0, 4).toUpperCase() + '-' + r.slice(4).toUpperCase();
+        try { if (ls) ls.setItem(key, id); } catch (e) { /* not persisted */ }
+      }
+      return id;
+    }
+    function hasSha() { return !!(global.Seedpress && global.Seedpress.sha256); }
+    function seedBytes() { try { return JSON.stringify(seed).length; } catch (e) { return 0; } }
+    function fmtBytes(n) { return n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(2) + ' MB'; }
+    function fmtUp(ms) { var s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return (h ? h + ' h ' : '') + m + ' min ' + (s % 60) + ' s'; }
+    function fmtWhen(t) {
+      if (!t) return 'never';
+      var d = new Date(t), n = new Date(now()), same = d.toDateString() === n.toDateString(), h = d.getHours();
+      return (same ? 'today' : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()] + ' ' + d.getDate()) + ' ' + ((h % 12) || 12) + ':' + pad2(d.getMinutes()) + (h < 12 ? ' AM' : ' PM');
+    }
+    function sysInfo() {
+      var o = osInfo(), ua = '';
+      try { ua = (host.info && host.info().userAgent) || (typeof navigator !== 'undefined' ? navigator.userAgent : '') || ''; } catch (e) { ua = ''; }
+      return {
+        os: o,
+        kernel: { version: VERSION, schema: SCHEMA },
+        seed: { sha256: seed.sha256 || null, short: seed.sha256 ? String(seed.sha256).slice(0, 12) : '(unsealed)', bytes: seedBytes(), files: Object.keys(seed.sources || {}).length, nodes: Object.keys(program).length, apps: (manifest.apps || []).length, format: seed.format || 1 },
+        uptimeMs: S.uptime,
+        device: { id: deviceId(), model: 'Samara One (simulated)', name: 'Samara One', simulated: true,
+          hardware: 'Simulated: this phone is JavaScript running in a web browser. CPU, memory, radios and sensors are emulated.',
+          screen: (S.orientation === 'landscape' ? '780 x 360' : '360 x 780') + ' CSS px', userAgent: ua },
+        flags: { developer: !!flags.dev, showTouches: !!flags.touches, showBounds: !!flags.bounds },
+        feed: sysFeed()
+      };
+    }
+    Object.defineProperty(K, 'system', { get: function () { return sysInfo(); }, enumerable: true });
+    function sysFeed() { var f = null; try { f = typeof host.updateFeedUrl === 'function' ? host.updateFeedUrl() : host.updateFeedUrl; } catch (e) { f = null; } return f || osInfo().feed || null; }
+    function buildInfoText() {
+      var i = sysInfo(), o = i.os;
+      return [o.name + ' ' + o.version + ' (build ' + o.build + ')', 'Channel: ' + o.channel, 'Ash OS schema: ' + o.schema + '   Kernel: ' + i.kernel.version + ' (schema ' + i.kernel.schema + ')',
+        'Seed sha256: ' + (i.seed.sha256 || 'n/a'), 'Built: ' + (o.builtAt || 'unknown'), 'Device: ' + i.device.id + ' (' + i.device.model + ')'].join('\n');
+    }
+    function copyText(t) {
+      try { if (host.copy) { var r = host.copy(t); if (r && r.then) r.then(function () { toast('Build info copied'); changed(); }, function () { toast('Copy failed'); changed(); }); else toast(r === false ? 'Copy failed' : 'Build info copied'); return; } } catch (e) { /* fall through */ }
+      try { if (typeof navigator !== 'undefined' && navigator.clipboard) { navigator.clipboard.writeText(t).then(function () { toast('Build info copied'); changed(); }, function () { toast('Copy failed'); changed(); }); return; } } catch (e) { /* ignore */ }
+      toast('Copy is not available here');
+    }
+    function romText() {
+      var i = sysInfo(), lines = ['seed sha256  ' + (i.seed.sha256 || 'n/a'), 'format ' + i.seed.format + ' · schema ' + i.os.schema + ' · ' + fmtBytes(i.seed.bytes), 'built ' + (i.os.builtAt || 'unknown'),
+        i.seed.nodes + ' nodes · ' + i.seed.apps + ' apps · boot ' + (manifest.boot || 'Crown'), '', 'source files:'];
+      Object.keys(seed.sources || {}).sort().forEach(function (p) {
+        var t = String(seed.sources[p]);
+        lines.push('  ' + p + '\n    ' + fmtBytes(t.length) + (hasSha() ? ' · sha256 ' + global.Seedpress.sha256(t).slice(0, 16) : ''));
+      });
+      if ((seed.meta || {}).migrations) lines.push('', 'migrations: ' + seed.meta.migrations.length);
+      return lines.join('\n');
+    }
+    function U() { return host.update || null; }
+
+    // ---- bound variables for the system pages ----
+    function updStatus(st) {
+      if (st.phase === 'checking') return 'Checking for updates…';
+      if (st.phase === 'downloading') return 'Downloading update…';
+      if (st.phase === 'verifying') return 'Verifying download…';
+      if (st.phase === 'staging') return 'Preparing update…';
+      if (st.error) return '⚠ ' + st.error;
+      if (st.staged) return 'Update ' + st.staged.release.version + ' is ready to install';
+      if (st.available) return 'Update ' + st.available.release.version + ' is available';
+      var lc = st.lastCheck;
+      if (lc && lc.status === 'uptodate') return 'Your system is up to date';
+      if (lc && lc.status === 'incompatible') return 'Update ' + lc.version + " can't be installed on this phone: " + (lc.reasons || []).join('; ');
+      return 'Tap Check for updates to look for a new version';
+    }
+    function bar(f) { var n = Math.round(Math.max(0, Math.min(1, f)) * 20); return new Array(n + 1).join('█') + new Array(21 - n).join('░') + '  ' + Math.round(f * 100) + '%'; }
+    function sysVars(proc, page) {
+      var v = proc.vars, i = sysInfo(), o = i.os;
+      if (page === 'about') {
+        v.about_model = i.device.model;
+        v.about_hw = 'No physical hardware: simulated in a web browser';
+        v.about_os = o.name + ' ' + o.version;
+        v.about_build = o.version + '+' + o.build + (flags.dev ? '   · developer options ON' : '');
+        v.about_channel = o.channel;
+        v.about_schema = String(o.schema) + (o.minKernel ? '   · needs kernel ≥ ' + o.minKernel : '');
+        v.about_kernel = 'Samara kernel ' + i.kernel.version + ' · speaks schema ' + i.kernel.schema;
+        v.about_seed = 'sha256 ' + i.seed.short + '…  ·  ' + fmtBytes(i.seed.bytes) + '  ·  ' + i.seed.files + ' source files, ' + i.seed.apps + ' apps';
+        v.about_built = o.builtAt || 'unknown';
+        v.about_up = fmtUp(S.uptime);
+        v.about_dev = i.device.id;
+        v.about_batt = Math.round(S.battery) + '%' + (S.charging ? ' · charging' : '');
+        v.about_screen = i.device.screen;
+        v.about_feed = (i.feed || 'none configured');
+        v.about_ua = (i.device.userAgent ? i.device.userAgent.slice(0, 120) : 'unknown');
+        v.about_hint = S.buildHint || '';
+        v.about_legal = '© DART Meadow | Radical Deepscale LLC · Samara OS runs Ash OS source (.ashos) compiled by Seedpress';
+      } else if (page === 'sysupdate') {
+        var up = U(), st = up ? up.getState() : null;
+        v.upd_current = o.name + ' ' + o.version + '  (build ' + o.build + ')\nChannel: ' + o.channel + ' · schema ' + o.schema + ' · kernel ' + i.kernel.version;
+        if (!st) { v.upd_status = 'Updates are not available on this host (no update service attached).'; v.upd_bar = ''; v.upd_notes = ''; v.upd_btn = 'Updates unavailable'; v.upd_last = ''; v.upd_roll = 'Roll back'; v.upd_hist = ''; v.upd_auto = 'Automatic updates: n/a'; v.upd_sched = ''; v.upd_hint = ''; v.upd_ch_stable = 'Stable'; v.upd_ch_beta = 'Beta'; v.upd_ch_dev = 'Dev'; return; }
+        v.upd_status = updStatus(st);
+        var busy = st.phase === 'downloading' || st.phase === 'verifying' || st.phase === 'staging';
+        v.upd_bar = busy ? bar(st.progress || 0) : '';
+        var rel = (st.staged && st.staged.release) || (st.available && st.available.release) || null;
+        v.upd_notes = rel ? ('What\'s new in ' + rel.version + (rel.size ? '  (' + fmtBytes(rel.size) + ')' : '') + '\n' + (rel.notes || '(no release notes)') + (rel.delta && rel.delta.length ? '\nChanged files: ' + rel.delta.map(function (d) { return d.path + ' (' + d.change + ')'; }).join(', ') : ''))
+          : (o.notes ? 'About this version (' + o.version + ')\n' + o.notes : '');
+        v.upd_btn = up.primaryLabel();
+        v.upd_last = 'Last checked: ' + (st.lastCheck ? fmtWhen(st.lastCheck.t) + (st.lastCheck.auto ? ' (automatic)' : '') : 'never') + (st.local ? '\nUsing a local test feed (Developer options)' : '');
+        ['stable', 'beta', 'dev'].forEach(function (c) { v['upd_ch_' + c] = (st.channel === c ? '● ' : '○ ') + c.charAt(0).toUpperCase() + c.slice(1); });
+        v.upd_auto = st.auto.enabled ? 'Automatic updates: ON  (tap to turn off)' : 'Automatic updates: OFF  (tap to turn on)';
+        v.upd_sched = 'Schedule: ' + (st.auto.schedule === 'nightly' ? 'Nightly 02:00–04:00 (simulated clock)' : 'Whenever online (Wi-Fi only, simulated)') + '  · tap to change';
+        v.upd_hint = st.trial ? 'Trial boot: if this version fails to start twice, the phone rolls back to ' + st.trial.from + ' by itself.' : '';
+        var pv = st.previousInfo;
+        v.upd_roll = pv ? 'Roll back to ' + pv.version + (pv.slot === 'base' ? ' (factory image)' : '') : 'Roll back (no previous version stored)';
+        v.upd_hist = (st.history || []).slice(0, 6).map(function (h) { return fmtWhen(h.t) + ' · ' + h.event + (h.detail ? ' · ' + h.detail : ''); }).join('\n') || 'No update activity yet';
+      } else if (page === 'devopts') {
+        var up2 = U(), st2 = up2 ? up2.getState() : null;
+        v.dev_state = flags.dev ? 'Developer options are ON' : 'Developer options are OFF. Open About phone and tap Build number 7 times.';
+        v.dev_master = flags.dev ? 'Turn developer options OFF' : 'Turn developer options ON';
+        v.dev_touches = (flags.touches ? '☑ ' : '☐ ') + 'Show touches';
+        v.dev_bounds = (flags.bounds ? '☑ ' : '☐ ') + 'Show layout bounds';
+        v.dev_fault = (st2 && st2.fault === 'hash' ? '☑ ' : '☐ ') + 'Corrupt the next update download (test failure handling)';
+        v.dev_skew = 'Jump simulated clock to 03:00 (triggers nightly auto-update)';
+        v.dev_clock = 'Simulated device time: ' + fmtWhen(now()) + (S.clockSkew ? ' (skewed ' + Math.round(S.clockSkew / 60000) + ' min)' : '');
+        v.dev_reset = S.resetArmed && now() - S.resetArmed < 5000 ? 'Tap again to ERASE all data' : 'Factory data reset (erases settings and app data)';
+        v.dev_localfeed = st2 && st2.local ? 'Use the real update feed again' : 'Local test feed: off';
+        v.dev_log = S.logLines.slice(-25).reverse().join('\n') || '(log is empty)';
+        v.dev_rom = romText();
+      }
+    }
+    function activeSysProc() {
+      var r = S.procs && S.procs.rings;
+      return r && S.fg === 'rings' && SYS_PAGES[r.ringsPage] && S.sysPages[r.ringsPage] ? S.sysPages[r.ringsPage] : null;
+    }
+    function ensureSysPage(page) {
+      var old = S.sysPages[page]; if (old) old.dead = true;
+      var p = makeProc('rings:' + page); S.sysPages[page] = p;
+      if (program[SYS_PAGES[page]]) runNode(SYS_PAGES[page], p, {}, 0);
+      else { addScreen(p, page, { title: SYS_TITLES[page] }); curScreen(p, true).children.push({ kind: 'text', id: 'nopage', props: { text: 'This OS image does not include the "' + SYS_TITLES[page] + '" page (node ' + SYS_PAGES[page] + ').', color: 'dim' }, children: [] }); }
+      sysVars(p, page);
+      sysHook = function () { var a = activeSysProc(); if (a) sysVars(a, S.procs.rings.ringsPage); };
+      return p;
+    }
+    function sysOnRings(page) { if (SYS_PAGES[page]) ensureSysPage(page); }
+    function sysPageV(proc, page) {
+      var s = proc.screens[proc.cur], body = s ? s.children.map(function (c) { return nodeToV(c, proc); }) : [];
+      return V('view', 'app:rings', { app: 'rings', screen: page }, [V('appbar', '@appbar', { title: SYS_TITLES[page], back: true, glyph: '⚙' }, [], ['tap']), V('scroll', 'scroll:rings-' + page, {}, body)]);
+    }
+    function sysRingsSection(kids, section) {
+      var items = [V('button', '@rings:sysupdate', { label: 'System update', kind: 'card' }, [], ['tap']), V('button', '@rings:about', { label: 'About phone', kind: 'card' }, [], ['tap'])];
+      if (flags.dev) items.push(V('button', '@rings:devopts', { label: 'Developer options', kind: 'card' }, [], ['tap']));
+      kids.push(V('section', null, { title: 'System' }, [V('col', null, { gap: 8 }, items)]));
+    }
+
+    // ---- ops ----
+    function sysReboot(r, reason) {
+      if (!r || !r.ok) return;
+      log('info', 'rebooting into ' + r.version + ' (' + reason + ')');
+      if (host.reboot) { try { host.reboot({ seed: r.seed, reason: reason, version: r.version }); } catch (e) { log('error', 'reboot failed: ' + e.message); } }
+      else { K.pendingReboot = r; toast('Restart to finish'); }
+    }
+    function track(p) { pendingNet.push(p); p.then(function () { var i = pendingNet.indexOf(p); if (i >= 0) pendingNet.splice(i, 1); changed(); }, function () { var i = pendingNet.indexOf(p); if (i >= 0) pendingNet.splice(i, 1); changed(); }); }
+    function boolish(v, cur) { v = String(v).toLowerCase(); return v === 'toggle' || v === 'undefined' || v === '' ? !cur : (v === 'on' || v === 'true' || v === '1'); }
+    OPS['sys.about'] = function (op, ctx) {
+      var a = String(arg(op, ctx, 'action') || 'refresh').toLowerCase();
+      if (a === 'tapbuild') {
+        var t = now(); if (t - S.buildTapAt > 3000) S.buildTaps = 0; S.buildTapAt = t; S.buildTaps++;
+        if (flags.dev) S.buildHint = 'Developer options are already on.';
+        else if (S.buildTaps >= 7) { flags.dev = true; sysSaveFlags(); S.buildHint = 'You are now a developer!'; toast('You are now a developer!'); log('info', 'developer options enabled'); }
+        else if (S.buildTaps >= 3) S.buildHint = (7 - S.buildTaps) + ' more tap' + (7 - S.buildTaps === 1 ? '' : 's') + ' to enable Developer options';
+        sysVars(ctx.proc, 'about');
+      } else if (a === 'copy') copyText(buildInfoText());
+      else sysVars(ctx.proc, 'about');
+    };
+    OPS['sys.update'] = function (op, ctx) {
+      var a = String(arg(op, ctx, 'action')).toLowerCase(), val = arg(op, ctx, 'value'), up = U(), d = destOf(op);
+      if (!up) { toast('Updates unavailable on this host'); return; }
+      var st = up.getState();
+      switch (a) {
+        case 'check': track(up.check()); break;
+        case 'download': track(up.download()); break;
+        case 'primary': { var pr = up.primary(); track(pr.then(function (r) { if (r && r.ok && r.seed) sysReboot(r, 'update'); else if (r && r.ok === false && r.error && r.error !== 'busy') toast(r.error.slice(0, 60)); return r; })); break; }
+        case 'apply': { var r1 = up.apply(); if (!r1.ok) toast(r1.error); else sysReboot(r1, 'update'); break; }
+        case 'rollback': { var r2 = up.rollback('user'); if (!r2.ok) toast(r2.error); else sysReboot(r2, 'rollback'); break; }
+        case 'channel': up.setChannel(String(val).toLowerCase()); break;
+        case 'auto': up.setAuto({ enabled: boolish(val, st.auto.enabled) }); break;
+        case 'schedule': up.setAuto({ schedule: String(val).toLowerCase() === 'toggle' || val === undefined ? (st.auto.schedule === 'wifi' ? 'nightly' : 'wifi') : String(val).toLowerCase() }); break;
+        case 'simulate': if (up.simulate) track(up.simulate()); break;
+        case 'clearlocal': if (up.clearLocalFeed) up.clearLocalFeed(); break;
+        case 'fault': up.setFault(st.fault ? null : (String(val || 'hash'))); break;
+        case 'status': break;
+        default: log('warn', 'sys.update: unknown action ' + a);
+      }
+      if (d) assignVar(ctx, d, updStatus(up.getState()));
+      sysVars(ctx.proc, S.procs.rings ? S.procs.rings.ringsPage : 'sysupdate');
+    };
+    OPS['sys.dev'] = function (op, ctx) {
+      var a = String(arg(op, ctx, 'action')).toLowerCase(), val = arg(op, ctx, 'value'), v = val === undefined ? '' : String(val).toLowerCase();
+      switch (a) {
+        case 'enable': flags.dev = true; sysSaveFlags(); break;
+        case 'disable': flags.dev = false; flags.touches = false; flags.bounds = false; sysSaveFlags(); break;
+        case 'toggle':
+          if (v === 'touches') flags.touches = !flags.touches; else if (v === 'bounds') flags.bounds = !flags.bounds; else { flags.dev = !flags.dev; if (!flags.dev) { flags.touches = false; flags.bounds = false; } }
+          sysSaveFlags(); break;
+        case 'clearlog': S.logLines = []; break;
+        case 'skipclock': {
+          var nowMs = now(), dd = new Date(nowMs), tgt = new Date(nowMs); tgt.setHours(3, 0, 0, 0); if (tgt.getTime() <= nowMs) tgt.setDate(tgt.getDate() + 1);
+          S.clockSkew += tgt.getTime() - nowMs; log('info', 'dev: simulated clock moved to ' + tgt.toISOString()); sysAutoTick(); break;
+        }
+        case 'factoryreset': {
+          var t0 = now();
+          if (!S.resetArmed || t0 - S.resetArmed > 5000) { S.resetArmed = t0; toast('Tap again to erase all data'); break; }
+          S.resetArmed = 0; factoryReset(); return;
+        }
+        case 'log': case 'rom': case 'status': break;
+        default: log('warn', 'sys.dev: unknown action ' + a);
+      }
+      sysVars(ctx.proc, S.procs.rings ? S.procs.rings.ringsPage : 'devopts');
+    };
+    function factoryReset() {
+      var keys = sysStore.keys(); keys.slice().forEach(function (k) { sysStore.remove(k); });
+      sysStore.remove('__idx'); flags = { dev: false, touches: false, bounds: false };
+      log('warn', 'factory data reset: erased ' + keys.length + ' keys');
+      try { if (host.factoryReset) { host.factoryReset(); return; } } catch (e) { log('error', 'factoryReset hook: ' + e.message); }
+      if (host.reboot) host.reboot({ seed: null, reason: 'factory-reset' }); else { K.shutdown(); K.boot(); }
+    }
+
+    // ---- boot-time hooks: state migration, boot confirmation, "just updated" notice, auto-update ----
+    var RESERVED = { settings: 1, osver: 1, sysflags: 1, __idx: 1 };
+    function sysMigrate() {
+      var cur = osInfo().version, last = sysStore.get('osver'), SU = global.SamaraUpdate;
+      if (!last) { sysStore.set('osver', cur); return; }
+      if (last === cur) return;
+      if (!SU) { log('warn', 'state version changed ' + last + ' -> ' + cur + ' but SamaraUpdate is not loaded; no migration'); sysStore.set('osver', cur); return; }
+      var keys = sysStore.keys();
+      function gather() {
+        var st = { settings: {}, kv: {} };
+        try { st.settings = JSON.parse(sysStore.get('settings') || '{}') || {}; } catch (e) { st.settings = {}; }
+        keys.forEach(function (k) { if (!RESERVED[k] && k.indexOf('snap:') !== 0) st.kv[k] = sysStore.get(k); });
+        return st;
+      }
+      function write(st) {
+        sysStore.set('settings', JSON.stringify(st.settings || {}));
+        var want = st.kv || {};
+        keys.forEach(function (k) { if (!RESERVED[k] && k.indexOf('snap:') !== 0 && want[k] === undefined) sysStore.remove(k); });
+        Object.keys(want).forEach(function (k) { sysStore.set(k, want[k]); });
+      }
+      var cmp = SU.compareVersions(last, cur);
+      if (cmp < 0) {                                     // upgrade: snapshot first so a rollback can put the old state back exactly
+        var before = gather(); sysStore.set('snap:' + last, JSON.stringify(before));
+        var res = SU.runMigrations(before, last, cur, (seed.meta || {}).migrations);
+        if (res.ok) { write(res.state); log('info', 'state migrated ' + last + ' -> ' + cur + ' (' + res.applied.length + ' steps)'); S.migrated = { from: last, to: cur, steps: res.applied.length }; }
+        else log('error', 'state migration failed, keeping old state: ' + res.error);
+      } else {                                            // downgrade / rollback: restore the snapshot taken when we left `cur`
+        var snap = sysStore.get('snap:' + cur);
+        if (snap) { try { write(JSON.parse(snap)); log('info', 'state restored from snapshot of ' + cur); S.migrated = { from: last, to: cur, steps: 0, restored: true }; } catch (e) { log('warn', 'bad state snapshot ignored'); } }
+        else log('info', 'rolled back ' + last + ' -> ' + cur + ' without a state snapshot; keeping current state');
+      }
+      sysStore.set('osver', cur);
+    }
+    var updSubscribed = false;
+    function sysAfterBoot() {
+      var up = U(); if (!up) return;
+      if (!updSubscribed && up.on) {
+        updSubscribed = true;
+        K._unsubUpd = up.on(function (evt) {
+          if (evt && evt.type === 'staged' && evt.auto && S.powered) { notify('rings', 'Update ' + evt.release.version + ' downloaded. It will install the next time your phone restarts.', 'System update'); }
+          if (S.powered) changed();
+        });
+      }
+      try { up.markBootGood && up.markBootGood(); } catch (e) { /* ignore */ }
+      var j = up.takeJust && up.takeJust();
+      if (j) {
+        if (j.rolledBack) notify('rings', 'Samara OS went back to ' + j.to + '.', 'System update');
+        else notify('rings', 'Samara OS updated to ' + j.to + ' (from ' + j.from + ').' + (j.notes ? '\n' + String(j.notes).slice(0, 140) : ''), 'System update');
+        S.justUpdated = j;
+      }
+      sysAutoTick();
+    }
+    function sysAutoTick() { var up = U(); if (up && up.autoTick && S.powered) { var p = up.autoTick(now()); if (p && p.then) track(p); } }
+    // ==== /updates:kernel ====
+
     // ---------- boot / shutdown ----------
     var booted = false;
     K.boot = function () {
       if (S.powered) return K;
       S.powered = true; S.screenOff = false; S.locked = manifest.lock === false ? false : true; S.fg = null;
-      S.apps = []; S.appIndex = {}; S.procs = {}; S.recents = []; S.notifs = []; S.page = 0; S.shade = false; S.fwd = null; S.sampled = false;
+      S.apps = []; S.appIndex = {}; S.procs = {}; S.sysPages = {}; S.recents = []; S.notifs = []; S.page = 0; S.shade = false; S.fwd = null; S.sampled = false;
       Object.assign(S, { theme: 'Ash Dark', wallpaper: 'theme', cols: 4, rows: 5, dock: 4, brightness: 1, volume: 50, clock24: false, dnd: false });
       booted = false;
+      sysLoadFlags(); sysMigrate();                                 // updates: flags + versioned state migration, BEFORE settings are read
       var savedRaw = sysStore.get('settings');
       // 1. manifest
       if (manifest.theme) setSetting('theme', manifest.theme, true);
@@ -853,15 +1158,15 @@
           if (saved.cols && saved.rows) { S.cols = saved.cols; S.rows = saved.rows; }
         }
       } catch (e) { /* ignore corrupt settings */ }
-      booted = true;
-      log('info', 'Samara OS ' + VERSION + ' booted (' + S.apps.length + ' apps, theme ' + S.theme + ')');
+      booted = true; sysAfterBoot();
+      log('info', 'Samara OS ' + osInfo().version + ' (kernel ' + VERSION + ') booted (' + S.apps.length + ' apps, theme ' + S.theme + ')');
       changed(); return K;
     };
     K.shutdown = function () {
       if (!S.powered) return K;
-      persistSettings(); camClose();
+      persistSettings(); camClose(); if (K._unsubUpd) { K._unsubUpd(); K._unsubUpd = null; updSubscribed = false; }
       Object.keys(S.procs).forEach(function (id) { S.procs[id].dead = true; });
-      S.procs = {}; crown = null; S.powered = false; S.fg = null; S.shade = false; S.netListeners = {};
+      S.procs = {}; S.sysPages = {}; crown = null; S.powered = false; S.fg = null; S.shade = false; S.netListeners = {};
       log('info', 'shutdown'); changed(); return K;
     };
 
@@ -876,12 +1181,14 @@
       var ch = false;
       S.notifs.forEach(function (n) { if (n.fresh) { n.age += dtMs; if (n.age > 3500) { n.fresh = false; ch = true; } } });
       if (S.toast) { S.toast.age += dtMs; if (S.toast.age > 1600) { S.toast = null; ch = true; } }
+      S.updAcc = (S.updAcc || 0) + dtMs; if (S.updAcc >= 60000) { S.updAcc = 0; sysAutoTick(); }
       S.signal = 3 + Math.floor((Math.sin(S.uptime / 60000) + 1) * 0.99);
       changed();
     };
 
     // ---------- event dispatch ----------
     function findProcFor(id) {
+      var sp0 = activeSysProc(); if (sp0) return sp0;      // updates: system pages own their widgets
       if (S.fg && S.procs[S.fg]) return S.procs[S.fg];
       return crown;
     }
@@ -913,7 +1220,7 @@
             var dark = themeTokens(S.theme).dark; setSetting('theme', dark ? 'Ash Light' : 'Ash Dark'); return true;
           }
           setSetting(parts[1], parts.slice(2).join(':')); return true;
-        case '@rings': { var rp = S.procs.rings; if (rp) { rp.ringsPage = parts[1]; changed(); } return true; }
+        case '@rings': { var rp = S.procs.rings; if (rp) { rp.ringsPage = parts[1]; sysOnRings(parts[1]); changed(); } return true; }
       }
       return false;
     }
@@ -1016,6 +1323,7 @@
     }
     function ringsV(proc) {
       var page = proc.ringsPage || 'main', kids = [], i;
+      if (activeSysProc()) return sysPageV(activeSysProc(), page);   // updates: About / System update / Developer options
       function section(title, children) { kids.push(V('section', null, { title: title }, children)); }
       var themes = themeNames().map(function (n) {
         var t = themeTokens(n); return V('swatch', '@set:theme:' + n, { name: n, bg: t.bg, surface: t.surface, accent: t.accent, text: t.text, selected: n === S.theme }, [], ['tap']);
@@ -1038,10 +1346,11 @@
         ])
       ]);
       section('About', [
-        V('text', null, { text: 'Samara OS ' + VERSION, size: 'md' }),
+        V('text', null, { text: 'Samara OS ' + osInfo().version, size: 'md' }),
         V('text', null, { text: ((seed.os && seed.os.name) || 'Samara OS') + ' · seed ' + seedId + ' · ' + S.apps.length + ' apps', size: 'sm', color: 'dim' }),
         V('text', null, { text: 'Battery ' + Math.round(S.battery) + '% · Volume ' + S.volume + '%', size: 'sm', color: 'dim' })
       ]);
+      sysRingsSection(kids, section);   // updates: System entries
       return V('view', 'app:rings', { app: 'rings' }, [V('appbar', '@appbar', { title: 'Rings', back: false, glyph: '⚙' }, [], ['tap']), V('scroll', 'scroll:rings', {}, kids)]);
     }
     function homeV() {
@@ -1096,7 +1405,7 @@
       var T = themeTokens(S.theme), w = wallpapers().filter(function (x) { return x.id === S.wallpaper; })[0] || WALLPAPERS[0];
       var wall = w.plain ? T.bg : (w.css || T.wall);
       var root = V('device', '@device', { powered: S.powered, screenOff: S.screenOff, locked: S.locked, theme: T, themeName: S.theme, wallpaper: wall, wallpaperId: w.id, wallpaperLive: !!w.live,
-        brightness: S.brightness, orientation: S.orientation, volume: S.volume, fg: S.fg }, [], []);
+        brightness: S.brightness, orientation: S.orientation, volume: S.volume, fg: S.fg, devTouches: !!flags.touches, devBounds: !!flags.bounds }, [], []);
       if (!S.powered || S.screenOff) return root;
       root.children.push(statusV());
       if (S.locked) root.children.push(lockV());
@@ -1119,7 +1428,7 @@
     return K;
   }
 
-  var api = { createKernel: createKernel, evalExpr: evalExpr, THEMES: THEMES, THEME_ORDER: THEME_ORDER, WALLPAPERS: WALLPAPERS, version: VERSION, testPatternSvg: testPatternSvg };
+  var api = { createKernel: createKernel, evalExpr: evalExpr, THEMES: THEMES, THEME_ORDER: THEME_ORDER, WALLPAPERS: WALLPAPERS, version: VERSION, schema: SCHEMA, testPatternSvg: testPatternSvg };
   global.SamaraOS = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
