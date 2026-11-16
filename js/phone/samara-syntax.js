@@ -105,6 +105,12 @@
   def('input.haptic', { pos: ['ms'], req: 0, doc: 'Vibrate.' });
 
   var HW_KEYS = ['home', 'back', 'power', 'volup', 'voldown'];
+  // GESTURES: handler events delivered by Canopy's gesture layer (docs/samara/SYNTAX.md, "Handler events"), and the Forward key
+  HW_KEYS.push('forward');
+  (function () {
+    var ev = TABLE['ui.on'].events;
+    ['doubletap', 'tripletap', 'longpress', 'swipeleft', 'swiperight', 'swipeup', 'swipedown', 'pinch', 'rotate', 'dragstart', 'drag', 'dragend', 'scroll'].forEach(function (n) { if (ev.indexOf(n) < 0) ev.push(n); });
+  })();
   var MANIFEST_OPS = { 'sys.theme': 1, 'sys.layout': 1, 'sys.app': 1, 'sys.boot': 1 };
 
   // ---------- low-level helpers ----------

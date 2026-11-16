@@ -266,6 +266,24 @@ t('Drift (built demo seed): ui.web view, history stacks, bookmarks, mode toggle'
   k.dispatch('bhome', 'tap'); k.dispatch('hclear', 'tap'); assert.strictEqual(V().rc1, ''); assert(/dhide/.test(k.find(function (n) { return n.id === 'r1'; }).props.cls));
 });
 
+// ---- gestures: kernel side
+t('back handler that changes nothing falls through to the OS default; forward re-opens the closed app', function () {
+  var m = unlocked(); m.k.launch('leaf'); var s = m.k.state();
+  m.k.press('back');   // Leaf has no back handler in this fixture: plain back closes the app
+  assert.strictEqual(s.fg, null); assert.strictEqual(s.fwd, 'leaf');
+  assert.strictEqual(m.k.press('forward'), true); assert.strictEqual(s.fg, 'leaf'); assert.strictEqual(s.fwd, null);
+  assert.strictEqual(m.k.press('forward'), false, 'nothing to go forward to inside an app without a forward handler');
+  m.k.press('home'); assert.strictEqual(s.fwd, 'leaf'); m.k.press('forward'); assert.strictEqual(s.fg, 'leaf');
+});
+t('gesture events: payload fields reach handlers; screen-level handlers via scroll:<id>; sample notifications seed once', function () {
+  var m = unlocked(); m.k.launch('tally');
+  m.k._exec([{ op: 'ui.on', args: { id: 'main', event: 'swipeleft' }, handlers: { swipeleft: [{ op: 'sys.notify', args: { text: 'dx=${dx} dir=${direction}' } }] } }], 'tally');
+  assert.strictEqual(m.k.dispatch('scroll:main', 'swipeleft', { dx: -80, direction: 'left', velocity: 1 }), true);
+  assert.strictEqual(m.k.state().notifs[0].text, 'dx=-80 dir=left');
+  var n0 = m.k.state().notifs.length; assert.strictEqual(m.k.sampleNotifications(), false, 'real notifications present: no samples'); assert.strictEqual(m.k.state().notifs.length, n0);
+  var m2 = unlocked(); assert.strictEqual(m2.k.sampleNotifications(), true); assert(/^Sample/.test(m2.k.state().notifs[0].title)); assert.strictEqual(m2.k.sampleNotifications(), false);
+});
+
 Promise.all(pending).then(function () {
   console.log('\n' + passed + ' passed' + (process.exitCode ? ', FAILURES' : ''));
 });

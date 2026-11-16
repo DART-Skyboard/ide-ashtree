@@ -1,0 +1,34 @@
+/* canopy-gestures.css — edge-swipe indicator, shade scrim/handle, app switcher. All selectors prefixed .cnp-gx */
+.cnp-screen{ overscroll-behavior:contain; }
+.cnp-screen .cnp-scroll,.cnp-screen .cnp-shade{ overscroll-behavior:contain; }
+.cnp-screen.gx-active,.cnp-screen.gx-active *{ user-select:none !important; -webkit-user-select:none !important; cursor:grabbing; }
+.cnp-gx{ position:absolute; inset:0; z-index:44; pointer-events:none; }
+.cnp-gx-scrim{ position:absolute; inset:0; background:#000; opacity:0; pointer-events:none; z-index:34; }
+.cnp-gx-scrim.on{ pointer-events:auto; }
+.cnp-gx-edge{ position:absolute; top:0; width:44px; height:44px; margin-top:-22px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:28px; line-height:1; color:#fff; background:rgba(18,24,32,.74); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+  box-shadow:0 4px 16px rgba(0,0,0,.4),inset 0 0 0 1px rgba(255,255,255,.14); opacity:0; z-index:46; transition:opacity .18s, transform .2s ease, background .12s; }
+.cnp-gx-edge.l{ left:0; } .cnp-gx-edge.r{ right:0; }
+.cnp-gx-edge.ready{ background:var(--accent,#00ffcc); color:var(--on-accent,#00110d); }
+/* shields over embedded web pages (an iframe swallows pointer events); only while a web view is on screen */
+.cnp-gx-strip{ position:absolute; display:none; pointer-events:auto; touch-action:none; z-index:45; }
+.cnp-screen.has-web .cnp-gx-strip{ display:block; }
+.cnp-gx-strip.l{ left:0; top:44px; bottom:30px; width:14px; } .cnp-gx-strip.r{ right:0; top:44px; bottom:30px; width:14px; }
+.cnp-gx-strip.b{ left:14px; right:14px; bottom:0; height:22px; } .cnp-gx-strip.t{ left:14px; right:14px; top:0; height:22px; }
+/* the notification shade: translucent, with a pull handle at its foot */
+.cnp-shade{ background:color-mix(in srgb,var(--bg) 78%,transparent) !important; touch-action:pan-y; }
+.cnp-shade::after{ content:""; flex:none; align-self:center; width:44px; height:5px; border-radius:3px; background:var(--dim); opacity:.7; margin-top:6px; }
+/* app switcher */
+.cnp-gx-sw{ position:absolute; inset:0; z-index:38; pointer-events:auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+  background:color-mix(in srgb,#000 55%,transparent); -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); opacity:0; transition:opacity .18s; color:#fff; }
+.cnp-gx-sw.in{ opacity:1; }
+.cnp-gx-sw-t{ font-size:13px; letter-spacing:.14em; text-transform:uppercase; opacity:.75; }
+.cnp-gx-sw-track{ display:flex; gap:18px; width:100%; overflow-x:auto; overflow-y:visible; padding:10px calc((100% - var(--cw))/2); scroll-snap-type:x mandatory; touch-action:pan-x; scrollbar-width:none; }
+.cnp-gx-sw-track::-webkit-scrollbar{ display:none; }
+.cnp-gx-card{ flex:none; width:var(--cw); height:var(--ch); scroll-snap-align:center; display:flex; flex-direction:column; gap:8px; cursor:pointer; touch-action:pan-x; }
+.cnp-gx-card-h{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; flex:none; }
+.cnp-gx-glyph{ width:24px; height:24px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:13px; color:#fff; background:#666; }
+.cnp-gx-thumb{ position:relative; flex:1; border-radius:20px; overflow:hidden; background:var(--bg); border:1px solid rgba(255,255,255,.18); box-shadow:0 10px 30px rgba(0,0,0,.45); }
+.cnp-gx-card.cur .cnp-gx-thumb{ border-color:var(--accent,#00ffcc); }
+.cnp-gx-big{ position:absolute; left:50%; top:50%; width:72px; height:72px; margin:-36px 0 0 -36px; border-radius:20px; display:flex; align-items:center; justify-content:center; font-size:34px; color:#fff; background:#666; }
+.cnp-gx-clear{ border:1px solid rgba(255,255,255,.3); background:rgba(255,255,255,.1); color:#fff; border-radius:18px; padding:8px 18px; font-size:13px; cursor:pointer; }
