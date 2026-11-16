@@ -119,19 +119,33 @@
 
   // ---------- storage ----------
   function makeStore(host, prefix) {
-    var mem = {}, ls = null;
+    var mem = {}, ls = null, IDX = prefix + '__idx';
     try { ls = host.storage || (typeof localStorage !== 'undefined' ? localStorage : null); } catch (e) { ls = null; }
-    return {
+    function idx() { try { var r = ls && ls.getItem(IDX); return r ? JSON.parse(r) : []; } catch (e) { return []; } }
+    function saveIdx(a) { try { if (ls) ls.setItem(IDX, JSON.stringify(a)); } catch (e) { /* ignore */ } }
+    var S_ = {
       get: function (k) {
         try { if (ls) { var v = ls.getItem(prefix + k); if (v != null) return v; } } catch (e) { /* fall back to memory */ }
         return Object.prototype.hasOwnProperty.call(mem, prefix + k) ? mem[prefix + k] : null;
       },
       set: function (k, v) {
         mem[prefix + k] = String(v);
-        try { if (ls) ls.setItem(prefix + k, String(v)); } catch (e) { /* memory only */ }
+        try { if (ls) { ls.setItem(prefix + k, String(v)); var a = idx(); if (a.indexOf(k) < 0) { a.push(k); saveIdx(a); } } } catch (e) { /* memory only */ }
       },
-      remove: function (k) { delete mem[prefix + k]; try { if (ls) ls.removeItem(prefix + k); } catch (e) { /* ignore */ } }
+      remove: function (k) {
+        delete mem[prefix + k];
+        try { if (ls) { ls.removeItem(prefix + k); var a = idx(), i = a.indexOf(k); if (i >= 0) { a.splice(i, 1); saveIdx(a); } } } catch (e) { /* ignore */ }
+      },
+      // every key this store knows (index + memory + a scan of storages that support key(i))
+      keys: function () {
+        var out = {}, a = idx(), i;
+        a.forEach(function (k) { out[k] = 1; });
+        Object.keys(mem).forEach(function (k) { if (k.indexOf(prefix) === 0) out[k.slice(prefix.length)] = 1; });
+        try { if (ls && typeof ls.length === 'number' && ls.key) for (i = 0; i < ls.length; i++) { var kk = ls.key(i); if (kk && kk.indexOf(prefix) === 0) out[kk.slice(prefix.length)] = 1; } } catch (e) { /* ignore */ }
+        return Object.keys(out).filter(function (k) { return k !== '__idx' && S_.get(k) !== null; });
+      }
     };
+    return S_;
   }
 
   // ---------- synthetic camera frame (SVG data URI, works without DOM) ----------
