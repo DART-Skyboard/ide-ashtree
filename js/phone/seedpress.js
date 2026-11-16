@@ -195,6 +195,8 @@
     }
     return { ok: errors.length === 0, errors: errors, expected: seed.sha256 || null, actual: actual };
   }
+  // recompute the integrity hash after programmatically editing a seed (used by tooling and the simulated-update developer option)
+  function seal(seed) { seed.sha256 = sha256(bodyOf(seed)); return seed; }
   function serialize(seed, pretty) { return JSON.stringify(seed, null, pretty === false ? 0 : 1); }
   function parse(text) {
     var seed;
@@ -204,7 +206,7 @@
     return { ok: true, seed: seed, error: null };
   }
 
-  var api = { compile: compile, verify: verify, serialize: serialize, parse: parse, sha256: sha256, canonical: canon,
+  var api = { compile: compile, verify: verify, seal: seal, serialize: serialize, parse: parse, sha256: sha256, canonical: canon,
     MAGIC: MAGIC, FORMAT: FORMAT, OS: OS, SCHEMA: SCHEMA, CHANNELS: CHANNELS, SEMVER: SEMVER };
   global.Seedpress = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

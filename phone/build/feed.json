@@ -1,0 +1,53 @@
+{
+  "format": 1,
+  "channels": {
+    "stable": [
+      {
+        "version": "1.1.0",
+        "build": 110,
+        "id": "samara",
+        "name": "Samara OS",
+        "url": "samara-demo-1.1.0.seed",
+        "sha256": "94be751c17a610dcff0765c134a920edc189f7aedc6a63b069ca32be88a878c0",
+        "size": 223972,
+        "minKernel": "1.0.0",
+        "schema": 1,
+        "notes": "Home greets you with \"updated over the air\". Rings menu label mentions updates. State migration 1.0.0 -> 1.1.0 records where you came from.",
+        "createdAt": "2026-11-16T01:42:53.920Z",
+        "signature": null,
+        "delta": [
+          {
+            "path": "phone/os/samara.ashos",
+            "change": "modified"
+          }
+        ]
+      }
+    ],
+    "beta": [
+      {
+        "version": "1.2.0-beta.1",
+        "build": 120,
+        "id": "samara",
+        "name": "Samara OS",
+        "url": "samara-demo-1.2.0-beta.1.seed",
+        "sha256": "afaf44cb6c30102f42d34189acb18b5b5ca6d149d385620f02bccda55d880532",
+        "size": 223965,
+        "minKernel": "1.0.0",
+        "schema": 1,
+        "notes": "Beta channel preview: the Notifications button says (beta). Only phones on the Beta or Dev channel see this.",
+        "createdAt": "2026-11-16T01:42:53.966Z",
+        "signature": null,
+        "delta": [
+          {
+            "path": "phone/os/samara.ashos",
+            "change": "modified"
+          }
+        ]
+      }
+    ],
+    "dev": []
+  },
+  "product": "samara-os",
+  "id": "samara",
+  "generated": "2026-11-16T01:42:53.993Z"
+}

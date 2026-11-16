@@ -354,7 +354,9 @@
       trySave(); emit(); return clone(st.auto);
     };
     U.setFault = function (f) { ephemeral.fault = f || null; emit(); };
-    U.useLocalFeed = function (feed, payloads) { local = feed ? { feed: feed, payloads: payloads || {} } : null; st.available = null; emit(); };
+    U.useLocalFeed = function (feed, payloads) {
+      var pl = {}; Object.keys(payloads || {}).forEach(function (k) { pl[resolveUrl(k, 'sim://local/')] = payloads[k]; });
+      local = feed ? { feed: feed, payloads: pl } : null; st.available = null; emit(); };
     U.setBase = function (seed) { base = seed; };
     U.setEnv = function (e) { env = e; };
 
@@ -399,7 +401,7 @@
       phase('checking', 0, url || '(local feed)');
       var p = local ? Promise.resolve(JSON.stringify(local.feed)) : (url ? getText(url, 'update feed') : Promise.reject(new Error('No update feed is configured for this OS')));
       return p.then(function (text) {
-        var pf = parseFeed(text, url || 'sim://local/');
+        var pf = parseFeed(text, local ? 'sim://local/' : url);
         if (!pf.ok) throw new Error('The update feed is damaged or unsupported (' + pf.errors[0] + '). Nothing was changed.');
         var pick = pickRelease(pf.feed, cur, { channel: st.channel, env: env, blocked: st.blocked, id: cur.id, ignoreBlocked: !!o.ignoreBlocked });
         var rec = { t: nowFn(), status: pick.status, version: pick.release ? pick.release.version : null, reasons: pick.reasons, warnings: pf.warnings.slice(0, 5), auto: !!o.auto };
@@ -512,6 +514,22 @@
     U.reset = function () {
       ['A', 'B'].forEach(function (s) { sdel('slot:' + s); }); sdel('state'); load(); ephemeral.phase = 'idle'; ephemeral.error = null; emit({ type: 'reset' });
     };
+
+    // ---- developer test: fabricate a newer release of the CURRENT image (no network) and run the normal check ----
+    U.simulate = function () {
+      var seed = activeSeed() || base, cur = U.current();
+      if (!SP || !SP.seal || !seed) return Promise.resolve(fail('Cannot simulate: no seed or Seedpress available', 'simulate-failed'));
+      var ns = clone(seed), ver = bumpPatch(cur.version);
+      ns.meta = Object.assign({ schema: env.schema }, ns.meta || {}, { version: ver, build: (cur.build || 0) + 1, channel: st.channel === 'stable' ? 'stable' : st.channel,
+        notes: 'Simulated update (Developer options). Same system image with a new version number, to exercise download, verify, install and rollback.' });
+      delete ns.meta.migrations;
+      ns.os = Object.assign({}, ns.os, { version: ver }); ns.built = new Date(nowFn()).toISOString(); SP.seal(ns);
+      var text = SP.serialize(ns, false), rel = makeRelease(ns, text, { url: 'sim://local/' + ver + '.seed' });
+      var payloads = {}; payloads[rel.url] = text;
+      U.useLocalFeed(addRelease(null, rel, { id: rel.id }), payloads);
+      return U.check();
+    };
+    U.clearLocalFeed = function () { U.useLocalFeed(null); };
 
     // ---- primary action: what the one big button does in the current state ----
     U.primary = function () {

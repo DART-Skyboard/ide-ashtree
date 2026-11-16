@@ -5,10 +5,10 @@
   "name": "Samara OS",
   "version": "1.0.0"
  },
- "built": "2026-11-15T19:55:24.526Z",
- "sha256": "29170dfb0cab79eb1ff6ced7c9a3a10d1a0b6defb142f24232d104e1f608b64b",
+ "built": "2026-11-16T01:42:53.861Z",
+ "sha256": "28c342c622e6b930f44b2118de46a9759641b109acb5f8df27e0cf8ceb4f4f26",
  "sources": {
-  "phone/os/samara.ashos": "// Samara OS 1.0 - demo OS image source (Ash node syntax).\n// Compile together with the apps:\n//   Seedpress.compile({ files:{ 'phone/os/samara.ashos':..., 'phone/apps/tally.ashos':..., ... }, entry:'phone/os/samara.ashos' })\nimport (SamaraHW)\n{{env:Samara}}\n[[script:samara-os-v1]]\n\n// ---- manifest (lifted into seed.manifest by Seedpress) ----\n// Default theme. Themes the OS ships (switch live in Rings via sys.setting (theme)):\n//   ash (default, Ash Dark) | Ash Light | Ember | Moss | Mist | Midnight\nsys.theme (ash)\nsys.layout grid=4x5 dock=4\nsys.boot (Crown)\n\nsys.app (tally) name=\"Tally\" glyph=\"±\" color=#ff9500 entry=Tally\nsys.app (leaf)  name=\"Leaf\"  glyph=\"❦\" color=#34c759 entry=Leaf\nsys.app (drift) name=\"Drift\" glyph=\"◎\" color=#0a84ff entry=Drift\nsys.app (lens)  name=\"Lens\"  glyph=\"◉\" color=#bf5af2 entry=Lens\nsys.app (rings) name=\"Rings\" glyph=\"⚙\" color=#8e8e93 entry=Rings\nsys.app (widow) name=\"Widow\" glyph=\"◈\" color=#5e5ce6 entry=Widow\n\n// ---- Crown: home, Bark (lock), notification shade, app menu ----\n(Crown):-: {\n  [net: none] [poly: shell]\n  with var (now) var (pct) var (inbox) var (s) {\n    irin (\"Data: s=0\")\n  }\n  sys.clock placeto (now)\n  power.battery placeto (pct)\n  thenplace \"Welcome to Samara OS\" placeto (inbox)\n\n  ui.screen (home) title=\"Crown\" {\n    ui.col (widget) gap=4 {\n      ui.text (clk) text=(now) size=clock align=center\n      ui.text (bat) text=\"Battery ${pct}%\" size=14 align=center color=dim\n    }\n    ui.row (dockbar) gap=8 {\n      ui.button (hshade) label=\"Notifications\" kind=glass\n      ui.button (hmenu) label=\"All apps\" kind=glass\n      ui.button (hlock) label=\"Lock\" kind=glass\n    }\n  }\n\n  ui.screen (menu) title=\"Apps\" {\n    ui.grid (mgrid) cols=2 gap=8 {\n      ui.button (mtally) label=\"Tally  (calculator)\"\n      ui.button (mleaf) label=\"Leaf  (notes)\"\n      ui.button (mdrift) label=\"Drift  (browser)\"\n      ui.button (mlens) label=\"Lens  (camera)\"\n      ui.button (mrings) label=\"Rings  (settings)\"\n      ui.button (mwidow) label=\"Widow  (windows + widgets)\"\n    }\n    ui.button (mback) label=\"Back to home\" kind=tonal\n  }\n\n  ui.screen (shade) title=\"Notifications\" {\n    ui.list (inboxl) items=(inbox)\n    ui.row (qs1) gap=8 {\n      ui.button (qdim) label=\"Dim\"\n      ui.button (qmid) label=\"Medium\"\n      ui.button (qbright) label=\"Bright\"\n    }\n    ui.row (qs2) gap=8 {\n      ui.button (qtest) label=\"Test notification\"\n      ui.button (qclear) label=\"Clear\"\n      ui.button (qclose) label=\"Close\"\n    }\n  }\n\n  ui.screen (bark) title=\"Bark\" {\n    ui.text (bclk) text=(now) size=64 align=center\n    ui.text (bhint) text=\"Tap Unlock to enter Crown\" size=14 align=center color=dim\n    ui.text (bnotif) text=(inbox) size=14 align=center\n    ui.button (bunlock) label=\"Unlock\"\n  }\n\n  ui.on (hshade) tap { ui.set (inboxl) items=(inbox); ui.screen (shade) }\n  ui.on (hmenu) tap { ui.screen (menu) }\n  ui.on (hlock) tap {\n    sys.clock placeto (now)\n    ui.set (bclk) text=(now)\n    ui.screen (home)\n  }\n  ui.on (bunlock) tap {\n    sys.clock placeto (now)\n    power.battery placeto (pct)\n    ui.set (clk) text=(now)\n    ui.set (bat) text=\"Battery ${pct}%\"\n    sys.home\n  }\n  ui.on (mtally) tap { sys.launch (tally) }\n  ui.on (mleaf) tap { sys.launch (leaf) }\n  ui.on (mdrift) tap { sys.launch (drift) }\n  ui.on (mlens) tap { sys.launch (lens) }\n  ui.on (mrings) tap { sys.launch (rings) }\n  ui.on (mwidow) tap { sys.launch (widow) }\n  ui.on (mback) tap { ui.screen (home) }\n  ui.on (qdim) tap { sys.setting (brightness) 0.3 }\n  ui.on (qmid) tap { sys.setting (brightness) 0.6 }\n  ui.on (qbright) tap { sys.setting (brightness) 1.0 }\n  ui.on (qtest) tap {\n    sys.clock placeto (now)\n    sys.notify (\"Hello from Crown\") title=\"Samara\"\n    thenplace \"${now}  Hello from Crown,${inbox}\" placeto (inbox)\n    ui.set (inboxl) items=(inbox)\n  }\n  ui.on (qclear) tap {\n    thenplace \"\" placeto (inbox)\n    ui.set (inboxl) items=(inbox)\n  }\n  ui.on (qclose) tap { ui.screen (home) }\n\n  // hardware keys\n  input.on (home) { ui.screen (home) }\n  input.on (back) { ui.screen (home) }\n  input.on (power) {\n    power.sleep\n    sys.clock placeto (now)\n    ui.set (bclk) text=(now)\n    ui.screen (home)\n  }\n  input.on (volup) { snd.volume (1) }\n  input.on (voldown) { snd.volume (0.3) }\n\n  ui.screen (home)\n}|';'|\n\n// ---- Rings: settings ----\n(Rings):-: {\n  [net: none] [poly: settings]\n  with var (s) var (pct) var (chg) var (st) {\n    irin (\"Data: s=0\")\n  }\n  power.battery placeto (pct)\n  power.charging placeto (chg)\n  net.status placeto (st)\n\n  ui.screen (rings) title=\"Rings\" {\n    ui.text (thh) text=\"Theme\" size=16\n    ui.row (th1) gap=6 {\n      ui.button (tash) label=\"Ash\"\n      ui.button (tbirch) label=\"Birch\"\n      ui.button (tdusk) label=\"Dusk\"\n      ui.button (tember) label=\"Ember\"\n      ui.button (tink) label=\"Ink\"\n    }\n    ui.text (brh) text=\"Brightness\" size=16\n    ui.row (br1) gap=6 {\n      ui.button (b30) label=\"30%\"\n      ui.button (b60) label=\"60%\"\n      ui.button (b100) label=\"100%\"\n    }\n    ui.text (vlh) text=\"Volume\" size=16\n    ui.row (vl1) gap=6 {\n      ui.button (v0) label=\"Mute\"\n      ui.button (v5) label=\"50%\"\n      ui.button (v10) label=\"100%\"\n    }\n    ui.text (about) text=\"Samara OS 1.0.0\\nBattery ${pct}%  charging: ${chg}\\nNetwork: ${st}\" size=13\n    ui.button (rhome) label=\"Home\"\n  }\n  ui.on (tash) tap { sys.setting (theme) ash }\n  ui.on (tbirch) tap { sys.setting (theme) birch }\n  ui.on (tdusk) tap { sys.setting (theme) dusk }\n  ui.on (tember) tap { sys.setting (theme) ember }\n  ui.on (tink) tap { sys.setting (theme) ink }\n  ui.on (b30) tap { sys.setting (brightness) 0.3 }\n  ui.on (b60) tap { sys.setting (brightness) 0.6 }\n  ui.on (b100) tap { sys.setting (brightness) 1.0 }\n  ui.on (v0) tap { snd.volume (0) }\n  ui.on (v5) tap { snd.volume (0.5); snd.beep freq=660 ms=80 }\n  ui.on (v10) tap { snd.volume (1); snd.beep freq=660 ms=80 }\n  ui.on (rhome) tap { sys.home }\n  input.on (back) { sys.home }\n  ui.screen (rings)\n}|';'|\n\n// ---- Lens: camera (cam.*; the host falls back to a synthetic test pattern without getUserMedia) ----\n(Lens):-: {\n  [net: none] [poly: camera]\n  with var (s) var (shot) {\n    irin (\"Data: s=0\")\n  }\n  ui.screen (lens) title=\"Lens\" {\n    gfx.canvas (view) w=240 h=320\n    ui.row (lrow) gap=8 {\n      ui.button (lback) label=\"Rear\"\n      ui.button (lfront) label=\"Front\"\n      ui.button (lsnap) label=\"Shutter\" kind=primary\n    }\n    ui.button (lhome) label=\"Home\" kind=tonal\n  }\n  cam.open (back)\n  ui.on (lback) tap { cam.close; cam.open (back) }\n  ui.on (lfront) tap { cam.close; cam.open (front) }\n  ui.on (lsnap) tap {\n    cam.snap placeto (shot)\n    gfx.clear (view) color=#000\n    gfx.image (view) x=0 y=0 w=240 h=320 src=(shot)\n    snd.beep freq=1200 ms=40\n    input.haptic (20)\n  }\n  ui.on (lhome) tap { cam.close; sys.home }\n  input.on (back) { cam.close; sys.home }\n  ui.screen (lens)\n}|';'|\n",
+  "phone/os/samara.ashos": "// Samara OS 1.0 - demo OS image source (Ash node syntax).\n// Compile together with the apps:\n//   Seedpress.compile({ files:{ 'phone/os/samara.ashos':..., 'phone/apps/tally.ashos':..., ... }, entry:'phone/os/samara.ashos' })\nimport (SamaraHW)\n{{env:Samara}}\n[[script:samara-os-v1]]\n\n// ---- manifest (lifted into seed.manifest by Seedpress) ----\n// Default theme. Themes the OS ships (switch live in Rings via sys.setting (theme)):\n//   ash (default, Ash Dark) | Ash Light | Ember | Moss | Mist | Midnight\nsys.theme (ash)\nsys.layout grid=4x5 dock=4\nsys.boot (Crown)\n\n// ==== updates:meta ====  OS release metadata (lifted into seed.meta; shown in About, checked by the updater)\n//   id       the OS lineage: updates are only accepted from the same id, and persisted state is shared across versions of it\n//   schema   Ash OS language ABI this source was written for;  minKernel  oldest kernel that can run it\n//   feed     where this OS looks for OTA updates (relative to the page, or https://)\nsys.meta id=\"samara\" name=\"Samara OS\" version=1.0.0 build=100 channel=stable schema=1 minKernel=1.0.0 feed=\"phone/build/feed.json\" notes=\"First release. Rings has About phone, System update and Developer options; updates install over the air from a hash-verified feed, with rollback.\"\n// ==== /updates:meta ====\n\nsys.app (tally) name=\"Tally\" glyph=\"±\" color=#ff9500 entry=Tally\nsys.app (leaf)  name=\"Leaf\"  glyph=\"❦\" color=#34c759 entry=Leaf\nsys.app (drift) name=\"Drift\" glyph=\"◎\" color=#0a84ff entry=Drift\nsys.app (lens)  name=\"Lens\"  glyph=\"◉\" color=#bf5af2 entry=Lens\nsys.app (rings) name=\"Rings\" glyph=\"⚙\" color=#8e8e93 entry=Rings\nsys.app (widow) name=\"Widow\" glyph=\"◈\" color=#5e5ce6 entry=Widow\n\n// ---- Crown: home, Bark (lock), notification shade, app menu ----\n(Crown):-: {\n  [net: none] [poly: shell]\n  with var (now) var (pct) var (inbox) var (s) {\n    irin (\"Data: s=0\")\n  }\n  sys.clock placeto (now)\n  power.battery placeto (pct)\n  thenplace \"Welcome to Samara OS\" placeto (inbox)\n\n  ui.screen (home) title=\"Crown\" {\n    ui.col (widget) gap=4 {\n      ui.text (clk) text=(now) size=clock align=center\n      ui.text (bat) text=\"Battery ${pct}%\" size=14 align=center color=dim\n    }\n    ui.row (dockbar) gap=8 {\n      ui.button (hshade) label=\"Notifications\" kind=glass\n      ui.button (hmenu) label=\"All apps\" kind=glass\n      ui.button (hlock) label=\"Lock\" kind=glass\n    }\n  }\n\n  ui.screen (menu) title=\"Apps\" {\n    ui.grid (mgrid) cols=2 gap=8 {\n      ui.button (mtally) label=\"Tally  (calculator)\"\n      ui.button (mleaf) label=\"Leaf  (notes)\"\n      ui.button (mdrift) label=\"Drift  (browser)\"\n      ui.button (mlens) label=\"Lens  (camera)\"\n      ui.button (mrings) label=\"Rings  (settings)\"\n      ui.button (mwidow) label=\"Widow  (windows + widgets)\"\n    }\n    ui.button (mback) label=\"Back to home\" kind=tonal\n  }\n\n  ui.screen (shade) title=\"Notifications\" {\n    ui.list (inboxl) items=(inbox)\n    ui.row (qs1) gap=8 {\n      ui.button (qdim) label=\"Dim\"\n      ui.button (qmid) label=\"Medium\"\n      ui.button (qbright) label=\"Bright\"\n    }\n    ui.row (qs2) gap=8 {\n      ui.button (qtest) label=\"Test notification\"\n      ui.button (qclear) label=\"Clear\"\n      ui.button (qclose) label=\"Close\"\n    }\n  }\n\n  ui.screen (bark) title=\"Bark\" {\n    ui.text (bclk) text=(now) size=64 align=center\n    ui.text (bhint) text=\"Tap Unlock to enter Crown\" size=14 align=center color=dim\n    ui.text (bnotif) text=(inbox) size=14 align=center\n    ui.button (bunlock) label=\"Unlock\"\n  }\n\n  ui.on (hshade) tap { ui.set (inboxl) items=(inbox); ui.screen (shade) }\n  ui.on (hmenu) tap { ui.screen (menu) }\n  ui.on (hlock) tap {\n    sys.clock placeto (now)\n    ui.set (bclk) text=(now)\n    ui.screen (home)\n  }\n  ui.on (bunlock) tap {\n    sys.clock placeto (now)\n    power.battery placeto (pct)\n    ui.set (clk) text=(now)\n    ui.set (bat) text=\"Battery ${pct}%\"\n    sys.home\n  }\n  ui.on (mtally) tap { sys.launch (tally) }\n  ui.on (mleaf) tap { sys.launch (leaf) }\n  ui.on (mdrift) tap { sys.launch (drift) }\n  ui.on (mlens) tap { sys.launch (lens) }\n  ui.on (mrings) tap { sys.launch (rings) }\n  ui.on (mwidow) tap { sys.launch (widow) }\n  ui.on (mback) tap { ui.screen (home) }\n  ui.on (qdim) tap { sys.setting (brightness) 0.3 }\n  ui.on (qmid) tap { sys.setting (brightness) 0.6 }\n  ui.on (qbright) tap { sys.setting (brightness) 1.0 }\n  ui.on (qtest) tap {\n    sys.clock placeto (now)\n    sys.notify (\"Hello from Crown\") title=\"Samara\"\n    thenplace \"${now}  Hello from Crown,${inbox}\" placeto (inbox)\n    ui.set (inboxl) items=(inbox)\n  }\n  ui.on (qclear) tap {\n    thenplace \"\" placeto (inbox)\n    ui.set (inboxl) items=(inbox)\n  }\n  ui.on (qclose) tap { ui.screen (home) }\n\n  // hardware keys\n  input.on (home) { ui.screen (home) }\n  input.on (back) { ui.screen (home) }\n  input.on (power) {\n    power.sleep\n    sys.clock placeto (now)\n    ui.set (bclk) text=(now)\n    ui.screen (home)\n  }\n  input.on (volup) { snd.volume (1) }\n  input.on (voldown) { snd.volume (0.3) }\n\n  ui.screen (home)\n}|';'|\n\n// ---- Rings: settings ----\n(Rings):-: {\n  [net: none] [poly: settings]\n  with var (s) var (pct) var (chg) var (st) {\n    irin (\"Data: s=0\")\n  }\n  power.battery placeto (pct)\n  power.charging placeto (chg)\n  net.status placeto (st)\n\n  ui.screen (rings) title=\"Rings\" {\n    ui.text (thh) text=\"Theme\" size=16\n    ui.row (th1) gap=6 {\n      ui.button (tash) label=\"Ash\"\n      ui.button (tbirch) label=\"Birch\"\n      ui.button (tdusk) label=\"Dusk\"\n      ui.button (tember) label=\"Ember\"\n      ui.button (tink) label=\"Ink\"\n    }\n    ui.text (brh) text=\"Brightness\" size=16\n    ui.row (br1) gap=6 {\n      ui.button (b30) label=\"30%\"\n      ui.button (b60) label=\"60%\"\n      ui.button (b100) label=\"100%\"\n    }\n    ui.text (vlh) text=\"Volume\" size=16\n    ui.row (vl1) gap=6 {\n      ui.button (v0) label=\"Mute\"\n      ui.button (v5) label=\"50%\"\n      ui.button (v10) label=\"100%\"\n    }\n    ui.text (about) text=\"Samara OS 1.0.0\\nBattery ${pct}%  charging: ${chg}\\nNetwork: ${st}\" size=13\n    ui.button (rhome) label=\"Home\"\n  }\n  ui.on (tash) tap { sys.setting (theme) ash }\n  ui.on (tbirch) tap { sys.setting (theme) birch }\n  ui.on (tdusk) tap { sys.setting (theme) dusk }\n  ui.on (tember) tap { sys.setting (theme) ember }\n  ui.on (tink) tap { sys.setting (theme) ink }\n  ui.on (b30) tap { sys.setting (brightness) 0.3 }\n  ui.on (b60) tap { sys.setting (brightness) 0.6 }\n  ui.on (b100) tap { sys.setting (brightness) 1.0 }\n  ui.on (v0) tap { snd.volume (0) }\n  ui.on (v5) tap { snd.volume (0.5); snd.beep freq=660 ms=80 }\n  ui.on (v10) tap { snd.volume (1); snd.beep freq=660 ms=80 }\n  ui.on (rhome) tap { sys.home }\n  input.on (back) { sys.home }\n  ui.screen (rings)\n}|';'|\n\n// ---- Lens: camera (cam.*; the host falls back to a synthetic test pattern without getUserMedia) ----\n(Lens):-: {\n  [net: none] [poly: camera]\n  with var (s) var (shot) {\n    irin (\"Data: s=0\")\n  }\n  ui.screen (lens) title=\"Lens\" {\n    gfx.canvas (view) w=240 h=320\n    ui.row (lrow) gap=8 {\n      ui.button (lback) label=\"Rear\"\n      ui.button (lfront) label=\"Front\"\n      ui.button (lsnap) label=\"Shutter\" kind=primary\n    }\n    ui.button (lhome) label=\"Home\" kind=tonal\n  }\n  cam.open (back)\n  ui.on (lback) tap { cam.close; cam.open (back) }\n  ui.on (lfront) tap { cam.close; cam.open (front) }\n  ui.on (lsnap) tap {\n    cam.snap placeto (shot)\n    gfx.clear (view) color=#000\n    gfx.image (view) x=0 y=0 w=240 h=320 src=(shot)\n    snd.beep freq=1200 ms=40\n    input.haptic (20)\n  }\n  ui.on (lhome) tap { cam.close; sys.home }\n  input.on (back) { cam.close; sys.home }\n  ui.screen (lens)\n}|';'|\n\n// ==== updates:about ====  Rings > About phone  (screen name: about)\n// All values come from the kernel (K.system) through sys.about; nothing here is hardcoded.\n// Tapping Build number 7 times switches on Developer options (logic lives in the sys.about (tapbuild) statement).\n(RingsAbout):-: {\n  [net: none] [poly: settings]\n  with var (about_hint) {\n    irin (\"Data: about_hint=0\")\n  }\n  sys.about (refresh)\n  ui.screen (about) title=\"About phone\" {\n    ui.col (abdev) kind=panel gap=12 {\n      ui.text (abdev_hd) text=\"Device\" kind=head size=sm\n      ui.col (abm) gap=1 {\n        ui.text (abml) text=\"Model\" size=sm color=dim\n        ui.text (abmv) text=(about_model) size=md\n      }\n      ui.col (abh) gap=1 {\n        ui.text (abhl) text=\"Hardware\" size=sm color=dim\n        ui.text (abhv) text=(about_hw) size=md\n      }\n      ui.col (abi) gap=1 {\n        ui.text (abil) text=\"Device ID (generated in this browser)\" size=sm color=dim\n        ui.text (abiv) text=(about_dev) size=md\n      }\n      ui.col (abb) gap=1 {\n        ui.text (abbl) text=\"Battery (simulated)\" size=sm color=dim\n        ui.text (abbv) text=(about_batt) size=md\n      }\n      ui.col (abs) gap=1 {\n        ui.text (absl) text=\"Screen\" size=sm color=dim\n        ui.text (absv) text=(about_screen) size=md\n      }\n    }\n    ui.col (absw) kind=panel gap=12 {\n      ui.text (absw_hd) text=\"Software\" kind=head size=sm\n      ui.col (abo) gap=1 {\n        ui.text (abol) text=\"Operating system\" size=sm color=dim\n        ui.text (abov) text=(about_os) size=md\n      }\n      ui.col (abbn) gap=1 {\n        ui.text (abbnl) text=\"Build number  (tap 7 times to enable Developer options)\" size=sm color=dim\n        ui.text (abbnv) text=(about_build) size=md color=accent\n        ui.text (abbnh) text=(about_hint) size=sm color=dim\n      }\n      ui.col (abc) gap=1 {\n        ui.text (abcl) text=\"Release channel\" size=sm color=dim\n        ui.text (abcv) text=(about_channel) size=md\n      }\n      ui.col (abz) gap=1 {\n        ui.text (abzl) text=\"Ash OS schema (language ABI)\" size=sm color=dim\n        ui.text (abzv) text=(about_schema) size=md\n      }\n      ui.col (abk) gap=1 {\n        ui.text (abkl) text=\"Kernel (runtime)\" size=sm color=dim\n        ui.text (abkv) text=(about_kernel) size=md\n      }\n      ui.col (abbt) gap=1 {\n        ui.text (abbtl) text=\"Built\" size=sm color=dim\n        ui.text (abbtv) text=(about_built) size=md\n      }\n      ui.col (abu) gap=1 {\n        ui.text (abul) text=\"Uptime since boot\" size=sm color=dim\n        ui.text (abuv) text=(about_up) size=md\n      }\n    }\n    ui.col (abimg) kind=panel gap=12 {\n      ui.text (abimg_hd) text=\"System image\" kind=head size=sm\n      ui.col (abse) gap=1 {\n        ui.text (absel) text=\"Seed\" size=sm color=dim\n        ui.text (absev) text=(about_seed) size=md\n      }\n      ui.col (abf) gap=1 {\n        ui.text (abfl) text=\"Update feed\" size=sm color=dim\n        ui.text (abfv) text=(about_feed) size=md\n      }\n      ui.col (abua) gap=1 {\n        ui.text (abual) text=\"Browser\" size=sm color=dim\n        ui.text (abuav) text=(about_ua) size=md\n      }\n    }\n    ui.button (abcopy) label=\"Copy build info\" kind=tonal\n    ui.text (ablegal) text=(about_legal) size=sm color=dim align=center\n  }\n  ui.on (abbnv) tap { sys.about (tapbuild) }\n  ui.on (abbnl) tap { sys.about (tapbuild) }\n  ui.on (abcopy) tap { sys.about (copy) }\n}|';'|\n// ==== /updates:about ====\n\n// ==== updates:sysupdate ====  Rings > System update  (screen name: sysupdate)\n// sys.update drives the host updater (check -> download -> verify -> stage -> install & restart, rollback).\n(RingsSysUpdate):-: {\n  [net: https] [poly: settings]\n  with var (upd_status) {\n    irin (\"Data: upd_status=0\")\n  }\n  sys.update (status)\n  ui.screen (sysupdate) title=\"System update\" {\n    ui.col (uc) kind=panel gap=12 {\n      ui.text (uc_hd) text=\"Installed\" kind=head size=sm\n      ui.text (ucv) text=(upd_current) size=md\n    }\n    ui.col (us) kind=panel gap=12 {\n      ui.text (us_hd) text=\"Update\" kind=head size=sm\n      ui.text (usv) text=(upd_status) size=md\n      ui.text (usb) text=(upd_bar) size=sm color=accent\n      ui.text (ush) text=(upd_hint) size=sm color=dim\n      ui.button (usgo) label=(upd_btn) kind=primary\n      ui.text (usn) text=(upd_notes) size=sm\n      ui.text (usl) text=(upd_last) size=sm color=dim\n    }\n    ui.col (uch) kind=panel gap=12 {\n      ui.text (uch_hd) text=\"Update channel\" kind=head size=sm\n      ui.row (uchr) gap=6 {\n        ui.button (uch1) label=(upd_ch_stable) kind=tonal\n        ui.button (uch2) label=(upd_ch_beta) kind=tonal\n        ui.button (uch3) label=(upd_ch_dev) kind=tonal\n      }\n      ui.text (uchn) text=\"Beta and Dev phones also receive Stable releases. A channel never downgrades the installed version.\" size=sm color=dim\n    }\n    ui.col (ua) kind=panel gap=12 {\n      ui.text (ua_hd) text=\"Automatic updates\" kind=head size=sm\n      ui.button (uaon) label=(upd_auto) kind=tonal\n      ui.button (uasc) label=(upd_sched) kind=ghost\n      ui.text (uan) text=\"Automatic updates download and verify in the background and install on the next restart. They never restart the phone on their own.\" size=sm color=dim\n    }\n    ui.col (ur) kind=panel gap=12 {\n      ui.text (ur_hd) text=\"Rollback & history\" kind=head size=sm\n      ui.button (urb) label=(upd_roll) kind=danger\n      ui.text (urh) text=(upd_hist) size=sm color=dim\n    }\n  }\n  ui.on (usgo) tap { sys.update (primary) }\n  ui.on (uch1) tap { sys.update (channel) stable }\n  ui.on (uch2) tap { sys.update (channel) beta }\n  ui.on (uch3) tap { sys.update (channel) dev }\n  ui.on (uaon) tap { sys.update (auto) toggle }\n  ui.on (uasc) tap { sys.update (schedule) toggle }\n  ui.on (urb) tap { sys.update (rollback) }\n}|';'|\n// ==== /updates:sysupdate ====\n\n// ==== updates:devopts ====  Rings > Developer options  (screen name: devopts)\n(RingsDevOpts):-: {\n  [net: none] [poly: settings]\n  with var (dev_state) {\n    irin (\"Data: dev_state=0\")\n  }\n  sys.dev (status)\n  ui.screen (devopts) title=\"Developer options\" {\n    ui.col (dm) kind=panel gap=12 {\n      ui.text (dm_hd) text=\"Developer mode\" kind=head size=sm\n      ui.text (dms) text=(dev_state) size=md\n      ui.button (dmm) label=(dev_master) kind=tonal\n    }\n    ui.col (dd) kind=panel gap=12 {\n      ui.text (dd_hd) text=\"Debugging\" kind=head size=sm\n      ui.button (ddt) label=(dev_touches) kind=tonal\n      ui.button (ddb) label=(dev_bounds) kind=tonal\n    }\n    ui.col (du) kind=panel gap=12 {\n      ui.text (du_hd) text=\"Update testing\" kind=head size=sm\n      ui.button (dus) label=\"Simulate update available\" kind=tonal\n      ui.button (duf) label=(dev_fault) kind=tonal\n      ui.button (duk) label=(dev_skew) kind=tonal\n      ui.button (dul) label=(dev_localfeed) kind=tonal\n      ui.text (duc) text=(dev_clock) size=sm color=dim\n    }\n    ui.col (dl) kind=panel gap=12 {\n      ui.text (dl_hd) text=\"Log viewer\" kind=head size=sm\n      ui.row (dlr) gap=6 {\n        ui.button (dlr1) label=\"Refresh\" kind=tonal\n        ui.button (dlr2) label=\"Clear\" kind=tonal\n      }\n      ui.text (dlt) text=(dev_log) size=sm color=dim\n    }\n    ui.col (dr) kind=panel gap=12 {\n      ui.text (dr_hd) text=\"ROM inspector\" kind=head size=sm\n      ui.text (drt) text=(dev_rom) size=sm\n    }\n    ui.col (df) kind=panel gap=12 {\n      ui.text (df_hd) text=\"Reset\" kind=head size=sm\n      ui.button (dfr) label=(dev_reset) kind=danger\n    }\n  }\n  ui.on (dmm) tap { sys.dev (toggle) }\n  ui.on (ddt) tap { sys.dev (toggle) touches }\n  ui.on (ddb) tap { sys.dev (toggle) bounds }\n  ui.on (dus) tap { sys.update (simulate) }\n  ui.on (duf) tap { sys.update (fault) hash }\n  ui.on (duk) tap { sys.dev (skipclock) }\n  ui.on (dul) tap { sys.update (clearlocal) }\n  ui.on (dlr1) tap { sys.dev (log) }\n  ui.on (dlr2) tap { sys.dev (clearlog) }\n  ui.on (dfr) tap { sys.dev (factoryreset) }\n}|';'|\n// ==== /updates:devopts ====\n",
   "phone/apps/drift.ashos": "// Drift - a real web browser for Samara OS (Ash node syntax).\n// ui.web embeds each page in a sandboxed iframe: the host browser engine renders HTML/CSS/JS/SVG/WebGL/video.\n// Typed text is passed as-is; the host turns it into a URL or a DuckDuckGo search (normalizeUrl).\n// Ash has no lists or string functions, so state is fixed slots shifted with thenplace:\n//   (cur)      what the user asked for ('' = start page). Cross-origin frames cannot report their real URL/title.\n//   (h1..h8)   back stack, (f1..f8) forward stack, '-' = empty.   (bm1..bm10) bookmarks, (rc1..rc10) recent pages.\n// Shared routines are separate nodes run with `call`: DriftGo DriftBack DriftFwd DriftShow DriftSync DriftSaveB DriftSaveR DriftRm1..10.\n// Generated by a script from a template; this file is the plain source and can be edited by hand.\nimport (SamaraHW)\n{{env:Samara}}\n[[script:drift-v2]]\n(Drift):-: {\n  [net: https] [poly: browser]\n  with var (cur) var (addr) var (target) var (st) var (rl) var (mode) var (mode2) var (modeL) var (modeL2) var (tmp) var (hx) var (hy) var (hc) var (wc) var (hv) var (hcv) var (starL) var (dup) var (ed) var (ev) var (h1) var (h2) var (h3) var (h4) var (h5) var (h6) var (h7) var (h8) var (f1) var (f2) var (f3) var (f4) var (f5) var (f6) var (f7) var (f8) var (bm1) var (bm2) var (bm3) var (bm4) var (bm5) var (bm6) var (bm7) var (bm8) var (bm9) var (bm10) var (bv1) var (bv2) var (bv3) var (bv4) var (bv5) var (bv6) var (bv7) var (bv8) var (bv9) var (bv10) var (rc1) var (rc2) var (rc3) var (rc4) var (rc5) var (rc6) var (rc7) var (rc8) var (rc9) var (rc10) var (rv1) var (rv2) var (rv3) var (rv4) var (rv5) var (rv6) var (rv7) var (rv8) var (rv9) var (rv10) {\n    irin (\"Data: rl=0 mode=mobile mode2=desktop hx=a hy=b ed=0\")\n  }\n  // defaults, then whatever the user saved\n  thenplace \"MOBILE ⇄\" placeto (modeL)\n  thenplace \"DESKTOP ⇄\" placeto (modeL2)\n  thenplace \"☆\" placeto (starL)\n  thenplace \"-\" placeto (h1)\n  thenplace \"-\" placeto (f1)\n  thenplace \"-\" placeto (h2)\n  thenplace \"-\" placeto (f2)\n  thenplace \"-\" placeto (h3)\n  thenplace \"-\" placeto (f3)\n  thenplace \"-\" placeto (h4)\n  thenplace \"-\" placeto (f4)\n  thenplace \"-\" placeto (h5)\n  thenplace \"-\" placeto (f5)\n  thenplace \"-\" placeto (h6)\n  thenplace \"-\" placeto (f6)\n  thenplace \"-\" placeto (h7)\n  thenplace \"-\" placeto (f7)\n  thenplace \"-\" placeto (h8)\n  thenplace \"-\" placeto (f8)\n  call (DriftDefaults)\n  store.get (drift.bm.1) placeto (bm1)\n  store.get (drift.bm.2) placeto (bm2)\n  store.get (drift.bm.3) placeto (bm3)\n  store.get (drift.bm.4) placeto (bm4)\n  store.get (drift.bm.5) placeto (bm5)\n  store.get (drift.bm.6) placeto (bm6)\n  store.get (drift.bm.7) placeto (bm7)\n  store.get (drift.bm.8) placeto (bm8)\n  store.get (drift.bm.9) placeto (bm9)\n  store.get (drift.bm.10) placeto (bm10)\n  store.get (drift.rc.1) placeto (rc1)\n  store.get (drift.rc.2) placeto (rc2)\n  store.get (drift.rc.3) placeto (rc3)\n  store.get (drift.rc.4) placeto (rc4)\n  store.get (drift.rc.5) placeto (rc5)\n  store.get (drift.rc.6) placeto (rc6)\n  store.get (drift.rc.7) placeto (rc7)\n  store.get (drift.rc.8) placeto (rc8)\n  store.get (drift.rc.9) placeto (rc9)\n  store.get (drift.rc.10) placeto (rc10)\n  store.get (drift.mode) placeto (mode)\n  store.get (drift.mode2) placeto (mode2)\n  store.get (drift.modeL) placeto (modeL)\n  store.get (drift.modeL2) placeto (modeL2)\n  store.get (drift.hint) placeto (hc)\n\n  // ---- main screen: toolbar, (start page | web view), footer ----\n  ui.screen (main) title=\"Drift\" {\n    ui.col (tb) gap=8 {\n      ui.row (nav) gap=8 {\n        ui.button (bback) label=\"‹\" kind=tool\n        ui.button (bfwd) label=\"›\" kind=tool\n        ui.button (brel) label=\"↻\" kind=tool\n        ui.button (bhome) label=\"⌂\" kind=tool\n        ui.button (bmode) label=(modeL) kind=mode\n        ui.button (bstar) label=(starL) kind=tool\n      }\n      ui.row (addrrow) gap=8 {\n        ui.input (urlin) placeholder=\"Search or enter address\"\n        ui.button (bgo) label=\"Go\" kind=go\n      }\n    }\n    ui.button (hint) label=\"ⓘ Links you tap inside a page navigate the page, but this address bar can't follow them (cross-origin). Tap to hide.\" kind=hint\n    ui.col (home) gap=10 {\n      ui.row (srow) gap=8 {\n        ui.input (sinput) placeholder=\"Search or enter address\"\n        ui.button (sgo) label=\"Go\" kind=go\n      }\n      ui.text (bmh) text=\"BOOKMARKS\" size=12 color=dim\n      ui.col (tilebox) gap=8 {\n        ui.grid (tiles) cols=2 gap=8 {\n          ui.button (t1) label=(bm1) kind=card\n          ui.button (t2) label=(bm2) kind=card\n          ui.button (t3) label=(bm3) kind=card\n          ui.button (t4) label=(bm4) kind=card\n          ui.button (t5) label=(bm5) kind=card\n          ui.button (t6) label=(bm6) kind=card\n          ui.button (t7) label=(bm7) kind=card\n          ui.button (t8) label=(bm8) kind=card\n          ui.button (t9) label=(bm9) kind=card\n          ui.button (t10) label=(bm10) kind=card\n        }\n      }\n      ui.button (bedit) label=\"Edit bookmarks\" kind=tonal\n      ui.text (rch) text=\"RECENT\" size=12 color=dim\n      ui.col (rbox) gap=8 {\n        ui.grid (recents) cols=2 gap=8 {\n          ui.button (r1) label=(rc1) kind=card\n          ui.button (r2) label=(rc2) kind=card\n          ui.button (r3) label=(rc3) kind=card\n          ui.button (r4) label=(rc4) kind=card\n          ui.button (r5) label=(rc5) kind=card\n          ui.button (r6) label=(rc6) kind=card\n          ui.button (r7) label=(rc7) kind=card\n          ui.button (r8) label=(rc8) kind=card\n          ui.button (r9) label=(rc9) kind=card\n          ui.button (r10) label=(rc10) kind=card\n        }\n      }\n      ui.button (hclear) label=\"Clear history\" kind=danger\n      ui.text (about) text=\"Drift shows real pages in a sandboxed frame. A site that refuses to be embedded shows a blank page: use the arrow button on the page to open it in a browser tab.\" size=12 color=dim\n    }\n    ui.col (editbox) gap=8 {\n      ui.text (eh) text=\"Tap a bookmark to open it, or ✕ to remove it. Add the page you are on with the star in the toolbar.\" size=13 color=dim\n      ui.col (erows) gap=8 {\n        ui.row (er1) gap=8 {\n          ui.button (el1) label=(bm1) kind=card\n          ui.button (ex1) label=\"✕\" kind=x\n        }\n        ui.row (er2) gap=8 {\n          ui.button (el2) label=(bm2) kind=card\n          ui.button (ex2) label=\"✕\" kind=x\n        }\n        ui.row (er3) gap=8 {\n          ui.button (el3) label=(bm3) kind=card\n          ui.button (ex3) label=\"✕\" kind=x\n        }\n        ui.row (er4) gap=8 {\n          ui.button (el4) label=(bm4) kind=card\n          ui.button (ex4) label=\"✕\" kind=x\n        }\n        ui.row (er5) gap=8 {\n          ui.button (el5) label=(bm5) kind=card\n          ui.button (ex5) label=\"✕\" kind=x\n        }\n        ui.row (er6) gap=8 {\n          ui.button (el6) label=(bm6) kind=card\n          ui.button (ex6) label=\"✕\" kind=x\n        }\n        ui.row (er7) gap=8 {\n          ui.button (el7) label=(bm7) kind=card\n          ui.button (ex7) label=\"✕\" kind=x\n        }\n        ui.row (er8) gap=8 {\n          ui.button (el8) label=(bm8) kind=card\n          ui.button (ex8) label=\"✕\" kind=x\n        }\n        ui.row (er9) gap=8 {\n          ui.button (el9) label=(bm9) kind=card\n          ui.button (ex9) label=\"✕\" kind=x\n        }\n        ui.row (er10) gap=8 {\n          ui.button (el10) label=(bm10) kind=card\n          ui.button (ex10) label=\"✕\" kind=x\n        }\n      }\n      ui.button (brestore) label=\"Restore default bookmarks\" kind=tonal\n      ui.button (edone) label=\"Done\" kind=primary\n    }\n    ui.web (view) url=(cur) mode=(mode) reload=(rl) h=(hx)\n    ui.text (foot) text=(st) size=11\n  }\n\n  // visibility classes are computed by DriftSync (bound live)\n  ui.set (t1) cls=(bv1)\n  ui.set (er1) cls=(bv1)\n  ui.set (t2) cls=(bv2)\n  ui.set (er2) cls=(bv2)\n  ui.set (t3) cls=(bv3)\n  ui.set (er3) cls=(bv3)\n  ui.set (t4) cls=(bv4)\n  ui.set (er4) cls=(bv4)\n  ui.set (t5) cls=(bv5)\n  ui.set (er5) cls=(bv5)\n  ui.set (t6) cls=(bv6)\n  ui.set (er6) cls=(bv6)\n  ui.set (t7) cls=(bv7)\n  ui.set (er7) cls=(bv7)\n  ui.set (t8) cls=(bv8)\n  ui.set (er8) cls=(bv8)\n  ui.set (t9) cls=(bv9)\n  ui.set (er9) cls=(bv9)\n  ui.set (t10) cls=(bv10)\n  ui.set (er10) cls=(bv10)\n  ui.set (r1) cls=(rv1)\n  ui.set (r2) cls=(rv2)\n  ui.set (r3) cls=(rv3)\n  ui.set (r4) cls=(rv4)\n  ui.set (r5) cls=(rv5)\n  ui.set (r6) cls=(rv6)\n  ui.set (r7) cls=(rv7)\n  ui.set (r8) cls=(rv8)\n  ui.set (r9) cls=(rv9)\n  ui.set (r10) cls=(rv10)\n  ui.set (rch) cls=(rv1)\n  ui.set (hclear) cls=(rv1)\n  ui.set (view) cls=(wc)\n  ui.set (addrrow) cls=(wc)\n  ui.set (foot) cls=(wc)\n  ui.set (home) cls=(hv)\n  ui.set (editbox) cls=(ev)\n  ui.set (hint) cls=(hcv)\n  call (DriftSync)\n\n  // ---- handlers ----\n  ui.on (urlin) submit {\n    thenplace (urlin) placeto (target)\n    Research (rl + 1) placeto (rl)\n    call (DriftGo)\n  }\n  ui.on (bgo) tap {\n    thenplace (urlin) placeto (target)\n    Research (rl + 1) placeto (rl)\n    call (DriftGo)\n  }\n  ui.on (sinput) submit {\n    thenplace (sinput) placeto (target)\n    call (DriftGo)\n    thenplace \"\" placeto (sinput)\n    ui.set (sinput) value=(sinput)\n  }\n  ui.on (sgo) tap {\n    thenplace (sinput) placeto (target)\n    call (DriftGo)\n    thenplace \"\" placeto (sinput)\n    ui.set (sinput) value=(sinput)\n  }\n  ui.on (bback) tap { call (DriftBack) }\n  ui.on (bfwd) tap { call (DriftFwd) }\n  ui.on (brel) tap {\n    Research (rl + 1) placeto (rl)\n    thenplace \"Loading ${cur} ...\" placeto (st)\n  }\n  ui.on (bhome) tap {\n    if cond=\"${cur}!=\" {\n      thenplace \"\" placeto (target)\n      call (DriftGo)\n    }\n  }\n  ui.on (bmode) tap {\n    thenplace (mode) placeto (tmp)\n    thenplace (mode2) placeto (mode)\n    thenplace (tmp) placeto (mode2)\n    thenplace (modeL) placeto (tmp)\n    thenplace (modeL2) placeto (modeL)\n    thenplace (tmp) placeto (modeL2)\n    store.set (drift.mode) with (mode)\n    store.set (drift.mode2) with (mode2)\n    store.set (drift.modeL) with (modeL)\n    store.set (drift.modeL2) with (modeL2)\n    thenplace \"Loaded ${cur} - ${mode} layout\" placeto (st)\n  }\n  ui.on (bstar) tap {\n    if cond=\"${cur}!=\" {\n      thenplace \"0\" placeto (dup)\n      if cond=\"${bm1}==${cur}\" { thenplace \"1\" placeto (dup) }\n      if cond=\"${bm2}==${cur}\" { thenplace \"1\" placeto (dup) }\n      if cond=\"${bm3}==${cur}\" { thenplace \"1\" placeto (dup) }\n      if cond=\"${bm4}==${cur}\" { thenplace \"1\" placeto (dup) }\n      if cond=\"${bm5}==${cur}\" { thenplace \"1\" placeto (dup) }\n      if cond=\"${bm6}==${cur}\" { thenplace \"1\" placeto (dup) }\n      if cond=\"${bm7}==${cur}\" { thenplace \"1\" placeto (dup) }\n      if cond=\"${bm8}==${cur}\" { thenplace \"1\" placeto (dup) }\n      if cond=\"${bm9}==${cur}\" { thenplace \"1\" placeto (dup) }\n      if cond=\"${bm10}==${cur}\" { thenplace \"1\" placeto (dup) }\n      if cond=\"${dup}==0\" {\n        thenplace (bm9) placeto (bm10)\n        thenplace (bm8) placeto (bm9)\n        thenplace (bm7) placeto (bm8)\n        thenplace (bm6) placeto (bm7)\n        thenplace (bm5) placeto (bm6)\n        thenplace (bm4) placeto (bm5)\n        thenplace (bm3) placeto (bm4)\n        thenplace (bm2) placeto (bm3)\n        thenplace (bm1) placeto (bm2)\n        thenplace (cur) placeto (bm1)\n        call (DriftSaveB)\n        call (DriftSync)\n        sys.notify (\"Bookmarked\") title=\"Drift\"\n      }\n      if cond=\"${dup}==1\" {\n        if cond=\"${bm1}==${cur}\" { call (DriftRm1) }\n        if cond=\"${bm2}==${cur}\" { call (DriftRm2) }\n        if cond=\"${bm3}==${cur}\" { call (DriftRm3) }\n        if cond=\"${bm4}==${cur}\" { call (DriftRm4) }\n        if cond=\"${bm5}==${cur}\" { call (DriftRm5) }\n        if cond=\"${bm6}==${cur}\" { call (DriftRm6) }\n        if cond=\"${bm7}==${cur}\" { call (DriftRm7) }\n        if cond=\"${bm8}==${cur}\" { call (DriftRm8) }\n        if cond=\"${bm9}==${cur}\" { call (DriftRm9) }\n        if cond=\"${bm10}==${cur}\" { call (DriftRm10) }\n        sys.notify (\"Bookmark removed\") title=\"Drift\"\n      }\n    }\n  }\n  ui.on (hint) tap {\n    thenplace \"dhide\" placeto (hc)\n    store.set (drift.hint) with (hc)\n    call (DriftSync)\n  }\n  ui.on (view) load {\n    thenplace \"Loaded ${cur} - ${mode} layout\" placeto (st)\n  }\n  ui.on (bedit) tap {\n    thenplace \"1\" placeto (ed)\n    call (DriftSync)\n  }\n  ui.on (edone) tap {\n    thenplace \"0\" placeto (ed)\n    call (DriftSync)\n  }\n  ui.on (hclear) tap {\n    thenplace \"\" placeto (rc1)\n    thenplace \"\" placeto (rc2)\n    thenplace \"\" placeto (rc3)\n    thenplace \"\" placeto (rc4)\n    thenplace \"\" placeto (rc5)\n    thenplace \"\" placeto (rc6)\n    thenplace \"\" placeto (rc7)\n    thenplace \"\" placeto (rc8)\n    thenplace \"\" placeto (rc9)\n    thenplace \"\" placeto (rc10)\n    call (DriftSaveR)\n    thenplace \"-\" placeto (h1)\n    thenplace \"-\" placeto (f1)\n    thenplace \"-\" placeto (h2)\n    thenplace \"-\" placeto (f2)\n    thenplace \"-\" placeto (h3)\n    thenplace \"-\" placeto (f3)\n    thenplace \"-\" placeto (h4)\n    thenplace \"-\" placeto (f4)\n    thenplace \"-\" placeto (h5)\n    thenplace \"-\" placeto (f5)\n    thenplace \"-\" placeto (h6)\n    thenplace \"-\" placeto (f6)\n    thenplace \"-\" placeto (h7)\n    thenplace \"-\" placeto (f7)\n    thenplace \"-\" placeto (h8)\n    thenplace \"-\" placeto (f8)\n    call (DriftSync)\n    sys.notify (\"History cleared\") title=\"Drift\"\n  }\n  ui.on (brestore) tap {\n    call (DriftDefaults)\n    call (DriftSaveB)\n    call (DriftSync)\n  }\n  ui.on (t1) tap { thenplace (bm1) placeto (target); call (DriftGo) }\n  ui.on (el1) tap { thenplace (bm1) placeto (target); thenplace \"0\" placeto (ed); call (DriftGo) }\n  ui.on (ex1) tap { call (DriftRm1) }\n  ui.on (t2) tap { thenplace (bm2) placeto (target); call (DriftGo) }\n  ui.on (el2) tap { thenplace (bm2) placeto (target); thenplace \"0\" placeto (ed); call (DriftGo) }\n  ui.on (ex2) tap { call (DriftRm2) }\n  ui.on (t3) tap { thenplace (bm3) placeto (target); call (DriftGo) }\n  ui.on (el3) tap { thenplace (bm3) placeto (target); thenplace \"0\" placeto (ed); call (DriftGo) }\n  ui.on (ex3) tap { call (DriftRm3) }\n  ui.on (t4) tap { thenplace (bm4) placeto (target); call (DriftGo) }\n  ui.on (el4) tap { thenplace (bm4) placeto (target); thenplace \"0\" placeto (ed); call (DriftGo) }\n  ui.on (ex4) tap { call (DriftRm4) }\n  ui.on (t5) tap { thenplace (bm5) placeto (target); call (DriftGo) }\n  ui.on (el5) tap { thenplace (bm5) placeto (target); thenplace \"0\" placeto (ed); call (DriftGo) }\n  ui.on (ex5) tap { call (DriftRm5) }\n  ui.on (t6) tap { thenplace (bm6) placeto (target); call (DriftGo) }\n  ui.on (el6) tap { thenplace (bm6) placeto (target); thenplace \"0\" placeto (ed); call (DriftGo) }\n  ui.on (ex6) tap { call (DriftRm6) }\n  ui.on (t7) tap { thenplace (bm7) placeto (target); call (DriftGo) }\n  ui.on (el7) tap { thenplace (bm7) placeto (target); thenplace \"0\" placeto (ed); call (DriftGo) }\n  ui.on (ex7) tap { call (DriftRm7) }\n  ui.on (t8) tap { thenplace (bm8) placeto (target); call (DriftGo) }\n  ui.on (el8) tap { thenplace (bm8) placeto (target); thenplace \"0\" placeto (ed); call (DriftGo) }\n  ui.on (ex8) tap { call (DriftRm8) }\n  ui.on (t9) tap { thenplace (bm9) placeto (target); call (DriftGo) }\n  ui.on (el9) tap { thenplace (bm9) placeto (target); thenplace \"0\" placeto (ed); call (DriftGo) }\n  ui.on (ex9) tap { call (DriftRm9) }\n  ui.on (t10) tap { thenplace (bm10) placeto (target); call (DriftGo) }\n  ui.on (el10) tap { thenplace (bm10) placeto (target); thenplace \"0\" placeto (ed); call (DriftGo) }\n  ui.on (ex10) tap { call (DriftRm10) }\n  ui.on (r1) tap { thenplace (rc1) placeto (target); call (DriftGo) }\n  ui.on (r2) tap { thenplace (rc2) placeto (target); call (DriftGo) }\n  ui.on (r3) tap { thenplace (rc3) placeto (target); call (DriftGo) }\n  ui.on (r4) tap { thenplace (rc4) placeto (target); call (DriftGo) }\n  ui.on (r5) tap { thenplace (rc5) placeto (target); call (DriftGo) }\n  ui.on (r6) tap { thenplace (rc6) placeto (target); call (DriftGo) }\n  ui.on (r7) tap { thenplace (rc7) placeto (target); call (DriftGo) }\n  ui.on (r8) tap { thenplace (rc8) placeto (target); call (DriftGo) }\n  ui.on (r9) tap { thenplace (rc9) placeto (target); call (DriftGo) }\n  ui.on (r10) tap { thenplace (rc10) placeto (target); call (DriftGo) }\n  input.on (back) {\n    if cond=\"${ed}==0\" {\n      if cond=\"${cur}!=\" { call (DriftBack) }\n      if cond=\"${cur}==\" { sys.home }\n    }\n    if cond=\"${ed}==1\" {\n      thenplace \"0\" placeto (ed)\n      call (DriftSync)\n    }\n  }\n  ui.screen (main)\n}|';'|\n\n// Default bookmarks (own sites first, then sites that allow framing); empty recents.\n(DriftDefaults):-: {\n  thenplace \"dartmeadow.com\" placeto (bm1)\n  thenplace \"radicaldeepscale.com\" placeto (bm2)\n  thenplace \"leatr.xyz\" placeto (bm3)\n  thenplace \"cube.leatr.xyz\" placeto (bm4)\n  thenplace \"en.wikipedia.org\" placeto (bm5)\n  thenplace \"threejs.org/examples\" placeto (bm6)\n  thenplace \"developer.mozilla.org\" placeto (bm7)\n  thenplace \"archive.org\" placeto (bm8)\n  thenplace \"openstreetmap.org\" placeto (bm9)\n  thenplace \"\" placeto (bm10)\n  thenplace \"\" placeto (rc1)\n  thenplace \"\" placeto (rc2)\n  thenplace \"\" placeto (rc3)\n  thenplace \"\" placeto (rc4)\n  thenplace \"\" placeto (rc5)\n  thenplace \"\" placeto (rc6)\n  thenplace \"\" placeto (rc7)\n  thenplace \"\" placeto (rc8)\n  thenplace \"\" placeto (rc9)\n  thenplace \"\" placeto (rc10)\n}|';'|\n\n// Navigate to (target): push (cur) on the back stack, clear forward, remember in recents.\n(DriftGo):-: {\n  thenplace (h7) placeto (h8)\n  thenplace (h6) placeto (h7)\n  thenplace (h5) placeto (h6)\n  thenplace (h4) placeto (h5)\n  thenplace (h3) placeto (h4)\n  thenplace (h2) placeto (h3)\n  thenplace (h1) placeto (h2)\n  thenplace (cur) placeto (h1)\n  thenplace \"-\" placeto (f1)\n  thenplace \"-\" placeto (f2)\n  thenplace \"-\" placeto (f3)\n  thenplace \"-\" placeto (f4)\n  thenplace \"-\" placeto (f5)\n  thenplace \"-\" placeto (f6)\n  thenplace \"-\" placeto (f7)\n  thenplace \"-\" placeto (f8)\n  thenplace (target) placeto (cur)\n  if cond=\"${target}!=\" {\n    if cond=\"${rc1}!=${target}\" {\n      thenplace (rc9) placeto (rc10)\n      thenplace (rc8) placeto (rc9)\n      thenplace (rc7) placeto (rc8)\n      thenplace (rc6) placeto (rc7)\n      thenplace (rc5) placeto (rc6)\n      thenplace (rc4) placeto (rc5)\n      thenplace (rc3) placeto (rc4)\n      thenplace (rc2) placeto (rc3)\n      thenplace (rc1) placeto (rc2)\n      thenplace (target) placeto (rc1)\n    }\n  }\n  call (DriftSaveR)\n  call (DriftShow)\n}|';'|\n\n// Back: current page goes on the forward stack.\n(DriftBack):-: {\n  if cond=\"${h1}!=-\" {\n    thenplace (f7) placeto (f8)\n    thenplace (f6) placeto (f7)\n    thenplace (f5) placeto (f6)\n    thenplace (f4) placeto (f5)\n    thenplace (f3) placeto (f4)\n    thenplace (f2) placeto (f3)\n    thenplace (f1) placeto (f2)\n    thenplace (cur) placeto (f1)\n    thenplace (h1) placeto (cur)\n    thenplace (h2) placeto (h1)\n    thenplace (h3) placeto (h2)\n    thenplace (h4) placeto (h3)\n    thenplace (h5) placeto (h4)\n    thenplace (h6) placeto (h5)\n    thenplace (h7) placeto (h6)\n    thenplace (h8) placeto (h7)\n    thenplace \"-\" placeto (h8)\n    call (DriftShow)\n  }\n}|';'|\n\n// Forward: current page goes back on the back stack.\n(DriftFwd):-: {\n  if cond=\"${f1}!=-\" {\n    thenplace (h7) placeto (h8)\n    thenplace (h6) placeto (h7)\n    thenplace (h5) placeto (h6)\n    thenplace (h4) placeto (h5)\n    thenplace (h3) placeto (h4)\n    thenplace (h2) placeto (h3)\n    thenplace (h1) placeto (h2)\n    thenplace (cur) placeto (h1)\n    thenplace (f1) placeto (cur)\n    thenplace (f2) placeto (f1)\n    thenplace (f3) placeto (f2)\n    thenplace (f4) placeto (f3)\n    thenplace (f5) placeto (f4)\n    thenplace (f6) placeto (f5)\n    thenplace (f7) placeto (f6)\n    thenplace (f8) placeto (f7)\n    thenplace \"-\" placeto (f8)\n    call (DriftShow)\n  }\n}|';'|\n\n// After (cur) changed: sync the address bar, status and which area is visible.\n(DriftShow):-: {\n  thenplace (cur) placeto (addr)\n  ui.set (urlin) value=(addr)\n  thenplace \"Loading ${cur} ...\" placeto (st)\n  call (DriftSync)\n}|';'|\n\n// Recompute visibility classes (dhide) and the bookmark star. Also nudges the web view to re-fit its height.\n(DriftSync):-: {\n  thenplace \"\" placeto (wc)\n  thenplace \"dhide\" placeto (hv)\n  thenplace (hc) placeto (hcv)\n  if cond=\"${cur}==\" {\n    thenplace \"dhide\" placeto (wc)\n    thenplace \"\" placeto (hv)\n    thenplace \"dhide\" placeto (hcv)\n  }\n  thenplace \"dhide\" placeto (bv1)\n  if cond=\"${bm1}!=\" { thenplace \"\" placeto (bv1) }\n  thenplace \"dhide\" placeto (bv2)\n  if cond=\"${bm2}!=\" { thenplace \"\" placeto (bv2) }\n  thenplace \"dhide\" placeto (bv3)\n  if cond=\"${bm3}!=\" { thenplace \"\" placeto (bv3) }\n  thenplace \"dhide\" placeto (bv4)\n  if cond=\"${bm4}!=\" { thenplace \"\" placeto (bv4) }\n  thenplace \"dhide\" placeto (bv5)\n  if cond=\"${bm5}!=\" { thenplace \"\" placeto (bv5) }\n  thenplace \"dhide\" placeto (bv6)\n  if cond=\"${bm6}!=\" { thenplace \"\" placeto (bv6) }\n  thenplace \"dhide\" placeto (bv7)\n  if cond=\"${bm7}!=\" { thenplace \"\" placeto (bv7) }\n  thenplace \"dhide\" placeto (bv8)\n  if cond=\"${bm8}!=\" { thenplace \"\" placeto (bv8) }\n  thenplace \"dhide\" placeto (bv9)\n  if cond=\"${bm9}!=\" { thenplace \"\" placeto (bv9) }\n  thenplace \"dhide\" placeto (bv10)\n  if cond=\"${bm10}!=\" { thenplace \"\" placeto (bv10) }\n  thenplace \"dhide\" placeto (rv1)\n  if cond=\"${rc1}!=\" { thenplace \"\" placeto (rv1) }\n  thenplace \"dhide\" placeto (rv2)\n  if cond=\"${rc2}!=\" { thenplace \"\" placeto (rv2) }\n  thenplace \"dhide\" placeto (rv3)\n  if cond=\"${rc3}!=\" { thenplace \"\" placeto (rv3) }\n  thenplace \"dhide\" placeto (rv4)\n  if cond=\"${rc4}!=\" { thenplace \"\" placeto (rv4) }\n  thenplace \"dhide\" placeto (rv5)\n  if cond=\"${rc5}!=\" { thenplace \"\" placeto (rv5) }\n  thenplace \"dhide\" placeto (rv6)\n  if cond=\"${rc6}!=\" { thenplace \"\" placeto (rv6) }\n  thenplace \"dhide\" placeto (rv7)\n  if cond=\"${rc7}!=\" { thenplace \"\" placeto (rv7) }\n  thenplace \"dhide\" placeto (rv8)\n  if cond=\"${rc8}!=\" { thenplace \"\" placeto (rv8) }\n  thenplace \"dhide\" placeto (rv9)\n  if cond=\"${rc9}!=\" { thenplace \"\" placeto (rv9) }\n  thenplace \"dhide\" placeto (rv10)\n  if cond=\"${rc10}!=\" { thenplace \"\" placeto (rv10) }\n  thenplace \"dhide\" placeto (ev)\n  if cond=\"${ed}==1\" {\n    thenplace \"dhide\" placeto (hv)\n    thenplace \"\" placeto (ev)\n  }\n  thenplace \"☆\" placeto (starL)\n  if cond=\"${cur}!=\" {\n    if cond=\"${bm1}==${cur}\" { thenplace \"★\" placeto (starL) }\n    if cond=\"${bm2}==${cur}\" { thenplace \"★\" placeto (starL) }\n    if cond=\"${bm3}==${cur}\" { thenplace \"★\" placeto (starL) }\n    if cond=\"${bm4}==${cur}\" { thenplace \"★\" placeto (starL) }\n    if cond=\"${bm5}==${cur}\" { thenplace \"★\" placeto (starL) }\n    if cond=\"${bm6}==${cur}\" { thenplace \"★\" placeto (starL) }\n    if cond=\"${bm7}==${cur}\" { thenplace \"★\" placeto (starL) }\n    if cond=\"${bm8}==${cur}\" { thenplace \"★\" placeto (starL) }\n    if cond=\"${bm9}==${cur}\" { thenplace \"★\" placeto (starL) }\n    if cond=\"${bm10}==${cur}\" { thenplace \"★\" placeto (starL) }\n  }\n  thenplace (hx) placeto (tmp)\n  thenplace (hy) placeto (hx)\n  thenplace (tmp) placeto (hy)\n}|';'|\n\n// Persist bookmarks.\n(DriftSaveB):-: {\n  store.set (drift.bm.1) with (bm1)\n  store.set (drift.bm.2) with (bm2)\n  store.set (drift.bm.3) with (bm3)\n  store.set (drift.bm.4) with (bm4)\n  store.set (drift.bm.5) with (bm5)\n  store.set (drift.bm.6) with (bm6)\n  store.set (drift.bm.7) with (bm7)\n  store.set (drift.bm.8) with (bm8)\n  store.set (drift.bm.9) with (bm9)\n  store.set (drift.bm.10) with (bm10)\n}|';'|\n\n// Persist recent pages.\n(DriftSaveR):-: {\n  store.set (drift.rc.1) with (rc1)\n  store.set (drift.rc.2) with (rc2)\n  store.set (drift.rc.3) with (rc3)\n  store.set (drift.rc.4) with (rc4)\n  store.set (drift.rc.5) with (rc5)\n  store.set (drift.rc.6) with (rc6)\n  store.set (drift.rc.7) with (rc7)\n  store.set (drift.rc.8) with (rc8)\n  store.set (drift.rc.9) with (rc9)\n  store.set (drift.rc.10) with (rc10)\n}|';'|\n\n// Remove bookmark 1: later bookmarks shift up.\n(DriftRm1):-: {\n  thenplace (bm2) placeto (bm1)\n  thenplace (bm3) placeto (bm2)\n  thenplace (bm4) placeto (bm3)\n  thenplace (bm5) placeto (bm4)\n  thenplace (bm6) placeto (bm5)\n  thenplace (bm7) placeto (bm6)\n  thenplace (bm8) placeto (bm7)\n  thenplace (bm9) placeto (bm8)\n  thenplace (bm10) placeto (bm9)\n  thenplace \"\" placeto (bm10)\n  call (DriftSaveB)\n  call (DriftSync)\n}|';'|\n\n// Remove bookmark 2: later bookmarks shift up.\n(DriftRm2):-: {\n  thenplace (bm3) placeto (bm2)\n  thenplace (bm4) placeto (bm3)\n  thenplace (bm5) placeto (bm4)\n  thenplace (bm6) placeto (bm5)\n  thenplace (bm7) placeto (bm6)\n  thenplace (bm8) placeto (bm7)\n  thenplace (bm9) placeto (bm8)\n  thenplace (bm10) placeto (bm9)\n  thenplace \"\" placeto (bm10)\n  call (DriftSaveB)\n  call (DriftSync)\n}|';'|\n\n// Remove bookmark 3: later bookmarks shift up.\n(DriftRm3):-: {\n  thenplace (bm4) placeto (bm3)\n  thenplace (bm5) placeto (bm4)\n  thenplace (bm6) placeto (bm5)\n  thenplace (bm7) placeto (bm6)\n  thenplace (bm8) placeto (bm7)\n  thenplace (bm9) placeto (bm8)\n  thenplace (bm10) placeto (bm9)\n  thenplace \"\" placeto (bm10)\n  call (DriftSaveB)\n  call (DriftSync)\n}|';'|\n\n// Remove bookmark 4: later bookmarks shift up.\n(DriftRm4):-: {\n  thenplace (bm5) placeto (bm4)\n  thenplace (bm6) placeto (bm5)\n  thenplace (bm7) placeto (bm6)\n  thenplace (bm8) placeto (bm7)\n  thenplace (bm9) placeto (bm8)\n  thenplace (bm10) placeto (bm9)\n  thenplace \"\" placeto (bm10)\n  call (DriftSaveB)\n  call (DriftSync)\n}|';'|\n\n// Remove bookmark 5: later bookmarks shift up.\n(DriftRm5):-: {\n  thenplace (bm6) placeto (bm5)\n  thenplace (bm7) placeto (bm6)\n  thenplace (bm8) placeto (bm7)\n  thenplace (bm9) placeto (bm8)\n  thenplace (bm10) placeto (bm9)\n  thenplace \"\" placeto (bm10)\n  call (DriftSaveB)\n  call (DriftSync)\n}|';'|\n\n// Remove bookmark 6: later bookmarks shift up.\n(DriftRm6):-: {\n  thenplace (bm7) placeto (bm6)\n  thenplace (bm8) placeto (bm7)\n  thenplace (bm9) placeto (bm8)\n  thenplace (bm10) placeto (bm9)\n  thenplace \"\" placeto (bm10)\n  call (DriftSaveB)\n  call (DriftSync)\n}|';'|\n\n// Remove bookmark 7: later bookmarks shift up.\n(DriftRm7):-: {\n  thenplace (bm8) placeto (bm7)\n  thenplace (bm9) placeto (bm8)\n  thenplace (bm10) placeto (bm9)\n  thenplace \"\" placeto (bm10)\n  call (DriftSaveB)\n  call (DriftSync)\n}|';'|\n\n// Remove bookmark 8: later bookmarks shift up.\n(DriftRm8):-: {\n  thenplace (bm9) placeto (bm8)\n  thenplace (bm10) placeto (bm9)\n  thenplace \"\" placeto (bm10)\n  call (DriftSaveB)\n  call (DriftSync)\n}|';'|\n\n// Remove bookmark 9: later bookmarks shift up.\n(DriftRm9):-: {\n  thenplace (bm10) placeto (bm9)\n  thenplace \"\" placeto (bm10)\n  call (DriftSaveB)\n  call (DriftSync)\n}|';'|\n\n// Remove bookmark 10: later bookmarks shift up.\n(DriftRm10):-: {\n  thenplace \"\" placeto (bm10)\n  call (DriftSaveB)\n  call (DriftSync)\n}|';'|\n\n",
   "phone/apps/leaf.ashos": "// Leaf - notepad for Samara OS (Ash node syntax).\n// 8 note slots (Ash has no branching or dynamic lists, so slots are fixed and explicit).\n// A slot reading \"+ New note\" is empty: tap it, write, Save. Delete resets the slot.\n// Each slot persists to store.* under leaf.title.N / leaf.body.N.\nimport (SamaraHW)\n{{env:Samara}}\n[[script:leaf-v1]]\n(Leaf):-: {\n  [net: none] [poly: notes]\n  with var (s) var (t1) var (title1) var (body1) var (t2) var (title2) var (body2) var (t3) var (title3) var (body3) var (t4) var (title4) var (body4) var (t5) var (title5) var (body5) var (t6) var (title6) var (body6) var (t7) var (title7) var (body7) var (t8) var (title8) var (body8) {\n    irin (\"Data: s=0\")\n  }\n  thenplace \"+ New note\" placeto (title1)\n  thenplace \"\" placeto (body1)\n  store.get (leaf.title.1) placeto (title1)\n  store.get (leaf.body.1) placeto (body1)\n  thenplace (title1) placeto (t1)\n  thenplace \"+ New note\" placeto (title2)\n  thenplace \"\" placeto (body2)\n  store.get (leaf.title.2) placeto (title2)\n  store.get (leaf.body.2) placeto (body2)\n  thenplace (title2) placeto (t2)\n  thenplace \"+ New note\" placeto (title3)\n  thenplace \"\" placeto (body3)\n  store.get (leaf.title.3) placeto (title3)\n  store.get (leaf.body.3) placeto (body3)\n  thenplace (title3) placeto (t3)\n  thenplace \"+ New note\" placeto (title4)\n  thenplace \"\" placeto (body4)\n  store.get (leaf.title.4) placeto (title4)\n  store.get (leaf.body.4) placeto (body4)\n  thenplace (title4) placeto (t4)\n  thenplace \"+ New note\" placeto (title5)\n  thenplace \"\" placeto (body5)\n  store.get (leaf.title.5) placeto (title5)\n  store.get (leaf.body.5) placeto (body5)\n  thenplace (title5) placeto (t5)\n  thenplace \"+ New note\" placeto (title6)\n  thenplace \"\" placeto (body6)\n  store.get (leaf.title.6) placeto (title6)\n  store.get (leaf.body.6) placeto (body6)\n  thenplace (title6) placeto (t6)\n  thenplace \"+ New note\" placeto (title7)\n  thenplace \"\" placeto (body7)\n  store.get (leaf.title.7) placeto (title7)\n  store.get (leaf.body.7) placeto (body7)\n  thenplace (title7) placeto (t7)\n  thenplace \"+ New note\" placeto (title8)\n  thenplace \"\" placeto (body8)\n  store.get (leaf.title.8) placeto (title8)\n  store.get (leaf.body.8) placeto (body8)\n  thenplace (title8) placeto (t8)\n\n  ui.screen (list) title=\"Leaf\" {\n    ui.button (n1) label=(t1) kind=card\n    ui.button (n2) label=(t2) kind=card\n    ui.button (n3) label=(t3) kind=card\n    ui.button (n4) label=(t4) kind=card\n    ui.button (n5) label=(t5) kind=card\n    ui.button (n6) label=(t6) kind=card\n    ui.button (n7) label=(t7) kind=card\n    ui.button (n8) label=(t8) kind=card\n    ui.button (leafhome) label=\"Home\" kind=tonal\n  }\n  ui.screen (edit1) title=\"Note 1\" {\n    ui.input (ti1) placeholder=\"Title\" value=(title1)\n    ui.input (bi1) placeholder=\"Write here\" multiline=true value=(body1)\n    ui.row (bar1) gap=8 {\n      ui.button (sv1) label=\"Save\" kind=primary\n      ui.button (dl1) label=\"Delete\" kind=danger\n      ui.button (bk1) label=\"Back\"\n    }\n  }\n  ui.screen (edit2) title=\"Note 2\" {\n    ui.input (ti2) placeholder=\"Title\" value=(title2)\n    ui.input (bi2) placeholder=\"Write here\" multiline=true value=(body2)\n    ui.row (bar2) gap=8 {\n      ui.button (sv2) label=\"Save\" kind=primary\n      ui.button (dl2) label=\"Delete\" kind=danger\n      ui.button (bk2) label=\"Back\"\n    }\n  }\n  ui.screen (edit3) title=\"Note 3\" {\n    ui.input (ti3) placeholder=\"Title\" value=(title3)\n    ui.input (bi3) placeholder=\"Write here\" multiline=true value=(body3)\n    ui.row (bar3) gap=8 {\n      ui.button (sv3) label=\"Save\" kind=primary\n      ui.button (dl3) label=\"Delete\" kind=danger\n      ui.button (bk3) label=\"Back\"\n    }\n  }\n  ui.screen (edit4) title=\"Note 4\" {\n    ui.input (ti4) placeholder=\"Title\" value=(title4)\n    ui.input (bi4) placeholder=\"Write here\" multiline=true value=(body4)\n    ui.row (bar4) gap=8 {\n      ui.button (sv4) label=\"Save\" kind=primary\n      ui.button (dl4) label=\"Delete\" kind=danger\n      ui.button (bk4) label=\"Back\"\n    }\n  }\n  ui.screen (edit5) title=\"Note 5\" {\n    ui.input (ti5) placeholder=\"Title\" value=(title5)\n    ui.input (bi5) placeholder=\"Write here\" multiline=true value=(body5)\n    ui.row (bar5) gap=8 {\n      ui.button (sv5) label=\"Save\" kind=primary\n      ui.button (dl5) label=\"Delete\" kind=danger\n      ui.button (bk5) label=\"Back\"\n    }\n  }\n  ui.screen (edit6) title=\"Note 6\" {\n    ui.input (ti6) placeholder=\"Title\" value=(title6)\n    ui.input (bi6) placeholder=\"Write here\" multiline=true value=(body6)\n    ui.row (bar6) gap=8 {\n      ui.button (sv6) label=\"Save\" kind=primary\n      ui.button (dl6) label=\"Delete\" kind=danger\n      ui.button (bk6) label=\"Back\"\n    }\n  }\n  ui.screen (edit7) title=\"Note 7\" {\n    ui.input (ti7) placeholder=\"Title\" value=(title7)\n    ui.input (bi7) placeholder=\"Write here\" multiline=true value=(body7)\n    ui.row (bar7) gap=8 {\n      ui.button (sv7) label=\"Save\" kind=primary\n      ui.button (dl7) label=\"Delete\" kind=danger\n      ui.button (bk7) label=\"Back\"\n    }\n  }\n  ui.screen (edit8) title=\"Note 8\" {\n    ui.input (ti8) placeholder=\"Title\" value=(title8)\n    ui.input (bi8) placeholder=\"Write here\" multiline=true value=(body8)\n    ui.row (bar8) gap=8 {\n      ui.button (sv8) label=\"Save\" kind=primary\n      ui.button (dl8) label=\"Delete\" kind=danger\n      ui.button (bk8) label=\"Back\"\n    }\n  }\n  ui.on (n1) tap { ui.screen (edit1) }\n  ui.on (sv1) tap {\n    thenplace (title1) placeto (t1)\n    store.set (leaf.title.1) with (title1)\n    store.set (leaf.body.1) with (body1)\n    ui.set (n1) label=(t1)\n    sys.notify (\"Note saved\") title=\"Leaf\"\n    ui.screen (list)\n  }\n  ui.on (dl1) tap {\n    thenplace \"+ New note\" placeto (title1)\n    thenplace \"\" placeto (body1)\n    thenplace (title1) placeto (t1)\n    store.set (leaf.title.1) with (title1)\n    store.set (leaf.body.1) with (body1)\n    ui.set (ti1) value=(title1)\n    ui.set (bi1) value=(body1)\n    ui.set (n1) label=(t1)\n    ui.screen (list)\n  }\n  ui.on (bk1) tap { ui.screen (list) }\n  ui.on (n2) tap { ui.screen (edit2) }\n  ui.on (sv2) tap {\n    thenplace (title2) placeto (t2)\n    store.set (leaf.title.2) with (title2)\n    store.set (leaf.body.2) with (body2)\n    ui.set (n2) label=(t2)\n    sys.notify (\"Note saved\") title=\"Leaf\"\n    ui.screen (list)\n  }\n  ui.on (dl2) tap {\n    thenplace \"+ New note\" placeto (title2)\n    thenplace \"\" placeto (body2)\n    thenplace (title2) placeto (t2)\n    store.set (leaf.title.2) with (title2)\n    store.set (leaf.body.2) with (body2)\n    ui.set (ti2) value=(title2)\n    ui.set (bi2) value=(body2)\n    ui.set (n2) label=(t2)\n    ui.screen (list)\n  }\n  ui.on (bk2) tap { ui.screen (list) }\n  ui.on (n3) tap { ui.screen (edit3) }\n  ui.on (sv3) tap {\n    thenplace (title3) placeto (t3)\n    store.set (leaf.title.3) with (title3)\n    store.set (leaf.body.3) with (body3)\n    ui.set (n3) label=(t3)\n    sys.notify (\"Note saved\") title=\"Leaf\"\n    ui.screen (list)\n  }\n  ui.on (dl3) tap {\n    thenplace \"+ New note\" placeto (title3)\n    thenplace \"\" placeto (body3)\n    thenplace (title3) placeto (t3)\n    store.set (leaf.title.3) with (title3)\n    store.set (leaf.body.3) with (body3)\n    ui.set (ti3) value=(title3)\n    ui.set (bi3) value=(body3)\n    ui.set (n3) label=(t3)\n    ui.screen (list)\n  }\n  ui.on (bk3) tap { ui.screen (list) }\n  ui.on (n4) tap { ui.screen (edit4) }\n  ui.on (sv4) tap {\n    thenplace (title4) placeto (t4)\n    store.set (leaf.title.4) with (title4)\n    store.set (leaf.body.4) with (body4)\n    ui.set (n4) label=(t4)\n    sys.notify (\"Note saved\") title=\"Leaf\"\n    ui.screen (list)\n  }\n  ui.on (dl4) tap {\n    thenplace \"+ New note\" placeto (title4)\n    thenplace \"\" placeto (body4)\n    thenplace (title4) placeto (t4)\n    store.set (leaf.title.4) with (title4)\n    store.set (leaf.body.4) with (body4)\n    ui.set (ti4) value=(title4)\n    ui.set (bi4) value=(body4)\n    ui.set (n4) label=(t4)\n    ui.screen (list)\n  }\n  ui.on (bk4) tap { ui.screen (list) }\n  ui.on (n5) tap { ui.screen (edit5) }\n  ui.on (sv5) tap {\n    thenplace (title5) placeto (t5)\n    store.set (leaf.title.5) with (title5)\n    store.set (leaf.body.5) with (body5)\n    ui.set (n5) label=(t5)\n    sys.notify (\"Note saved\") title=\"Leaf\"\n    ui.screen (list)\n  }\n  ui.on (dl5) tap {\n    thenplace \"+ New note\" placeto (title5)\n    thenplace \"\" placeto (body5)\n    thenplace (title5) placeto (t5)\n    store.set (leaf.title.5) with (title5)\n    store.set (leaf.body.5) with (body5)\n    ui.set (ti5) value=(title5)\n    ui.set (bi5) value=(body5)\n    ui.set (n5) label=(t5)\n    ui.screen (list)\n  }\n  ui.on (bk5) tap { ui.screen (list) }\n  ui.on (n6) tap { ui.screen (edit6) }\n  ui.on (sv6) tap {\n    thenplace (title6) placeto (t6)\n    store.set (leaf.title.6) with (title6)\n    store.set (leaf.body.6) with (body6)\n    ui.set (n6) label=(t6)\n    sys.notify (\"Note saved\") title=\"Leaf\"\n    ui.screen (list)\n  }\n  ui.on (dl6) tap {\n    thenplace \"+ New note\" placeto (title6)\n    thenplace \"\" placeto (body6)\n    thenplace (title6) placeto (t6)\n    store.set (leaf.title.6) with (title6)\n    store.set (leaf.body.6) with (body6)\n    ui.set (ti6) value=(title6)\n    ui.set (bi6) value=(body6)\n    ui.set (n6) label=(t6)\n    ui.screen (list)\n  }\n  ui.on (bk6) tap { ui.screen (list) }\n  ui.on (n7) tap { ui.screen (edit7) }\n  ui.on (sv7) tap {\n    thenplace (title7) placeto (t7)\n    store.set (leaf.title.7) with (title7)\n    store.set (leaf.body.7) with (body7)\n    ui.set (n7) label=(t7)\n    sys.notify (\"Note saved\") title=\"Leaf\"\n    ui.screen (list)\n  }\n  ui.on (dl7) tap {\n    thenplace \"+ New note\" placeto (title7)\n    thenplace \"\" placeto (body7)\n    thenplace (title7) placeto (t7)\n    store.set (leaf.title.7) with (title7)\n    store.set (leaf.body.7) with (body7)\n    ui.set (ti7) value=(title7)\n    ui.set (bi7) value=(body7)\n    ui.set (n7) label=(t7)\n    ui.screen (list)\n  }\n  ui.on (bk7) tap { ui.screen (list) }\n  ui.on (n8) tap { ui.screen (edit8) }\n  ui.on (sv8) tap {\n    thenplace (title8) placeto (t8)\n    store.set (leaf.title.8) with (title8)\n    store.set (leaf.body.8) with (body8)\n    ui.set (n8) label=(t8)\n    sys.notify (\"Note saved\") title=\"Leaf\"\n    ui.screen (list)\n  }\n  ui.on (dl8) tap {\n    thenplace \"+ New note\" placeto (title8)\n    thenplace \"\" placeto (body8)\n    thenplace (title8) placeto (t8)\n    store.set (leaf.title.8) with (title8)\n    store.set (leaf.body.8) with (body8)\n    ui.set (ti8) value=(title8)\n    ui.set (bi8) value=(body8)\n    ui.set (n8) label=(t8)\n    ui.screen (list)\n  }\n  ui.on (bk8) tap { ui.screen (list) }\n  ui.on (leafhome) tap { sys.home }\n  input.on (back) { ui.screen (list) }\n  ui.screen (list)\n}|';'|\n",
   "phone/apps/tally.ashos": "// Tally - calculator for Samara OS (Ash node syntax).\n// Evaluation is real: Research (expr) parses the expression text held in the string var expr.\n// Ash has no branching, so Backspace is an undo stack (u1..u6); every key pushes the old expression.\nimport (SamaraHW)\n{{env:Samara}}\n[[script:tally-v1]]\n(Tally):-: {\n  [net: none] [poly: arithmetic]\n  with var (s) var (expr) var (res) var (hist) var (u1) var (u2) var (u3) var (u4) var (u5) var (u6) {\n    irin (\"Data: res=0\")\n  }\n  thenplace \"\" placeto (expr)\n  thenplace \"\" placeto (hist)\n  thenplace \"\" placeto (u1)\n  thenplace \"\" placeto (u2)\n  thenplace \"\" placeto (u3)\n  thenplace \"\" placeto (u4)\n  thenplace \"\" placeto (u5)\n  thenplace \"\" placeto (u6)\n  store.get (tally.hist) placeto (hist)\n\n  ui.screen (calc) title=\"Tally\" {\n    ui.text (disp) text=(expr) size=40 align=right\n    ui.text (out) text=(res) size=22 align=right color=dim\n    ui.grid (pad) cols=4 gap=6 {\n      ui.button (kac) label=\"AC\" kind=acc\n      ui.button (kbs) label=\"⌫\" kind=fn\n      ui.button (kpc) label=\"%\" kind=fn\n      ui.button (kdv) label=\"÷\" kind=op\n      ui.button (k7) label=\"7\"\n      ui.button (k8) label=\"8\"\n      ui.button (k9) label=\"9\"\n      ui.button (kmu) label=\"×\" kind=op\n      ui.button (k4) label=\"4\"\n      ui.button (k5) label=\"5\"\n      ui.button (k6) label=\"6\"\n      ui.button (kmi) label=\"−\" kind=op\n      ui.button (k1) label=\"1\"\n      ui.button (k2) label=\"2\"\n      ui.button (k3) label=\"3\"\n      ui.button (kpl) label=\"+\" kind=op\n      ui.button (ksg) label=\"±\" kind=fn\n      ui.button (k0) label=\"0\"\n      ui.button (kdt) label=\".\"\n      ui.button (keq) label=\"=\" kind=eq\n    }\n    ui.row (tools) gap=8 {\n      ui.button (hbtn) label=\"History\" kind=tonal\n      ui.button (qbtn) label=\"Home\" kind=tonal\n    }\n  }\n  ui.screen (histscr) title=\"Tally history\" {\n    ui.list (hl) items=(hist)\n    ui.row (hrow) gap=8 {\n      ui.button (hclr) label=\"Clear history\" kind=danger\n      ui.button (hback) label=\"Back\"\n    }\n  }\n  ui.on (kac) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"\" placeto (expr)\n    thenplace \"0\" placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (kbs) tap {\n    thenplace (u1) placeto (expr)\n    thenplace (u2) placeto (u1)\n    thenplace (u3) placeto (u2)\n    thenplace (u4) placeto (u3)\n    thenplace (u5) placeto (u4)\n    thenplace (u6) placeto (u5)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (kpc) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"(${expr})/100\" placeto (expr)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (kdv) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"${expr}/\" placeto (expr)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (k7) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"${expr}7\" placeto (expr)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (k8) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"${expr}8\" placeto (expr)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (k9) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"${expr}9\" placeto (expr)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (kmu) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"${expr}*\" placeto (expr)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (k4) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"${expr}4\" placeto (expr)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (k5) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"${expr}5\" placeto (expr)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (k6) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"${expr}6\" placeto (expr)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (kmi) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"${expr}-\" placeto (expr)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (k1) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"${expr}1\" placeto (expr)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (k2) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"${expr}2\" placeto (expr)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (k3) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"${expr}3\" placeto (expr)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (kpl) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"${expr}+\" placeto (expr)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (ksg) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"-(${expr})\" placeto (expr)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (k0) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"${expr}0\" placeto (expr)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (kdt) tap {\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace \"${expr}.\" placeto (expr)\n    Research (expr) placeto (res)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (keq) tap {\n    Research (expr) placeto (res)\n    thenplace \"${expr} = ${res},${hist}\" placeto (hist)\n    store.set (tally.hist) with (hist)\n    ui.set (hl) items=(hist)\n    thenplace (u5) placeto (u6)\n    thenplace (u4) placeto (u5)\n    thenplace (u3) placeto (u4)\n    thenplace (u2) placeto (u3)\n    thenplace (u1) placeto (u2)\n    thenplace (expr) placeto (u1)\n    thenplace (res) placeto (expr)\n    ui.set (disp) text=(expr)\n    ui.set (out) text=(res)\n  }\n  ui.on (hbtn) tap { ui.set (hl) items=(hist); ui.screen (histscr) }\n  ui.on (hback) tap { ui.screen (calc) }\n  ui.on (hclr) tap {\n    thenplace \"\" placeto (hist)\n    store.set (tally.hist) with (hist)\n    ui.set (hl) items=(hist)\n  }\n  ui.on (qbtn) tap { sys.home }\n  input.on (back) { sys.home }\n  ui.screen (calc)\n}|';'|\n",
@@ -76,7 +76,7 @@
      "kind": "net",
      "value": "none"
     },
-    "line": 24
+    "line": 31
    },
    {
     "op": "tag",
@@ -84,35 +84,35 @@
      "kind": "poly",
      "value": "shell"
     },
-    "line": 24
+    "line": 31
    },
    {
     "op": "var",
     "args": {
      "name": "now"
     },
-    "line": 25
+    "line": 32
    },
    {
     "op": "var",
     "args": {
      "name": "pct"
     },
-    "line": 25
+    "line": 32
    },
    {
     "op": "var",
     "args": {
      "name": "inbox"
     },
-    "line": 25
+    "line": 32
    },
    {
     "op": "var",
     "args": {
      "name": "s"
     },
-    "line": 25
+    "line": 32
    },
    {
     "op": "irin",
@@ -121,21 +121,21 @@
       "s": 0
      }
     },
-    "line": 26
+    "line": 33
    },
    {
     "op": "sys.clock",
     "args": {
      "placeto": "now"
     },
-    "line": 28
+    "line": 35
    },
    {
     "op": "power.battery",
     "args": {
      "placeto": "pct"
     },
-    "line": 29
+    "line": 36
    },
    {
     "op": "thenplace",
@@ -143,7 +143,7 @@
      "src": "Welcome to Samara OS",
      "placeto": "inbox"
     },
-    "line": 30
+    "line": 37
    },
    {
     "op": "ui.screen",
@@ -151,7 +151,7 @@
      "id": "home",
      "title": "Crown"
     },
-    "line": 32,
+    "line": 39,
     "children": [
      {
       "op": "ui.col",
@@ -159,7 +159,7 @@
        "id": "widget",
        "gap": 4
       },
-      "line": 33,
+      "line": 40,
       "children": [
        {
         "op": "ui.text",
@@ -171,7 +171,7 @@
          "size": "clock",
          "align": "center"
         },
-        "line": 34
+        "line": 41
        },
        {
         "op": "ui.text",
@@ -182,7 +182,7 @@
          "align": "center",
          "color": "dim"
         },
-        "line": 35
+        "line": 42
        }
       ]
      },
@@ -192,7 +192,7 @@
        "id": "dockbar",
        "gap": 8
       },
-      "line": 37,
+      "line": 44,
       "children": [
        {
         "op": "ui.button",
@@ -201,7 +201,7 @@
          "label": "Notifications",
          "kind": "glass"
         },
-        "line": 38
+        "line": 45
        },
        {
         "op": "ui.button",
@@ -210,7 +210,7 @@
          "label": "All apps",
          "kind": "glass"
         },
-        "line": 39
+        "line": 46
        },
        {
         "op": "ui.button",
@@ -219,7 +219,7 @@
          "label": "Lock",
          "kind": "glass"
         },
-        "line": 40
+        "line": 47
        }
       ]
      }
@@ -231,7 +231,7 @@
      "id": "menu",
      "title": "Apps"
     },
-    "line": 44,
+    "line": 51,
     "children": [
      {
       "op": "ui.grid",
@@ -240,7 +240,7 @@
        "cols": 2,
        "gap": 8
       },
-      "line": 45,
+      "line": 52,
       "children": [
        {
         "op": "ui.button",
@@ -248,7 +248,7 @@
          "id": "mtally",
          "label": "Tally  (calculator)"
         },
-        "line": 46
+        "line": 53
        },
        {
         "op": "ui.button",
@@ -256,7 +256,7 @@
          "id": "mleaf",
          "label": "Leaf  (notes)"
         },
-        "line": 47
+        "line": 54
        },
        {
         "op": "ui.button",
@@ -264,7 +264,7 @@
          "id": "mdrift",
          "label": "Drift  (browser)"
         },
-        "line": 48
+        "line": 55
        },
        {
         "op": "ui.button",
@@ -272,7 +272,7 @@
          "id": "mlens",
          "label": "Lens  (camera)"
         },
-        "line": 49
+        "line": 56
        },
        {
         "op": "ui.button",
@@ -280,7 +280,7 @@
          "id": "mrings",
          "label": "Rings  (settings)"
         },
-        "line": 50
+        "line": 57
        },
        {
         "op": "ui.button",
@@ -288,7 +288,7 @@
          "id": "mwidow",
          "label": "Widow  (windows + widgets)"
         },
-        "line": 51
+        "line": 58
        }
       ]
      },
@@ -299,7 +299,7 @@
        "label": "Back to home",
        "kind": "tonal"
       },
-      "line": 53
+      "line": 60
      }
     ]
    },
@@ -309,7 +309,7 @@
      "id": "shade",
      "title": "Notifications"
     },
-    "line": 56,
+    "line": 63,
     "children": [
      {
       "op": "ui.list",
@@ -319,7 +319,7 @@
         "$var": "inbox"
        }
       },
-      "line": 57
+      "line": 64
      },
      {
       "op": "ui.row",
@@ -327,7 +327,7 @@
        "id": "qs1",
        "gap": 8
       },
-      "line": 58,
+      "line": 65,
       "children": [
        {
         "op": "ui.button",
@@ -335,7 +335,7 @@
          "id": "qdim",
          "label": "Dim"
         },
-        "line": 59
+        "line": 66
        },
        {
         "op": "ui.button",
@@ -343,7 +343,7 @@
          "id": "qmid",
          "label": "Medium"
         },
-        "line": 60
+        "line": 67
        },
        {
         "op": "ui.button",
@@ -351,7 +351,7 @@
          "id": "qbright",
          "label": "Bright"
         },
-        "line": 61
+        "line": 68
        }
       ]
      },
@@ -361,7 +361,7 @@
        "id": "qs2",
        "gap": 8
       },
-      "line": 63,
+      "line": 70,
       "children": [
        {
         "op": "ui.button",
@@ -369,7 +369,7 @@
          "id": "qtest",
          "label": "Test notification"
         },
-        "line": 64
+        "line": 71
        },
        {
         "op": "ui.button",
@@ -377,7 +377,7 @@
          "id": "qclear",
          "label": "Clear"
         },
-        "line": 65
+        "line": 72
        },
        {
         "op": "ui.button",
@@ -385,7 +385,7 @@
          "id": "qclose",
          "label": "Close"
         },
-        "line": 66
+        "line": 73
        }
       ]
      }
@@ -397,7 +397,7 @@
      "id": "bark",
      "title": "Bark"
     },
-    "line": 70,
+    "line": 77,
     "children": [
      {
       "op": "ui.text",
@@ -409,7 +409,7 @@
        "size": 64,
        "align": "center"
       },
-      "line": 71
+      "line": 78
      },
      {
       "op": "ui.text",
@@ -420,7 +420,7 @@
        "align": "center",
        "color": "dim"
       },
-      "line": 72
+      "line": 79
      },
      {
       "op": "ui.text",
@@ -432,7 +432,7 @@
        "size": 14,
        "align": "center"
       },
-      "line": 73
+      "line": 80
      },
      {
       "op": "ui.button",
@@ -440,7 +440,7 @@
        "id": "bunlock",
        "label": "Unlock"
       },
-      "line": 74
+      "line": 81
      }
     ]
    },
@@ -450,7 +450,7 @@
      "id": "hshade",
      "event": "tap"
     },
-    "line": 77,
+    "line": 84,
     "handlers": {
      "tap": [
       {
@@ -461,14 +461,14 @@
          "$var": "inbox"
         }
        },
-       "line": 77
+       "line": 84
       },
       {
        "op": "ui.screen",
        "args": {
         "id": "shade"
        },
-       "line": 77
+       "line": 84
       }
      ]
     }
@@ -479,7 +479,7 @@
      "id": "hmenu",
      "event": "tap"
     },
-    "line": 78,
+    "line": 85,
     "handlers": {
      "tap": [
       {
@@ -487,7 +487,7 @@
        "args": {
         "id": "menu"
        },
-       "line": 78
+       "line": 85
       }
      ]
     }
@@ -498,7 +498,7 @@
      "id": "hlock",
      "event": "tap"
     },
-    "line": 79,
+    "line": 86,
     "handlers": {
      "tap": [
       {
@@ -506,7 +506,7 @@
        "args": {
         "placeto": "now"
        },
-       "line": 80
+       "line": 87
       },
       {
        "op": "ui.set",
@@ -516,14 +516,14 @@
          "$var": "now"
         }
        },
-       "line": 81
+       "line": 88
       },
       {
        "op": "ui.screen",
        "args": {
         "id": "home"
        },
-       "line": 82
+       "line": 89
       }
      ]
     }
@@ -534,7 +534,7 @@
      "id": "bunlock",
      "event": "tap"
     },
-    "line": 84,
+    "line": 91,
     "handlers": {
      "tap": [
       {
@@ -542,14 +542,14 @@
        "args": {
         "placeto": "now"
        },
-       "line": 85
+       "line": 92
       },
       {
        "op": "power.battery",
        "args": {
         "placeto": "pct"
        },
-       "line": 86
+       "line": 93
       },
       {
        "op": "ui.set",
@@ -559,7 +559,7 @@
          "$var": "now"
         }
        },
-       "line": 87
+       "line": 94
       },
       {
        "op": "ui.set",
@@ -567,12 +567,12 @@
         "id": "bat",
         "text": "Battery ${pct}%"
        },
-       "line": 88
+       "line": 95
       },
       {
        "op": "sys.home",
        "args": {},
-       "line": 89
+       "line": 96
       }
      ]
     }
@@ -583,7 +583,7 @@
      "id": "mtally",
      "event": "tap"
     },
-    "line": 91,
+    "line": 98,
     "handlers": {
      "tap": [
       {
@@ -591,7 +591,7 @@
        "args": {
         "id": "tally"
        },
-       "line": 91
+       "line": 98
       }
      ]
     }
@@ -602,7 +602,7 @@
      "id": "mleaf",
      "event": "tap"
     },
-    "line": 92,
+    "line": 99,
     "handlers": {
      "tap": [
       {
@@ -610,7 +610,7 @@
        "args": {
         "id": "leaf"
        },
-       "line": 92
+       "line": 99
       }
      ]
     }
@@ -621,7 +621,7 @@
      "id": "mdrift",
      "event": "tap"
     },
-    "line": 93,
+    "line": 100,
     "handlers": {
      "tap": [
       {
@@ -629,7 +629,7 @@
        "args": {
         "id": "drift"
        },
-       "line": 93
+       "line": 100
       }
      ]
     }
@@ -640,7 +640,7 @@
      "id": "mlens",
      "event": "tap"
     },
-    "line": 94,
+    "line": 101,
     "handlers": {
      "tap": [
       {
@@ -648,7 +648,7 @@
        "args": {
         "id": "lens"
        },
-       "line": 94
+       "line": 101
       }
      ]
     }
@@ -659,7 +659,7 @@
      "id": "mrings",
      "event": "tap"
     },
-    "line": 95,
+    "line": 102,
     "handlers": {
      "tap": [
       {
@@ -667,7 +667,7 @@
        "args": {
         "id": "rings"
        },
-       "line": 95
+       "line": 102
       }
      ]
     }
@@ -678,7 +678,7 @@
      "id": "mwidow",
      "event": "tap"
     },
-    "line": 96,
+    "line": 103,
     "handlers": {
      "tap": [
       {
@@ -686,7 +686,7 @@
        "args": {
         "id": "widow"
        },
-       "line": 96
+       "line": 103
       }
      ]
     }
@@ -697,7 +697,7 @@
      "id": "mback",
      "event": "tap"
     },
-    "line": 97,
+    "line": 104,
     "handlers": {
      "tap": [
       {
@@ -705,7 +705,7 @@
        "args": {
         "id": "home"
        },
-       "line": 97
+       "line": 104
       }
      ]
     }
@@ -716,7 +716,7 @@
      "id": "qdim",
      "event": "tap"
     },
-    "line": 98,
+    "line": 105,
     "handlers": {
      "tap": [
       {
@@ -725,7 +725,7 @@
         "key": "brightness",
         "value": 0.3
        },
-       "line": 98
+       "line": 105
       }
      ]
     }
@@ -736,7 +736,7 @@
      "id": "qmid",
      "event": "tap"
     },
-    "line": 99,
+    "line": 106,
     "handlers": {
      "tap": [
       {
@@ -745,7 +745,7 @@
         "key": "brightness",
         "value": 0.6
        },
-       "line": 99
+       "line": 106
       }
      ]
     }
@@ -756,7 +756,7 @@
      "id": "qbright",
      "event": "tap"
     },
-    "line": 100,
+    "line": 107,
     "handlers": {
      "tap": [
       {
@@ -765,7 +765,7 @@
         "key": "brightness",
         "value": 1
        },
-       "line": 100
+       "line": 107
       }
      ]
     }
@@ -776,7 +776,7 @@
      "id": "qtest",
      "event": "tap"
     },
-    "line": 101,
+    "line": 108,
     "handlers": {
      "tap": [
       {
@@ -784,7 +784,7 @@
        "args": {
         "placeto": "now"
        },
-       "line": 102
+       "line": 109
       },
       {
        "op": "sys.notify",
@@ -792,7 +792,7 @@
         "text": "Hello from Crown",
         "title": "Samara"
        },
-       "line": 103
+       "line": 110
       },
       {
        "op": "thenplace",
@@ -800,7 +800,7 @@
         "src": "${now}  Hello from Crown,${inbox}",
         "placeto": "inbox"
        },
-       "line": 104
+       "line": 111
       },
       {
        "op": "ui.set",
@@ -810,7 +810,7 @@
          "$var": "inbox"
         }
        },
-       "line": 105
+       "line": 112
       }
      ]
     }
@@ -821,7 +821,7 @@
      "id": "qclear",
      "event": "tap"
     },
-    "line": 107,
+    "line": 114,
     "handlers": {
      "tap": [
       {
@@ -830,7 +830,7 @@
         "src": "",
         "placeto": "inbox"
        },
-       "line": 108
+       "line": 115
       },
       {
        "op": "ui.set",
@@ -840,7 +840,7 @@
          "$var": "inbox"
         }
        },
-       "line": 109
+       "line": 116
       }
      ]
     }
@@ -851,7 +851,7 @@
      "id": "qclose",
      "event": "tap"
     },
-    "line": 111,
+    "line": 118,
     "handlers": {
      "tap": [
       {
@@ -859,7 +859,7 @@
        "args": {
         "id": "home"
        },
-       "line": 111
+       "line": 118
       }
      ]
     }
@@ -869,7 +869,7 @@
     "args": {
      "key": "home"
     },
-    "line": 114,
+    "line": 121,
     "handlers": {
      "press": [
       {
@@ -877,7 +877,7 @@
        "args": {
         "id": "home"
        },
-       "line": 114
+       "line": 121
       }
      ]
     }
@@ -887,71 +887,13 @@
     "args": {
      "key": "back"
     },
-    "line": 115,
-    "handlers": {
-     "press": [
-      {
-       "op": "ui.screen",
-       "args": {
-        "id": "home"
-       },
-       "line": 115
-      }
-     ]
-    }
-   },
-   {
-    "op": "input.on",
-    "args": {
-     "key": "power"
-    },
-    "line": 116,
-    "handlers": {
-     "press": [
-      {
-       "op": "power.sleep",
-       "args": {},
-       "line": 117
-      },
-      {
-       "op": "sys.clock",
-       "args": {
-        "placeto": "now"
-       },
-       "line": 118
-      },
-      {
-       "op": "ui.set",
-       "args": {
-        "id": "bclk",
-        "text": {
-         "$var": "now"
-        }
-       },
-       "line": 119
-      },
-      {
-       "op": "ui.screen",
-       "args": {
-        "id": "home"
-       },
-       "line": 120
-      }
-     ]
-    }
-   },
-   {
-    "op": "input.on",
-    "args": {
-     "key": "volup"
-    },
     "line": 122,
     "handlers": {
      "press": [
       {
-       "op": "snd.volume",
+       "op": "ui.screen",
        "args": {
-        "level": "1"
+        "id": "home"
        },
        "line": 122
       }
@@ -961,9 +903,67 @@
    {
     "op": "input.on",
     "args": {
-     "key": "voldown"
+     "key": "power"
     },
     "line": 123,
+    "handlers": {
+     "press": [
+      {
+       "op": "power.sleep",
+       "args": {},
+       "line": 124
+      },
+      {
+       "op": "sys.clock",
+       "args": {
+        "placeto": "now"
+       },
+       "line": 125
+      },
+      {
+       "op": "ui.set",
+       "args": {
+        "id": "bclk",
+        "text": {
+         "$var": "now"
+        }
+       },
+       "line": 126
+      },
+      {
+       "op": "ui.screen",
+       "args": {
+        "id": "home"
+       },
+       "line": 127
+      }
+     ]
+    }
+   },
+   {
+    "op": "input.on",
+    "args": {
+     "key": "volup"
+    },
+    "line": 129,
+    "handlers": {
+     "press": [
+      {
+       "op": "snd.volume",
+       "args": {
+        "level": "1"
+       },
+       "line": 129
+      }
+     ]
+    }
+   },
+   {
+    "op": "input.on",
+    "args": {
+     "key": "voldown"
+    },
+    "line": 130,
     "handlers": {
      "press": [
       {
@@ -971,7 +971,7 @@
        "args": {
         "level": "0.3"
        },
-       "line": 123
+       "line": 130
       }
      ]
     }
@@ -981,7 +981,7 @@
     "args": {
      "id": "home"
     },
-    "line": 125
+    "line": 132
    }
   ],
   "Rings": [
@@ -991,7 +991,7 @@
      "kind": "net",
      "value": "none"
     },
-    "line": 130
+    "line": 137
    },
    {
     "op": "tag",
@@ -999,35 +999,35 @@
      "kind": "poly",
      "value": "settings"
     },
-    "line": 130
+    "line": 137
    },
    {
     "op": "var",
     "args": {
      "name": "s"
     },
-    "line": 131
+    "line": 138
    },
    {
     "op": "var",
     "args": {
      "name": "pct"
     },
-    "line": 131
+    "line": 138
    },
    {
     "op": "var",
     "args": {
      "name": "chg"
     },
-    "line": 131
+    "line": 138
    },
    {
     "op": "var",
     "args": {
      "name": "st"
     },
-    "line": 131
+    "line": 138
    },
    {
     "op": "irin",
@@ -1036,28 +1036,28 @@
       "s": 0
      }
     },
-    "line": 132
+    "line": 139
    },
    {
     "op": "power.battery",
     "args": {
      "placeto": "pct"
     },
-    "line": 134
+    "line": 141
    },
    {
     "op": "power.charging",
     "args": {
      "placeto": "chg"
     },
-    "line": 135
+    "line": 142
    },
    {
     "op": "net.status",
     "args": {
      "placeto": "st"
     },
-    "line": 136
+    "line": 143
    },
    {
     "op": "ui.screen",
@@ -1065,7 +1065,7 @@
      "id": "rings",
      "title": "Rings"
     },
-    "line": 138,
+    "line": 145,
     "children": [
      {
       "op": "ui.text",
@@ -1074,7 +1074,7 @@
        "text": "Theme",
        "size": 16
       },
-      "line": 139
+      "line": 146
      },
      {
       "op": "ui.row",
@@ -1082,7 +1082,7 @@
        "id": "th1",
        "gap": 6
       },
-      "line": 140,
+      "line": 147,
       "children": [
        {
         "op": "ui.button",
@@ -1090,7 +1090,7 @@
          "id": "tash",
          "label": "Ash"
         },
-        "line": 141
+        "line": 148
        },
        {
         "op": "ui.button",
@@ -1098,7 +1098,7 @@
          "id": "tbirch",
          "label": "Birch"
         },
-        "line": 142
+        "line": 149
        },
        {
         "op": "ui.button",
@@ -1106,7 +1106,7 @@
          "id": "tdusk",
          "label": "Dusk"
         },
-        "line": 143
+        "line": 150
        },
        {
         "op": "ui.button",
@@ -1114,7 +1114,7 @@
          "id": "tember",
          "label": "Ember"
         },
-        "line": 144
+        "line": 151
        },
        {
         "op": "ui.button",
@@ -1122,7 +1122,7 @@
          "id": "tink",
          "label": "Ink"
         },
-        "line": 145
+        "line": 152
        }
       ]
      },
@@ -1133,7 +1133,7 @@
        "text": "Brightness",
        "size": 16
       },
-      "line": 147
+      "line": 154
      },
      {
       "op": "ui.row",
@@ -1141,7 +1141,7 @@
        "id": "br1",
        "gap": 6
       },
-      "line": 148,
+      "line": 155,
       "children": [
        {
         "op": "ui.button",
@@ -1149,7 +1149,7 @@
          "id": "b30",
          "label": "30%"
         },
-        "line": 149
+        "line": 156
        },
        {
         "op": "ui.button",
@@ -1157,7 +1157,7 @@
          "id": "b60",
          "label": "60%"
         },
-        "line": 150
+        "line": 157
        },
        {
         "op": "ui.button",
@@ -1165,7 +1165,7 @@
          "id": "b100",
          "label": "100%"
         },
-        "line": 151
+        "line": 158
        }
       ]
      },
@@ -1176,7 +1176,7 @@
        "text": "Volume",
        "size": 16
       },
-      "line": 153
+      "line": 160
      },
      {
       "op": "ui.row",
@@ -1184,7 +1184,7 @@
        "id": "vl1",
        "gap": 6
       },
-      "line": 154,
+      "line": 161,
       "children": [
        {
         "op": "ui.button",
@@ -1192,7 +1192,7 @@
          "id": "v0",
          "label": "Mute"
         },
-        "line": 155
+        "line": 162
        },
        {
         "op": "ui.button",
@@ -1200,7 +1200,7 @@
          "id": "v5",
          "label": "50%"
         },
-        "line": 156
+        "line": 163
        },
        {
         "op": "ui.button",
@@ -1208,7 +1208,7 @@
          "id": "v10",
          "label": "100%"
         },
-        "line": 157
+        "line": 164
        }
       ]
      },
@@ -1219,7 +1219,7 @@
        "text": "Samara OS 1.0.0\nBattery ${pct}%  charging: ${chg}\nNetwork: ${st}",
        "size": 13
       },
-      "line": 159
+      "line": 166
      },
      {
       "op": "ui.button",
@@ -1227,7 +1227,7 @@
        "id": "rhome",
        "label": "Home"
       },
-      "line": 160
+      "line": 167
      }
     ]
    },
@@ -1237,7 +1237,7 @@
      "id": "tash",
      "event": "tap"
     },
-    "line": 162,
+    "line": 169,
     "handlers": {
      "tap": [
       {
@@ -1246,7 +1246,7 @@
         "key": "theme",
         "value": "ash"
        },
-       "line": 162
+       "line": 169
       }
      ]
     }
@@ -1257,7 +1257,7 @@
      "id": "tbirch",
      "event": "tap"
     },
-    "line": 163,
+    "line": 170,
     "handlers": {
      "tap": [
       {
@@ -1266,7 +1266,7 @@
         "key": "theme",
         "value": "birch"
        },
-       "line": 163
+       "line": 170
       }
      ]
     }
@@ -1277,7 +1277,7 @@
      "id": "tdusk",
      "event": "tap"
     },
-    "line": 164,
+    "line": 171,
     "handlers": {
      "tap": [
       {
@@ -1286,7 +1286,7 @@
         "key": "theme",
         "value": "dusk"
        },
-       "line": 164
+       "line": 171
       }
      ]
     }
@@ -1297,7 +1297,7 @@
      "id": "tember",
      "event": "tap"
     },
-    "line": 165,
+    "line": 172,
     "handlers": {
      "tap": [
       {
@@ -1306,7 +1306,7 @@
         "key": "theme",
         "value": "ember"
        },
-       "line": 165
+       "line": 172
       }
      ]
     }
@@ -1317,7 +1317,7 @@
      "id": "tink",
      "event": "tap"
     },
-    "line": 166,
+    "line": 173,
     "handlers": {
      "tap": [
       {
@@ -1326,7 +1326,7 @@
         "key": "theme",
         "value": "ink"
        },
-       "line": 166
+       "line": 173
       }
      ]
     }
@@ -1337,7 +1337,7 @@
      "id": "b30",
      "event": "tap"
     },
-    "line": 167,
+    "line": 174,
     "handlers": {
      "tap": [
       {
@@ -1346,7 +1346,7 @@
         "key": "brightness",
         "value": 0.3
        },
-       "line": 167
+       "line": 174
       }
      ]
     }
@@ -1357,7 +1357,7 @@
      "id": "b60",
      "event": "tap"
     },
-    "line": 168,
+    "line": 175,
     "handlers": {
      "tap": [
       {
@@ -1366,7 +1366,7 @@
         "key": "brightness",
         "value": 0.6
        },
-       "line": 168
+       "line": 175
       }
      ]
     }
@@ -1377,7 +1377,7 @@
      "id": "b100",
      "event": "tap"
     },
-    "line": 169,
+    "line": 176,
     "handlers": {
      "tap": [
       {
@@ -1386,7 +1386,7 @@
         "key": "brightness",
         "value": 1
        },
-       "line": 169
+       "line": 176
       }
      ]
     }
@@ -1397,7 +1397,7 @@
      "id": "v0",
      "event": "tap"
     },
-    "line": 170,
+    "line": 177,
     "handlers": {
      "tap": [
       {
@@ -1405,7 +1405,7 @@
        "args": {
         "level": "0"
        },
-       "line": 170
+       "line": 177
       }
      ]
     }
@@ -1416,7 +1416,7 @@
      "id": "v5",
      "event": "tap"
     },
-    "line": 171,
+    "line": 178,
     "handlers": {
      "tap": [
       {
@@ -1424,7 +1424,7 @@
        "args": {
         "level": "0.5"
        },
-       "line": 171
+       "line": 178
       },
       {
        "op": "snd.beep",
@@ -1432,7 +1432,7 @@
         "freq": 660,
         "ms": 80
        },
-       "line": 171
+       "line": 178
       }
      ]
     }
@@ -1443,7 +1443,7 @@
      "id": "v10",
      "event": "tap"
     },
-    "line": 172,
+    "line": 179,
     "handlers": {
      "tap": [
       {
@@ -1451,7 +1451,7 @@
        "args": {
         "level": "1"
        },
-       "line": 172
+       "line": 179
       },
       {
        "op": "snd.beep",
@@ -1459,7 +1459,7 @@
         "freq": 660,
         "ms": 80
        },
-       "line": 172
+       "line": 179
       }
      ]
     }
@@ -1470,13 +1470,13 @@
      "id": "rhome",
      "event": "tap"
     },
-    "line": 173,
+    "line": 180,
     "handlers": {
      "tap": [
       {
        "op": "sys.home",
        "args": {},
-       "line": 173
+       "line": 180
       }
      ]
     }
@@ -1486,13 +1486,13 @@
     "args": {
      "key": "back"
     },
-    "line": 174,
+    "line": 181,
     "handlers": {
      "press": [
       {
        "op": "sys.home",
        "args": {},
-       "line": 174
+       "line": 181
       }
      ]
     }
@@ -1502,7 +1502,7 @@
     "args": {
      "id": "rings"
     },
-    "line": 175
+    "line": 182
    }
   ],
   "Lens": [
@@ -1512,7 +1512,7 @@
      "kind": "net",
      "value": "none"
     },
-    "line": 180
+    "line": 187
    },
    {
     "op": "tag",
@@ -1520,21 +1520,21 @@
      "kind": "poly",
      "value": "camera"
     },
-    "line": 180
+    "line": 187
    },
    {
     "op": "var",
     "args": {
      "name": "s"
     },
-    "line": 181
+    "line": 188
    },
    {
     "op": "var",
     "args": {
      "name": "shot"
     },
-    "line": 181
+    "line": 188
    },
    {
     "op": "irin",
@@ -1543,7 +1543,7 @@
       "s": 0
      }
     },
-    "line": 182
+    "line": 189
    },
    {
     "op": "ui.screen",
@@ -1551,7 +1551,7 @@
      "id": "lens",
      "title": "Lens"
     },
-    "line": 184,
+    "line": 191,
     "children": [
      {
       "op": "gfx.canvas",
@@ -1560,7 +1560,7 @@
        "w": 240,
        "h": 320
       },
-      "line": 185
+      "line": 192
      },
      {
       "op": "ui.row",
@@ -1568,7 +1568,7 @@
        "id": "lrow",
        "gap": 8
       },
-      "line": 186,
+      "line": 193,
       "children": [
        {
         "op": "ui.button",
@@ -1576,7 +1576,7 @@
          "id": "lback",
          "label": "Rear"
         },
-        "line": 187
+        "line": 194
        },
        {
         "op": "ui.button",
@@ -1584,7 +1584,7 @@
          "id": "lfront",
          "label": "Front"
         },
-        "line": 188
+        "line": 195
        },
        {
         "op": "ui.button",
@@ -1593,7 +1593,7 @@
          "label": "Shutter",
          "kind": "primary"
         },
-        "line": 189
+        "line": 196
        }
       ]
      },
@@ -1604,7 +1604,7 @@
        "label": "Home",
        "kind": "tonal"
       },
-      "line": 191
+      "line": 198
      }
     ]
    },
@@ -1613,7 +1613,7 @@
     "args": {
      "facing": "back"
     },
-    "line": 193
+    "line": 200
    },
    {
     "op": "ui.on",
@@ -1621,20 +1621,20 @@
      "id": "lback",
      "event": "tap"
     },
-    "line": 194,
+    "line": 201,
     "handlers": {
      "tap": [
       {
        "op": "cam.close",
        "args": {},
-       "line": 194
+       "line": 201
       },
       {
        "op": "cam.open",
        "args": {
         "facing": "back"
        },
-       "line": 194
+       "line": 201
       }
      ]
     }
@@ -1645,20 +1645,20 @@
      "id": "lfront",
      "event": "tap"
     },
-    "line": 195,
+    "line": 202,
     "handlers": {
      "tap": [
       {
        "op": "cam.close",
        "args": {},
-       "line": 195
+       "line": 202
       },
       {
        "op": "cam.open",
        "args": {
         "facing": "front"
        },
-       "line": 195
+       "line": 202
       }
      ]
     }
@@ -1669,7 +1669,7 @@
      "id": "lsnap",
      "event": "tap"
     },
-    "line": 196,
+    "line": 203,
     "handlers": {
      "tap": [
       {
@@ -1677,7 +1677,7 @@
        "args": {
         "placeto": "shot"
        },
-       "line": 197
+       "line": 204
       },
       {
        "op": "gfx.clear",
@@ -1685,7 +1685,7 @@
         "id": "view",
         "color": "#000"
        },
-       "line": 198
+       "line": 205
       },
       {
        "op": "gfx.image",
@@ -1699,7 +1699,7 @@
          "$var": "shot"
         }
        },
-       "line": 199
+       "line": 206
       },
       {
        "op": "snd.beep",
@@ -1707,14 +1707,14 @@
         "freq": 1200,
         "ms": 40
        },
-       "line": 200
+       "line": 207
       },
       {
        "op": "input.haptic",
        "args": {
         "ms": "20"
        },
-       "line": 201
+       "line": 208
       }
      ]
     }
@@ -1725,18 +1725,18 @@
      "id": "lhome",
      "event": "tap"
     },
-    "line": 203,
+    "line": 210,
     "handlers": {
      "tap": [
       {
        "op": "cam.close",
        "args": {},
-       "line": 203
+       "line": 210
       },
       {
        "op": "sys.home",
        "args": {},
-       "line": 203
+       "line": 210
       }
      ]
     }
@@ -1746,18 +1746,18 @@
     "args": {
      "key": "back"
     },
-    "line": 204,
+    "line": 211,
     "handlers": {
      "press": [
       {
        "op": "cam.close",
        "args": {},
-       "line": 204
+       "line": 211
       },
       {
        "op": "sys.home",
        "args": {},
-       "line": 204
+       "line": 211
       }
      ]
     }
@@ -1767,7 +1767,1690 @@
     "args": {
      "id": "lens"
     },
-    "line": 205
+    "line": 212
+   }
+  ],
+  "RingsAbout": [
+   {
+    "op": "tag",
+    "args": {
+     "kind": "net",
+     "value": "none"
+    },
+    "line": 219
+   },
+   {
+    "op": "tag",
+    "args": {
+     "kind": "poly",
+     "value": "settings"
+    },
+    "line": 219
+   },
+   {
+    "op": "var",
+    "args": {
+     "name": "about_hint"
+    },
+    "line": 220
+   },
+   {
+    "op": "irin",
+    "args": {
+     "vars": {
+      "about_hint": 0
+     }
+    },
+    "line": 221
+   },
+   {
+    "op": "sys.about",
+    "args": {
+     "action": "refresh"
+    },
+    "line": 223
+   },
+   {
+    "op": "ui.screen",
+    "args": {
+     "id": "about",
+     "title": "About phone"
+    },
+    "line": 224,
+    "children": [
+     {
+      "op": "ui.col",
+      "args": {
+       "id": "abdev",
+       "kind": "panel",
+       "gap": 12
+      },
+      "line": 225,
+      "children": [
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "abdev_hd",
+         "text": "Device",
+         "kind": "head",
+         "size": "sm"
+        },
+        "line": 226
+       },
+       {
+        "op": "ui.col",
+        "args": {
+         "id": "abm",
+         "gap": 1
+        },
+        "line": 227,
+        "children": [
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abml",
+           "text": "Model",
+           "size": "sm",
+           "color": "dim"
+          },
+          "line": 228
+         },
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abmv",
+           "text": {
+            "$var": "about_model"
+           },
+           "size": "md"
+          },
+          "line": 229
+         }
+        ]
+       },
+       {
+        "op": "ui.col",
+        "args": {
+         "id": "abh",
+         "gap": 1
+        },
+        "line": 231,
+        "children": [
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abhl",
+           "text": "Hardware",
+           "size": "sm",
+           "color": "dim"
+          },
+          "line": 232
+         },
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abhv",
+           "text": {
+            "$var": "about_hw"
+           },
+           "size": "md"
+          },
+          "line": 233
+         }
+        ]
+       },
+       {
+        "op": "ui.col",
+        "args": {
+         "id": "abi",
+         "gap": 1
+        },
+        "line": 235,
+        "children": [
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abil",
+           "text": "Device ID (generated in this browser)",
+           "size": "sm",
+           "color": "dim"
+          },
+          "line": 236
+         },
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abiv",
+           "text": {
+            "$var": "about_dev"
+           },
+           "size": "md"
+          },
+          "line": 237
+         }
+        ]
+       },
+       {
+        "op": "ui.col",
+        "args": {
+         "id": "abb",
+         "gap": 1
+        },
+        "line": 239,
+        "children": [
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abbl",
+           "text": "Battery (simulated)",
+           "size": "sm",
+           "color": "dim"
+          },
+          "line": 240
+         },
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abbv",
+           "text": {
+            "$var": "about_batt"
+           },
+           "size": "md"
+          },
+          "line": 241
+         }
+        ]
+       },
+       {
+        "op": "ui.col",
+        "args": {
+         "id": "abs",
+         "gap": 1
+        },
+        "line": 243,
+        "children": [
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "absl",
+           "text": "Screen",
+           "size": "sm",
+           "color": "dim"
+          },
+          "line": 244
+         },
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "absv",
+           "text": {
+            "$var": "about_screen"
+           },
+           "size": "md"
+          },
+          "line": 245
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "op": "ui.col",
+      "args": {
+       "id": "absw",
+       "kind": "panel",
+       "gap": 12
+      },
+      "line": 248,
+      "children": [
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "absw_hd",
+         "text": "Software",
+         "kind": "head",
+         "size": "sm"
+        },
+        "line": 249
+       },
+       {
+        "op": "ui.col",
+        "args": {
+         "id": "abo",
+         "gap": 1
+        },
+        "line": 250,
+        "children": [
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abol",
+           "text": "Operating system",
+           "size": "sm",
+           "color": "dim"
+          },
+          "line": 251
+         },
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abov",
+           "text": {
+            "$var": "about_os"
+           },
+           "size": "md"
+          },
+          "line": 252
+         }
+        ]
+       },
+       {
+        "op": "ui.col",
+        "args": {
+         "id": "abbn",
+         "gap": 1
+        },
+        "line": 254,
+        "children": [
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abbnl",
+           "text": "Build number  (tap 7 times to enable Developer options)",
+           "size": "sm",
+           "color": "dim"
+          },
+          "line": 255
+         },
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abbnv",
+           "text": {
+            "$var": "about_build"
+           },
+           "size": "md",
+           "color": "accent"
+          },
+          "line": 256
+         },
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abbnh",
+           "text": {
+            "$var": "about_hint"
+           },
+           "size": "sm",
+           "color": "dim"
+          },
+          "line": 257
+         }
+        ]
+       },
+       {
+        "op": "ui.col",
+        "args": {
+         "id": "abc",
+         "gap": 1
+        },
+        "line": 259,
+        "children": [
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abcl",
+           "text": "Release channel",
+           "size": "sm",
+           "color": "dim"
+          },
+          "line": 260
+         },
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abcv",
+           "text": {
+            "$var": "about_channel"
+           },
+           "size": "md"
+          },
+          "line": 261
+         }
+        ]
+       },
+       {
+        "op": "ui.col",
+        "args": {
+         "id": "abz",
+         "gap": 1
+        },
+        "line": 263,
+        "children": [
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abzl",
+           "text": "Ash OS schema (language ABI)",
+           "size": "sm",
+           "color": "dim"
+          },
+          "line": 264
+         },
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abzv",
+           "text": {
+            "$var": "about_schema"
+           },
+           "size": "md"
+          },
+          "line": 265
+         }
+        ]
+       },
+       {
+        "op": "ui.col",
+        "args": {
+         "id": "abk",
+         "gap": 1
+        },
+        "line": 267,
+        "children": [
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abkl",
+           "text": "Kernel (runtime)",
+           "size": "sm",
+           "color": "dim"
+          },
+          "line": 268
+         },
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abkv",
+           "text": {
+            "$var": "about_kernel"
+           },
+           "size": "md"
+          },
+          "line": 269
+         }
+        ]
+       },
+       {
+        "op": "ui.col",
+        "args": {
+         "id": "abbt",
+         "gap": 1
+        },
+        "line": 271,
+        "children": [
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abbtl",
+           "text": "Built",
+           "size": "sm",
+           "color": "dim"
+          },
+          "line": 272
+         },
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abbtv",
+           "text": {
+            "$var": "about_built"
+           },
+           "size": "md"
+          },
+          "line": 273
+         }
+        ]
+       },
+       {
+        "op": "ui.col",
+        "args": {
+         "id": "abu",
+         "gap": 1
+        },
+        "line": 275,
+        "children": [
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abul",
+           "text": "Uptime since boot",
+           "size": "sm",
+           "color": "dim"
+          },
+          "line": 276
+         },
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abuv",
+           "text": {
+            "$var": "about_up"
+           },
+           "size": "md"
+          },
+          "line": 277
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "op": "ui.col",
+      "args": {
+       "id": "abimg",
+       "kind": "panel",
+       "gap": 12
+      },
+      "line": 280,
+      "children": [
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "abimg_hd",
+         "text": "System image",
+         "kind": "head",
+         "size": "sm"
+        },
+        "line": 281
+       },
+       {
+        "op": "ui.col",
+        "args": {
+         "id": "abse",
+         "gap": 1
+        },
+        "line": 282,
+        "children": [
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "absel",
+           "text": "Seed",
+           "size": "sm",
+           "color": "dim"
+          },
+          "line": 283
+         },
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "absev",
+           "text": {
+            "$var": "about_seed"
+           },
+           "size": "md"
+          },
+          "line": 284
+         }
+        ]
+       },
+       {
+        "op": "ui.col",
+        "args": {
+         "id": "abf",
+         "gap": 1
+        },
+        "line": 286,
+        "children": [
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abfl",
+           "text": "Update feed",
+           "size": "sm",
+           "color": "dim"
+          },
+          "line": 287
+         },
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abfv",
+           "text": {
+            "$var": "about_feed"
+           },
+           "size": "md"
+          },
+          "line": 288
+         }
+        ]
+       },
+       {
+        "op": "ui.col",
+        "args": {
+         "id": "abua",
+         "gap": 1
+        },
+        "line": 290,
+        "children": [
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abual",
+           "text": "Browser",
+           "size": "sm",
+           "color": "dim"
+          },
+          "line": 291
+         },
+         {
+          "op": "ui.text",
+          "args": {
+           "id": "abuav",
+           "text": {
+            "$var": "about_ua"
+           },
+           "size": "md"
+          },
+          "line": 292
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "op": "ui.button",
+      "args": {
+       "id": "abcopy",
+       "label": "Copy build info",
+       "kind": "tonal"
+      },
+      "line": 295
+     },
+     {
+      "op": "ui.text",
+      "args": {
+       "id": "ablegal",
+       "text": {
+        "$var": "about_legal"
+       },
+       "size": "sm",
+       "color": "dim",
+       "align": "center"
+      },
+      "line": 296
+     }
+    ]
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "abbnv",
+     "event": "tap"
+    },
+    "line": 298,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.about",
+       "args": {
+        "action": "tapbuild"
+       },
+       "line": 298
+      }
+     ]
+    }
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "abbnl",
+     "event": "tap"
+    },
+    "line": 299,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.about",
+       "args": {
+        "action": "tapbuild"
+       },
+       "line": 299
+      }
+     ]
+    }
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "abcopy",
+     "event": "tap"
+    },
+    "line": 300,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.about",
+       "args": {
+        "action": "copy"
+       },
+       "line": 300
+      }
+     ]
+    }
+   }
+  ],
+  "RingsSysUpdate": [
+   {
+    "op": "tag",
+    "args": {
+     "kind": "net",
+     "value": "https"
+    },
+    "line": 307
+   },
+   {
+    "op": "tag",
+    "args": {
+     "kind": "poly",
+     "value": "settings"
+    },
+    "line": 307
+   },
+   {
+    "op": "var",
+    "args": {
+     "name": "upd_status"
+    },
+    "line": 308
+   },
+   {
+    "op": "irin",
+    "args": {
+     "vars": {
+      "upd_status": 0
+     }
+    },
+    "line": 309
+   },
+   {
+    "op": "sys.update",
+    "args": {
+     "action": "status"
+    },
+    "line": 311
+   },
+   {
+    "op": "ui.screen",
+    "args": {
+     "id": "sysupdate",
+     "title": "System update"
+    },
+    "line": 312,
+    "children": [
+     {
+      "op": "ui.col",
+      "args": {
+       "id": "uc",
+       "kind": "panel",
+       "gap": 12
+      },
+      "line": 313,
+      "children": [
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "uc_hd",
+         "text": "Installed",
+         "kind": "head",
+         "size": "sm"
+        },
+        "line": 314
+       },
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "ucv",
+         "text": {
+          "$var": "upd_current"
+         },
+         "size": "md"
+        },
+        "line": 315
+       }
+      ]
+     },
+     {
+      "op": "ui.col",
+      "args": {
+       "id": "us",
+       "kind": "panel",
+       "gap": 12
+      },
+      "line": 317,
+      "children": [
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "us_hd",
+         "text": "Update",
+         "kind": "head",
+         "size": "sm"
+        },
+        "line": 318
+       },
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "usv",
+         "text": {
+          "$var": "upd_status"
+         },
+         "size": "md"
+        },
+        "line": 319
+       },
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "usb",
+         "text": {
+          "$var": "upd_bar"
+         },
+         "size": "sm",
+         "color": "accent"
+        },
+        "line": 320
+       },
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "ush",
+         "text": {
+          "$var": "upd_hint"
+         },
+         "size": "sm",
+         "color": "dim"
+        },
+        "line": 321
+       },
+       {
+        "op": "ui.button",
+        "args": {
+         "id": "usgo",
+         "label": {
+          "$var": "upd_btn"
+         },
+         "kind": "primary"
+        },
+        "line": 322
+       },
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "usn",
+         "text": {
+          "$var": "upd_notes"
+         },
+         "size": "sm"
+        },
+        "line": 323
+       },
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "usl",
+         "text": {
+          "$var": "upd_last"
+         },
+         "size": "sm",
+         "color": "dim"
+        },
+        "line": 324
+       }
+      ]
+     },
+     {
+      "op": "ui.col",
+      "args": {
+       "id": "uch",
+       "kind": "panel",
+       "gap": 12
+      },
+      "line": 326,
+      "children": [
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "uch_hd",
+         "text": "Update channel",
+         "kind": "head",
+         "size": "sm"
+        },
+        "line": 327
+       },
+       {
+        "op": "ui.row",
+        "args": {
+         "id": "uchr",
+         "gap": 6
+        },
+        "line": 328,
+        "children": [
+         {
+          "op": "ui.button",
+          "args": {
+           "id": "uch1",
+           "label": {
+            "$var": "upd_ch_stable"
+           },
+           "kind": "tonal"
+          },
+          "line": 329
+         },
+         {
+          "op": "ui.button",
+          "args": {
+           "id": "uch2",
+           "label": {
+            "$var": "upd_ch_beta"
+           },
+           "kind": "tonal"
+          },
+          "line": 330
+         },
+         {
+          "op": "ui.button",
+          "args": {
+           "id": "uch3",
+           "label": {
+            "$var": "upd_ch_dev"
+           },
+           "kind": "tonal"
+          },
+          "line": 331
+         }
+        ]
+       },
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "uchn",
+         "text": "Beta and Dev phones also receive Stable releases. A channel never downgrades the installed version.",
+         "size": "sm",
+         "color": "dim"
+        },
+        "line": 333
+       }
+      ]
+     },
+     {
+      "op": "ui.col",
+      "args": {
+       "id": "ua",
+       "kind": "panel",
+       "gap": 12
+      },
+      "line": 335,
+      "children": [
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "ua_hd",
+         "text": "Automatic updates",
+         "kind": "head",
+         "size": "sm"
+        },
+        "line": 336
+       },
+       {
+        "op": "ui.button",
+        "args": {
+         "id": "uaon",
+         "label": {
+          "$var": "upd_auto"
+         },
+         "kind": "tonal"
+        },
+        "line": 337
+       },
+       {
+        "op": "ui.button",
+        "args": {
+         "id": "uasc",
+         "label": {
+          "$var": "upd_sched"
+         },
+         "kind": "ghost"
+        },
+        "line": 338
+       },
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "uan",
+         "text": "Automatic updates download and verify in the background and install on the next restart. They never restart the phone on their own.",
+         "size": "sm",
+         "color": "dim"
+        },
+        "line": 339
+       }
+      ]
+     },
+     {
+      "op": "ui.col",
+      "args": {
+       "id": "ur",
+       "kind": "panel",
+       "gap": 12
+      },
+      "line": 341,
+      "children": [
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "ur_hd",
+         "text": "Rollback & history",
+         "kind": "head",
+         "size": "sm"
+        },
+        "line": 342
+       },
+       {
+        "op": "ui.button",
+        "args": {
+         "id": "urb",
+         "label": {
+          "$var": "upd_roll"
+         },
+         "kind": "danger"
+        },
+        "line": 343
+       },
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "urh",
+         "text": {
+          "$var": "upd_hist"
+         },
+         "size": "sm",
+         "color": "dim"
+        },
+        "line": 344
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "usgo",
+     "event": "tap"
+    },
+    "line": 347,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.update",
+       "args": {
+        "action": "primary"
+       },
+       "line": 347
+      }
+     ]
+    }
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "uch1",
+     "event": "tap"
+    },
+    "line": 348,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.update",
+       "args": {
+        "action": "channel",
+        "value": "stable"
+       },
+       "line": 348
+      }
+     ]
+    }
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "uch2",
+     "event": "tap"
+    },
+    "line": 349,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.update",
+       "args": {
+        "action": "channel",
+        "value": "beta"
+       },
+       "line": 349
+      }
+     ]
+    }
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "uch3",
+     "event": "tap"
+    },
+    "line": 350,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.update",
+       "args": {
+        "action": "channel",
+        "value": "dev"
+       },
+       "line": 350
+      }
+     ]
+    }
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "uaon",
+     "event": "tap"
+    },
+    "line": 351,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.update",
+       "args": {
+        "action": "auto",
+        "value": "toggle"
+       },
+       "line": 351
+      }
+     ]
+    }
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "uasc",
+     "event": "tap"
+    },
+    "line": 352,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.update",
+       "args": {
+        "action": "schedule",
+        "value": "toggle"
+       },
+       "line": 352
+      }
+     ]
+    }
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "urb",
+     "event": "tap"
+    },
+    "line": 353,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.update",
+       "args": {
+        "action": "rollback"
+       },
+       "line": 353
+      }
+     ]
+    }
+   }
+  ],
+  "RingsDevOpts": [
+   {
+    "op": "tag",
+    "args": {
+     "kind": "net",
+     "value": "none"
+    },
+    "line": 359
+   },
+   {
+    "op": "tag",
+    "args": {
+     "kind": "poly",
+     "value": "settings"
+    },
+    "line": 359
+   },
+   {
+    "op": "var",
+    "args": {
+     "name": "dev_state"
+    },
+    "line": 360
+   },
+   {
+    "op": "irin",
+    "args": {
+     "vars": {
+      "dev_state": 0
+     }
+    },
+    "line": 361
+   },
+   {
+    "op": "sys.dev",
+    "args": {
+     "action": "status"
+    },
+    "line": 363
+   },
+   {
+    "op": "ui.screen",
+    "args": {
+     "id": "devopts",
+     "title": "Developer options"
+    },
+    "line": 364,
+    "children": [
+     {
+      "op": "ui.col",
+      "args": {
+       "id": "dm",
+       "kind": "panel",
+       "gap": 12
+      },
+      "line": 365,
+      "children": [
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "dm_hd",
+         "text": "Developer mode",
+         "kind": "head",
+         "size": "sm"
+        },
+        "line": 366
+       },
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "dms",
+         "text": {
+          "$var": "dev_state"
+         },
+         "size": "md"
+        },
+        "line": 367
+       },
+       {
+        "op": "ui.button",
+        "args": {
+         "id": "dmm",
+         "label": {
+          "$var": "dev_master"
+         },
+         "kind": "tonal"
+        },
+        "line": 368
+       }
+      ]
+     },
+     {
+      "op": "ui.col",
+      "args": {
+       "id": "dd",
+       "kind": "panel",
+       "gap": 12
+      },
+      "line": 370,
+      "children": [
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "dd_hd",
+         "text": "Debugging",
+         "kind": "head",
+         "size": "sm"
+        },
+        "line": 371
+       },
+       {
+        "op": "ui.button",
+        "args": {
+         "id": "ddt",
+         "label": {
+          "$var": "dev_touches"
+         },
+         "kind": "tonal"
+        },
+        "line": 372
+       },
+       {
+        "op": "ui.button",
+        "args": {
+         "id": "ddb",
+         "label": {
+          "$var": "dev_bounds"
+         },
+         "kind": "tonal"
+        },
+        "line": 373
+       }
+      ]
+     },
+     {
+      "op": "ui.col",
+      "args": {
+       "id": "du",
+       "kind": "panel",
+       "gap": 12
+      },
+      "line": 375,
+      "children": [
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "du_hd",
+         "text": "Update testing",
+         "kind": "head",
+         "size": "sm"
+        },
+        "line": 376
+       },
+       {
+        "op": "ui.button",
+        "args": {
+         "id": "dus",
+         "label": "Simulate update available",
+         "kind": "tonal"
+        },
+        "line": 377
+       },
+       {
+        "op": "ui.button",
+        "args": {
+         "id": "duf",
+         "label": {
+          "$var": "dev_fault"
+         },
+         "kind": "tonal"
+        },
+        "line": 378
+       },
+       {
+        "op": "ui.button",
+        "args": {
+         "id": "duk",
+         "label": {
+          "$var": "dev_skew"
+         },
+         "kind": "tonal"
+        },
+        "line": 379
+       },
+       {
+        "op": "ui.button",
+        "args": {
+         "id": "dul",
+         "label": {
+          "$var": "dev_localfeed"
+         },
+         "kind": "tonal"
+        },
+        "line": 380
+       },
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "duc",
+         "text": {
+          "$var": "dev_clock"
+         },
+         "size": "sm",
+         "color": "dim"
+        },
+        "line": 381
+       }
+      ]
+     },
+     {
+      "op": "ui.col",
+      "args": {
+       "id": "dl",
+       "kind": "panel",
+       "gap": 12
+      },
+      "line": 383,
+      "children": [
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "dl_hd",
+         "text": "Log viewer",
+         "kind": "head",
+         "size": "sm"
+        },
+        "line": 384
+       },
+       {
+        "op": "ui.row",
+        "args": {
+         "id": "dlr",
+         "gap": 6
+        },
+        "line": 385,
+        "children": [
+         {
+          "op": "ui.button",
+          "args": {
+           "id": "dlr1",
+           "label": "Refresh",
+           "kind": "tonal"
+          },
+          "line": 386
+         },
+         {
+          "op": "ui.button",
+          "args": {
+           "id": "dlr2",
+           "label": "Clear",
+           "kind": "tonal"
+          },
+          "line": 387
+         }
+        ]
+       },
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "dlt",
+         "text": {
+          "$var": "dev_log"
+         },
+         "size": "sm",
+         "color": "dim"
+        },
+        "line": 389
+       }
+      ]
+     },
+     {
+      "op": "ui.col",
+      "args": {
+       "id": "dr",
+       "kind": "panel",
+       "gap": 12
+      },
+      "line": 391,
+      "children": [
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "dr_hd",
+         "text": "ROM inspector",
+         "kind": "head",
+         "size": "sm"
+        },
+        "line": 392
+       },
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "drt",
+         "text": {
+          "$var": "dev_rom"
+         },
+         "size": "sm"
+        },
+        "line": 393
+       }
+      ]
+     },
+     {
+      "op": "ui.col",
+      "args": {
+       "id": "df",
+       "kind": "panel",
+       "gap": 12
+      },
+      "line": 395,
+      "children": [
+       {
+        "op": "ui.text",
+        "args": {
+         "id": "df_hd",
+         "text": "Reset",
+         "kind": "head",
+         "size": "sm"
+        },
+        "line": 396
+       },
+       {
+        "op": "ui.button",
+        "args": {
+         "id": "dfr",
+         "label": {
+          "$var": "dev_reset"
+         },
+         "kind": "danger"
+        },
+        "line": 397
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "dmm",
+     "event": "tap"
+    },
+    "line": 400,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.dev",
+       "args": {
+        "action": "toggle"
+       },
+       "line": 400
+      }
+     ]
+    }
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "ddt",
+     "event": "tap"
+    },
+    "line": 401,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.dev",
+       "args": {
+        "action": "toggle",
+        "value": "touches"
+       },
+       "line": 401
+      }
+     ]
+    }
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "ddb",
+     "event": "tap"
+    },
+    "line": 402,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.dev",
+       "args": {
+        "action": "toggle",
+        "value": "bounds"
+       },
+       "line": 402
+      }
+     ]
+    }
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "dus",
+     "event": "tap"
+    },
+    "line": 403,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.update",
+       "args": {
+        "action": "simulate"
+       },
+       "line": 403
+      }
+     ]
+    }
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "duf",
+     "event": "tap"
+    },
+    "line": 404,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.update",
+       "args": {
+        "action": "fault",
+        "value": "hash"
+       },
+       "line": 404
+      }
+     ]
+    }
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "duk",
+     "event": "tap"
+    },
+    "line": 405,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.dev",
+       "args": {
+        "action": "skipclock"
+       },
+       "line": 405
+      }
+     ]
+    }
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "dul",
+     "event": "tap"
+    },
+    "line": 406,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.update",
+       "args": {
+        "action": "clearlocal"
+       },
+       "line": 406
+      }
+     ]
+    }
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "dlr1",
+     "event": "tap"
+    },
+    "line": 407,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.dev",
+       "args": {
+        "action": "log"
+       },
+       "line": 407
+      }
+     ]
+    }
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "dlr2",
+     "event": "tap"
+    },
+    "line": 408,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.dev",
+       "args": {
+        "action": "clearlog"
+       },
+       "line": 408
+      }
+     ]
+    }
+   },
+   {
+    "op": "ui.on",
+    "args": {
+     "id": "dfr",
+     "event": "tap"
+    },
+    "line": 409,
+    "handlers": {
+     "tap": [
+      {
+       "op": "sys.dev",
+       "args": {
+        "action": "factoryreset"
+       },
+       "line": 409
+      }
+     ]
+    }
    }
   ],
   "Drift": [
@@ -16536,5 +18219,16 @@
     "line": 333
    }
   ]
+ },
+ "meta": {
+  "id": "samara",
+  "name": "Samara OS",
+  "version": "1.0.0",
+  "build": 100,
+  "channel": "stable",
+  "schema": 1,
+  "minKernel": "1.0.0",
+  "feed": "phone/build/feed.json",
+  "notes": "First release. Rings has About phone, System update and Developer options; updates install over the air from a hash-verified feed, with rollback."
  }
 }

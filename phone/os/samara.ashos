@@ -12,6 +12,13 @@ sys.theme (ash)
 sys.layout grid=4x5 dock=4
 sys.boot (Crown)
 
+// ==== updates:meta ====  OS release metadata (lifted into seed.meta; shown in About, checked by the updater)
+//   id       the OS lineage: updates are only accepted from the same id, and persisted state is shared across versions of it
+//   schema   Ash OS language ABI this source was written for;  minKernel  oldest kernel that can run it
+//   feed     where this OS looks for OTA updates (relative to the page, or https://)
+sys.meta id="samara" name="Samara OS" version=1.0.0 build=100 channel=stable schema=1 minKernel=1.0.0 feed="phone/build/feed.json" notes="First release. Rings has About phone, System update and Developer options; updates install over the air from a hash-verified feed, with rollback."
+// ==== /updates:meta ====
+
 sys.app (tally) name="Tally" glyph="±" color=#ff9500 entry=Tally
 sys.app (leaf)  name="Leaf"  glyph="❦" color=#34c759 entry=Leaf
 sys.app (drift) name="Drift" glyph="◎" color=#0a84ff entry=Drift
@@ -204,3 +211,201 @@ sys.app (widow) name="Widow" glyph="◈" color=#5e5ce6 entry=Widow
   input.on (back) { cam.close; sys.home }
   ui.screen (lens)
 }|';'|
+
+// ==== updates:about ====  Rings > About phone  (screen name: about)
+// All values come from the kernel (K.system) through sys.about; nothing here is hardcoded.
+// Tapping Build number 7 times switches on Developer options (logic lives in the sys.about (tapbuild) statement).
+(RingsAbout):-: {
+  [net: none] [poly: settings]
+  with var (about_hint) {
+    irin ("Data: about_hint=0")
+  }
+  sys.about (refresh)
+  ui.screen (about) title="About phone" {
+    ui.col (abdev) kind=panel gap=12 {
+      ui.text (abdev_hd) text="Device" kind=head size=sm
+      ui.col (abm) gap=1 {
+        ui.text (abml) text="Model" size=sm color=dim
+        ui.text (abmv) text=(about_model) size=md
+      }
+      ui.col (abh) gap=1 {
+        ui.text (abhl) text="Hardware" size=sm color=dim
+        ui.text (abhv) text=(about_hw) size=md
+      }
+      ui.col (abi) gap=1 {
+        ui.text (abil) text="Device ID (generated in this browser)" size=sm color=dim
+        ui.text (abiv) text=(about_dev) size=md
+      }
+      ui.col (abb) gap=1 {
+        ui.text (abbl) text="Battery (simulated)" size=sm color=dim
+        ui.text (abbv) text=(about_batt) size=md
+      }
+      ui.col (abs) gap=1 {
+        ui.text (absl) text="Screen" size=sm color=dim
+        ui.text (absv) text=(about_screen) size=md
+      }
+    }
+    ui.col (absw) kind=panel gap=12 {
+      ui.text (absw_hd) text="Software" kind=head size=sm
+      ui.col (abo) gap=1 {
+        ui.text (abol) text="Operating system" size=sm color=dim
+        ui.text (abov) text=(about_os) size=md
+      }
+      ui.col (abbn) gap=1 {
+        ui.text (abbnl) text="Build number  (tap 7 times to enable Developer options)" size=sm color=dim
+        ui.text (abbnv) text=(about_build) size=md color=accent
+        ui.text (abbnh) text=(about_hint) size=sm color=dim
+      }
+      ui.col (abc) gap=1 {
+        ui.text (abcl) text="Release channel" size=sm color=dim
+        ui.text (abcv) text=(about_channel) size=md
+      }
+      ui.col (abz) gap=1 {
+        ui.text (abzl) text="Ash OS schema (language ABI)" size=sm color=dim
+        ui.text (abzv) text=(about_schema) size=md
+      }
+      ui.col (abk) gap=1 {
+        ui.text (abkl) text="Kernel (runtime)" size=sm color=dim
+        ui.text (abkv) text=(about_kernel) size=md
+      }
+      ui.col (abbt) gap=1 {
+        ui.text (abbtl) text="Built" size=sm color=dim
+        ui.text (abbtv) text=(about_built) size=md
+      }
+      ui.col (abu) gap=1 {
+        ui.text (abul) text="Uptime since boot" size=sm color=dim
+        ui.text (abuv) text=(about_up) size=md
+      }
+    }
+    ui.col (abimg) kind=panel gap=12 {
+      ui.text (abimg_hd) text="System image" kind=head size=sm
+      ui.col (abse) gap=1 {
+        ui.text (absel) text="Seed" size=sm color=dim
+        ui.text (absev) text=(about_seed) size=md
+      }
+      ui.col (abf) gap=1 {
+        ui.text (abfl) text="Update feed" size=sm color=dim
+        ui.text (abfv) text=(about_feed) size=md
+      }
+      ui.col (abua) gap=1 {
+        ui.text (abual) text="Browser" size=sm color=dim
+        ui.text (abuav) text=(about_ua) size=md
+      }
+    }
+    ui.button (abcopy) label="Copy build info" kind=tonal
+    ui.text (ablegal) text=(about_legal) size=sm color=dim align=center
+  }
+  ui.on (abbnv) tap { sys.about (tapbuild) }
+  ui.on (abbnl) tap { sys.about (tapbuild) }
+  ui.on (abcopy) tap { sys.about (copy) }
+}|';'|
+// ==== /updates:about ====
+
+// ==== updates:sysupdate ====  Rings > System update  (screen name: sysupdate)
+// sys.update drives the host updater (check -> download -> verify -> stage -> install & restart, rollback).
+(RingsSysUpdate):-: {
+  [net: https] [poly: settings]
+  with var (upd_status) {
+    irin ("Data: upd_status=0")
+  }
+  sys.update (status)
+  ui.screen (sysupdate) title="System update" {
+    ui.col (uc) kind=panel gap=12 {
+      ui.text (uc_hd) text="Installed" kind=head size=sm
+      ui.text (ucv) text=(upd_current) size=md
+    }
+    ui.col (us) kind=panel gap=12 {
+      ui.text (us_hd) text="Update" kind=head size=sm
+      ui.text (usv) text=(upd_status) size=md
+      ui.text (usb) text=(upd_bar) size=sm color=accent
+      ui.text (ush) text=(upd_hint) size=sm color=dim
+      ui.button (usgo) label=(upd_btn) kind=primary
+      ui.text (usn) text=(upd_notes) size=sm
+      ui.text (usl) text=(upd_last) size=sm color=dim
+    }
+    ui.col (uch) kind=panel gap=12 {
+      ui.text (uch_hd) text="Update channel" kind=head size=sm
+      ui.row (uchr) gap=6 {
+        ui.button (uch1) label=(upd_ch_stable) kind=tonal
+        ui.button (uch2) label=(upd_ch_beta) kind=tonal
+        ui.button (uch3) label=(upd_ch_dev) kind=tonal
+      }
+      ui.text (uchn) text="Beta and Dev phones also receive Stable releases. A channel never downgrades the installed version." size=sm color=dim
+    }
+    ui.col (ua) kind=panel gap=12 {
+      ui.text (ua_hd) text="Automatic updates" kind=head size=sm
+      ui.button (uaon) label=(upd_auto) kind=tonal
+      ui.button (uasc) label=(upd_sched) kind=ghost
+      ui.text (uan) text="Automatic updates download and verify in the background and install on the next restart. They never restart the phone on their own." size=sm color=dim
+    }
+    ui.col (ur) kind=panel gap=12 {
+      ui.text (ur_hd) text="Rollback & history" kind=head size=sm
+      ui.button (urb) label=(upd_roll) kind=danger
+      ui.text (urh) text=(upd_hist) size=sm color=dim
+    }
+  }
+  ui.on (usgo) tap { sys.update (primary) }
+  ui.on (uch1) tap { sys.update (channel) stable }
+  ui.on (uch2) tap { sys.update (channel) beta }
+  ui.on (uch3) tap { sys.update (channel) dev }
+  ui.on (uaon) tap { sys.update (auto) toggle }
+  ui.on (uasc) tap { sys.update (schedule) toggle }
+  ui.on (urb) tap { sys.update (rollback) }
+}|';'|
+// ==== /updates:sysupdate ====
+
+// ==== updates:devopts ====  Rings > Developer options  (screen name: devopts)
+(RingsDevOpts):-: {
+  [net: none] [poly: settings]
+  with var (dev_state) {
+    irin ("Data: dev_state=0")
+  }
+  sys.dev (status)
+  ui.screen (devopts) title="Developer options" {
+    ui.col (dm) kind=panel gap=12 {
+      ui.text (dm_hd) text="Developer mode" kind=head size=sm
+      ui.text (dms) text=(dev_state) size=md
+      ui.button (dmm) label=(dev_master) kind=tonal
+    }
+    ui.col (dd) kind=panel gap=12 {
+      ui.text (dd_hd) text="Debugging" kind=head size=sm
+      ui.button (ddt) label=(dev_touches) kind=tonal
+      ui.button (ddb) label=(dev_bounds) kind=tonal
+    }
+    ui.col (du) kind=panel gap=12 {
+      ui.text (du_hd) text="Update testing" kind=head size=sm
+      ui.button (dus) label="Simulate update available" kind=tonal
+      ui.button (duf) label=(dev_fault) kind=tonal
+      ui.button (duk) label=(dev_skew) kind=tonal
+      ui.button (dul) label=(dev_localfeed) kind=tonal
+      ui.text (duc) text=(dev_clock) size=sm color=dim
+    }
+    ui.col (dl) kind=panel gap=12 {
+      ui.text (dl_hd) text="Log viewer" kind=head size=sm
+      ui.row (dlr) gap=6 {
+        ui.button (dlr1) label="Refresh" kind=tonal
+        ui.button (dlr2) label="Clear" kind=tonal
+      }
+      ui.text (dlt) text=(dev_log) size=sm color=dim
+    }
+    ui.col (dr) kind=panel gap=12 {
+      ui.text (dr_hd) text="ROM inspector" kind=head size=sm
+      ui.text (drt) text=(dev_rom) size=sm
+    }
+    ui.col (df) kind=panel gap=12 {
+      ui.text (df_hd) text="Reset" kind=head size=sm
+      ui.button (dfr) label=(dev_reset) kind=danger
+    }
+  }
+  ui.on (dmm) tap { sys.dev (toggle) }
+  ui.on (ddt) tap { sys.dev (toggle) touches }
+  ui.on (ddb) tap { sys.dev (toggle) bounds }
+  ui.on (dus) tap { sys.update (simulate) }
+  ui.on (duf) tap { sys.update (fault) hash }
+  ui.on (duk) tap { sys.dev (skipclock) }
+  ui.on (dul) tap { sys.update (clearlocal) }
+  ui.on (dlr1) tap { sys.dev (log) }
+  ui.on (dlr2) tap { sys.dev (clearlog) }
+  ui.on (dfr) tap { sys.dev (factoryreset) }
+}|';'|
+// ==== /updates:devopts ====
