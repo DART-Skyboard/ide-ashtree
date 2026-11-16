@@ -196,7 +196,8 @@
       var head = await api("GET", base + "/git/commits/" + ref.object.sha);
       var entries = [], paths = Object.keys(files);
       for (var i = 0; i < paths.length; i++) {
-        var blob = await api("POST", base + "/git/blobs", { content: utf8ToB64(files[paths[i]]), encoding: "base64" });
+        var f = files[paths[i]];   // text, or {base64: "..."} for binary files (e.g. a wallpaper image)
+        var blob = await api("POST", base + "/git/blobs", { content: (f && typeof f === "object" && f.base64) ? f.base64 : utf8ToB64(String(f)), encoding: "base64" });
         entries.push({ path: paths[i], mode: "100644", type: "blob", sha: blob.sha });
       }
       var tree = await api("POST", base + "/git/trees", { base_tree: head.tree.sha, tree: entries });
@@ -215,6 +216,11 @@
         if (m) (out[m[1]] = out[m[1]] || []).push({ path: n.path, sha: n.sha });
       });
       return out;
+    },
+    async readBlobBase64(sha) {   // raw base64 of a blob (binary-safe)
+      var repo = this.state.user.login + "/" + REPO_NAME;
+      var b = await api("GET", "/repos/" + repo + "/git/blobs/" + sha);
+      return b.encoding === "base64" ? b.content.replace(/\s/g, "") : utf8ToB64(b.content);
     },
     async readBlob(sha) {
       var repo = this.state.user.login + "/" + REPO_NAME;

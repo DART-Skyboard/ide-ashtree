@@ -67,7 +67,7 @@
           '<div class="gv-h">DIAGNOSTICS<span class="sp"></span><span id="gvDiagN"></span></div><div class="gv-diag" id="gvDiag"></div></div>' +
         '<div class="gv-col gv-side"><div class="gv-h">ROM</div><div class="gv-card" id="gvRom">Not built yet.</div>' +
           '<div class="gv-h">CANOPY</div><div class="gv-sim" id="gvSim"></div>' +
-          '<div class="gv-simbar"><button class="gv-btn" id="gvPower">Power</button><button class="gv-btn" id="gvReset">Reset</button><button class="gv-btn" id="gvShot">Screenshot</button><button class="gv-btn primary" id="gvPop" title="Float the phone in a draggable overlay">Pop out</button></div>' +
+          '<div class="gv-simbar"><button class="gv-btn" id="gvPower">Power</button><button class="gv-btn" id="gvReset">Reset</button><button class="gv-btn" id="gvShot">Screenshot</button><button class="gv-btn" id="gvWall" title="Import a wallpaper image (also in Rings > Wallpapers & themes)">Import wallpaper</button><button class="gv-btn primary" id="gvPop" title="Float the phone in a draggable overlay">Pop out</button></div>' +
           '<div class="gv-log" id="gvLog">Simulator log.</div></div>' +
       '</div></div>';
 
@@ -91,6 +91,7 @@
     $("#gvPower").onclick = power;
     $("#gvReset").onclick = reset;
     $("#gvShot").onclick = screenshot;
+    $("#gvWall").onclick = function () { if (S.sim && S.sim.pickWallpaper) S.sim.pickWallpaper(); else toastMsg("Build the phone first, then import a wallpaper"); };
     $("#gvPop").onclick = function () { if (root.GroveFloat) GroveFloat.toggle(); else toastMsg("Overlay module not loaded"); };
     $("#gvSave").onclick = saveToGitHub;
     $("#gvLoadGh").onclick = loadFromGitHub;
@@ -267,7 +268,8 @@
     if (!root.Canopy || !Canopy.create) { S.ui.gvSim.innerHTML = '<div class="gv-muted">Canopy simulator is not loaded (js/phone/canopy.js).</div>'; return; }
     if (!S.seed) { S.ui.gvSim.innerHTML = '<div class="gv-muted">Build or open a .seed first.</div>'; return; }
     try {
-      S.sim = Canopy.create(S.ui.gvSim, { seed: S.seed, onLog: simLog });
+      S.sim = Canopy.create(S.ui.gvSim, { seed: S.seed, onLog: simLog, project: S.project });   // project = fallback key so editing sources keeps the session
+      if (S.sim.setSessionGithub) S.sim.setSessionGithub(sessionGithubApi());
       if (boot) { await S.sim.boot(); S.powered = true; }
     } catch (e) { simLog("Canopy error: " + e.message); }
   }
@@ -357,6 +359,7 @@
     var out = {}; Object.keys(S.files).forEach(function (p) { out[repoPath(p)] = S.files[p]; });
     if (!S.seed) await doBuild();
     if (S.seed) out["phone/" + S.project + "/build/" + S.project + ".seed"] = S.seedText;
+    var sess = await sessionFiles(); if (sess) Object.keys(sess).forEach(function (k) { out[k] = sess[k]; });   // phone/<project>/session/state.json (+ wallpaper.<ext>)
     if (!Object.keys(out).length) return toastMsg("Nothing to save");
     try {
       toastMsg("Saving to GitHub...");
@@ -364,6 +367,46 @@
       toastMsg("Saved " + Object.keys(out).length + " files to private repo " + r.repo.full_name);
     } catch (e) { toastMsg("Save failed: " + e.message); alert("Save to GitHub failed: " + e.message); }
   }
+  // ── session backup (state.json + custom wallpaper) ───────
+  // Files for phone/<project>/session/. Uses the running simulator's persistence controller; null when no phone is running.
+  async function sessionFiles() {
+    if (!S.sim || !S.sim.persist) return null;
+    try {
+      var b = await S.sim.persist.exportBackup(), out = {}, base = "phone/" + S.project + "/";
+      out[base + b.statePath] = b.state;
+      if (b.wallpaper) out[base + b.wallpaperPath] = { base64: b.wallpaper.base64 };
+      return out;
+    } catch (e) { simLog("session export failed: " + e.message); return null; }
+  }
+  // Applies a project's session (state.json + wallpaper) from the repo listing; live if a phone is running, else into storage for the next boot.
+  async function restoreSession(files, name) {
+    var st = files.filter(function (f) { return f.path === "phone/" + name + "/session/state.json"; })[0];
+    if (!st) return false;
+    var wf = files.filter(function (f) { return /^phone\/[^\/]+\/session\/wallpaper\.[a-z0-9]+$/i.test(f.path) && f.path.indexOf("phone/" + name + "/") === 0; })[0];
+    var text = await GitHubAuth.readBlob(st.sha), wp = null;
+    if (wf) wp = { ext: wf.path.split(".").pop(), base64: await GitHubAuth.readBlobBase64(wf.sha) };
+    if (S.sim && S.sim.persist && slug(name) === S.project) { var r = await S.sim.persist.importBackup(text, wp, true); return !!(r && r.ok); }
+    if (!root.SamaraPersist) return false;
+    var r2 = await SamaraPersist.writeSession(SamaraPersist.browserHost(), null, name, text, wp); return !!(r2 && r2.ok);
+  }
+  function sessionGithubApi() {
+    return {
+      status: function () { var u = GitHubAuth.isSignedIn() ? GitHubAuth.user() : null; return { signedIn: !!u, user: u ? u.login : "", project: S.project }; },
+      backup: async function () {
+        if (!GitHubAuth.isSignedIn()) throw new Error("Sign in with GitHub in Grove first");
+        var files = await sessionFiles(); if (!files) throw new Error("Nothing to back up");
+        var r = await GitHubAuth.putFiles(files, "Grove: session backup " + S.project);
+        return "Backed up to " + r.repo.full_name + " (phone/" + S.project + "/session/)";
+      },
+      restore: async function () {
+        if (!GitHubAuth.isSignedIn()) throw new Error("Sign in with GitHub in Grove first");
+        var projects = await GitHubAuth.listProjects(), list = projects[S.project];
+        if (!list || !(await restoreSession(list, S.project))) throw new Error("No session backup for this project in the repo yet");
+        return "Restored session from GitHub";
+      }
+    };
+  }
+
   async function loadFromGitHub() {
     if (!(await needAuth())) return;
     var projects;
@@ -385,7 +428,8 @@
         }
       } catch (e) { return alert("Load failed: " + e.message); }
       saveProject(); S.project = slug(name); S.files = files; S.active = Object.keys(files)[0] || null; S.seed = null; S.diag = [];
-      saveProject(); refreshAll(); m.close(); toastMsg("Loaded " + name);
+      destroySim(); var restored = false; try { restored = await restoreSession(projects[name], name); } catch (e) { simLog("session restore failed: " + e.message); }   // phone/<name>/session/state.json
+      saveProject(); refreshAll(); m.close(); toastMsg("Loaded " + name + (restored ? " (session restored)" : ""));
     };
   }
 
