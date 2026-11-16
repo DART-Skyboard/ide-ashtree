@@ -13,7 +13,7 @@
         "minKernel": "1.0.0",
         "schema": 1,
         "notes": "Home greets you with \"updated over the air\". Rings menu label mentions updates. State migration 1.0.0 -> 1.1.0 records where you came from.",
-        "createdAt": "2026-11-16T01:42:53.920Z",
+        "createdAt": "2026-11-16T01:47:24.784Z",
         "signature": null,
         "delta": [
           {
@@ -35,7 +35,7 @@
         "minKernel": "1.0.0",
         "schema": 1,
         "notes": "Beta channel preview: the Notifications button says (beta). Only phones on the Beta or Dev channel see this.",
-        "createdAt": "2026-11-16T01:42:53.966Z",
+        "createdAt": "2026-11-16T01:47:24.819Z",
         "signature": null,
         "delta": [
           {
@@ -49,5 +49,5 @@
   },
   "product": "samara-os",
   "id": "samara",
-  "generated": "2026-11-16T01:42:53.993Z"
+  "generated": "2026-11-16T01:47:24.841Z"
 }
